@@ -775,6 +775,104 @@ async autorizarVentaClick(buttonElement) {
 
 
 
+/**
+ * Cancelar una venta pendiente
+ */
+async cancelarVentaClick(ventaId) {
+    try {
+        // Solicitar motivo de cancelación
+        const { value: motivo } = await Swal.fire({
+            title: '¿Cancelar esta venta?',
+            html: `
+                <p class="text-sm text-gray-600 mb-3">Esta acción no se puede deshacer.</p>
+                <textarea 
+                    id="motivo-cancelacion" 
+                    class="swal2-input w-full" 
+                    placeholder="Motivo de cancelación (opcional)"
+                    rows="3"></textarea>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta',
+            cancelButtonText: '<i class="fas fa-arrow-left mr-2"></i>No, volver',
+            preConfirm: () => {
+                return document.getElementById('motivo-cancelacion')?.value.trim() || 'Cancelación sin motivo especificado';
+            }
+        });
+
+        if (!motivo) return; // Usuario canceló
+
+        // Mostrar loading
+        Swal.fire({
+            title: 'Cancelando venta...',
+            html: 'Por favor espere',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        // Enviar solicitud de cancelación
+        const response = await fetch('/ventas/cancelar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                ven_id: ventaId,
+                motivo: motivo
+            })
+        });
+
+        if (response.status === 419) {
+            throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Error al cancelar la venta');
+        }
+
+        // Mostrar éxito
+        await Swal.fire({
+            icon: 'success',
+            title: '¡Venta cancelada!',
+            text: 'La venta ha sido cancelada exitosamente',
+            confirmButtonColor: '#10b981'
+        });
+
+        // Recargar la tabla de ventas
+        if (this.cargarVentasPendientes) {
+            this.cargarVentasPendientes();
+        } else if (typeof cargarVentasPendientes === 'function') {
+            cargarVentasPendientes();
+        }
+
+    } catch (error) {
+        console.error('❌ Error cancelando venta:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            html: `
+                <div class="text-left">
+                    <p class="font-semibold mb-2">No se pudo cancelar la venta:</p>
+                    <p class="text-sm">${error.message}</p>
+                </div>
+            `,
+            confirmButtonColor: '#ef4444'
+        });
+    }
+}
+
+
 
 async cargarVentasPendientes(filtros = {}) {
     try {

@@ -590,7 +590,7 @@ return new class extends Migration
             $table->integer('det_cantidad');
             $table->decimal('det_precio', 10, 2);
             $table->decimal('det_descuento', 10, 2)->default(0);
-            $table->enum('det_situacion', ['ACTIVO', 'ANULADO', 'PENDIENTE'])->default('ACTIVO');
+            $table->enum('det_situacion', ['ACTIVO', 'ANULADA', 'PENDIENTE'])->default('ACTIVO');
             $table->timestamp('created_at')->useCurrent();
             
             $table->foreign('det_ven_id')->references('ven_id')->on('pro_ventas')->onDelete('cascade');
@@ -745,7 +745,7 @@ return new class extends Migration
             $table->unsignedBigInteger('cja_metodo_pago');
             $table->unsignedBigInteger('cja_tipo_banco')->nullable();
             $table->string('cja_no_referencia', 100)->nullable();
-            $table->enum('cja_situacion', ['ACTIVO', 'ANULADO', 'PENDIENTE'])->default('ACTIVO');
+            $table->enum('cja_situacion', ['ACTIVO', 'ANULADA', 'PENDIENTE'])->default('ACTIVO');
             $table->string('cja_observaciones', 200)->nullable();
             $table->timestamp('created_at')->useCurrent();
             

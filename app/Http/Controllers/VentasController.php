@@ -1183,212 +1183,249 @@ public function actualizarLicencias(Request $request): JsonResponse
     }
 
 
-    ///////// termino morales batz
+    ///////// termino morales batz no estaba bien implementado cooregido bmar
 
-    public function cancelarVenta(Request $request): JsonResponse
-    {
-        $venId = (int) $request->input('ven_id');
-        $motivoCancelacion = $request->input('motivo', 'Cancelación de venta');
 
-        try {
-            DB::transaction(function () use ($venId, $motivoCancelacion) {
-                // Verificar que la venta existe y está PENDIENTE
-                $venta = DB::table('pro_ventas')
-                    ->where('ven_id', $venId)
-                    ->first();
+  public function cancelarVenta(Request $request): JsonResponse
+{
+    $venId = (int) $request->input('ven_id');
+    $motivoCancelacion = $request->input('motivo', 'Cancelación de venta');
 
-                if (!$venta) {
-                    throw new \RuntimeException('Venta no encontrada.');
-                }
+    try {
+        DB::transaction(function () use ($venId, $motivoCancelacion) {
+            // Verificar que la venta existe
+            $venta = DB::table('pro_ventas')->where('ven_id', $venId)->first();
 
-                if ($venta->ven_situacion !== 'PENDIENTE') {
-                    throw new \RuntimeException('Solo se pueden cancelar ventas en estado PENDIENTE.');
-                }
+            if (!$venta) {
+                throw new \RuntimeException('Venta no encontrada.');
+            }
 
-                $ref = 'VENTA-' . $venId;
+            // Permitir cancelar PENDIENTE o ACTIVA (si fue autorizada pero aún no entregada)
+            if (!in_array($venta->ven_situacion, ['PENDIENTE', 'ACTIVA'])) {
+                throw new \RuntimeException('Solo se pueden cancelar ventas en estado PENDIENTE o ACTIVA.');
+            }
 
-                // 1. REVERTIR MOVIMIENTOS Y STOCK SEGÚN TIPO
+            $ref = 'VENTA-' . $venId;
+            $yaAutorizada = ($venta->ven_situacion === 'ACTIVA');
 
-                // 1.1 Revertir SERIES
-                $movimientosSeries = DB::table('pro_movimientos')
+            // ========================================
+            // 1. REVERTIR SERIES
+            // ========================================
+            $movimientosSeries = DB::table('pro_movimientos')
+                ->where('mov_documento_referencia', $ref)
+                ->whereIn('mov_situacion', $yaAutorizada ? [1, 3] : [3])
+                ->whereNotNull('mov_serie_id')
+                ->get();
+
+            if ($movimientosSeries->isNotEmpty()) {
+                $seriesIds = $movimientosSeries->pluck('mov_serie_id')->unique();
+
+                // Revertir estado y limpiar tenencia
+                DB::table('pro_series_productos')
+                    ->whereIn('serie_id', $seriesIds)
+                    ->update([
+                        'serie_estado' => 'disponible',
+                        'serie_situacion' => 1,
+                        'serie_tiene_tenencia' => 0,
+                        'serie_monto_tenencia' => 0.00,
+                        'updated_at' => now()
+                    ]);
+
+                // Anular movimientos
+                DB::table('pro_movimientos')
+                    ->whereIn('mov_serie_id', $seriesIds)
                     ->where('mov_documento_referencia', $ref)
-                    ->where('mov_situacion', 3)
-                    ->whereNotNull('mov_serie_id')
-                    ->get();
+                    ->update(['mov_situacion' => 0, 'updated_at' => now()]);
 
-                if ($movimientosSeries->isNotEmpty()) {
-                    $seriesIds = $movimientosSeries->pluck('mov_serie_id')->unique();
+                // Revertir stock
+                foreach ($movimientosSeries->groupBy('mov_producto_id') as $productoId => $movs) {
+                    $cantidad = $movs->sum('mov_cantidad');
+                    
+                    // Siempre decrementar reservado
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $productoId)
+                        ->decrement('stock_cantidad_reservada', $cantidad);
 
-                    // Revertir estado de series a disponible
-                    DB::table('pro_series_productos')
-                        ->whereIn('serie_id', $seriesIds)
-                        ->update([
-                            'serie_estado' => 'disponible',
-                            'serie_situacion' => 1
-                        ]);
-
-                    // Cancelar movimientos de series
-                    DB::table('pro_movimientos')
-                        ->whereIn('mov_serie_id', $seriesIds)
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 3)
-                        ->update(['mov_situacion' => 0]);
-
-                    // Revertir stock reservado
-                    foreach ($movimientosSeries->groupBy('mov_producto_id') as $productoId => $movs) {
-                        $cantidad = $movs->sum('mov_cantidad');
+                    // Si ya estaba autorizada, también revertir total y disponible
+                    if ($yaAutorizada) {
                         DB::table('pro_stock_actual')
                             ->where('stock_producto_id', $productoId)
-                            ->decrement('stock_cantidad_reservada', $cantidad);
+                            ->increment('stock_cantidad_total', $cantidad);
+                        
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $productoId)
+                            ->increment('stock_cantidad_disponible', $cantidad);
                     }
                 }
+            }
 
-                // 1.2 Revertir LOTES
-                $movimientosLotes = DB::table('pro_movimientos')
+            // ========================================
+            // 2. REVERTIR LOTES
+            // ========================================
+            $movimientosLotes = DB::table('pro_movimientos')
+                ->where('mov_documento_referencia', $ref)
+                ->whereIn('mov_situacion', $yaAutorizada ? [1, 3] : [3])
+                ->whereNotNull('mov_lote_id')
+                ->get();
+
+            if ($movimientosLotes->isNotEmpty()) {
+                foreach ($movimientosLotes as $mov) {
+                    // Devolver cantidad al lote
+                    DB::table('pro_lotes')
+                        ->where('lote_id', $mov->mov_lote_id)
+                        ->increment('lote_cantidad_total', $mov->mov_cantidad);
+
+                    DB::table('pro_lotes')
+                        ->where('lote_id', $mov->mov_lote_id)
+                        ->increment('lote_cantidad_disponible', $mov->mov_cantidad);
+
+                    // Reactivar lote si estaba agotado
+                    DB::table('pro_lotes')
+                        ->where('lote_id', $mov->mov_lote_id)
+                        ->where('lote_situacion', 0)
+                        ->update(['lote_situacion' => 1]);
+                }
+
+                // Anular movimientos
+                DB::table('pro_movimientos')
                     ->where('mov_documento_referencia', $ref)
-                    ->where('mov_situacion', 3)
                     ->whereNotNull('mov_lote_id')
-                    ->get();
+                    ->update(['mov_situacion' => 0, 'updated_at' => now()]);
 
-                if ($movimientosLotes->isNotEmpty()) {
-                    foreach ($movimientosLotes as $mov) {
-                        // Devolver cantidad al lote (PRIMERO TOTAL, LUEGO DISPONIBLE)
-                        DB::table('pro_lotes')
-                            ->where('lote_id', $mov->mov_lote_id)
-                            ->increment('lote_cantidad_total', $mov->mov_cantidad);
+                // Revertir stock
+                foreach ($movimientosLotes->groupBy('mov_producto_id') as $productoId => $movs) {
+                    $cantidad = $movs->sum('mov_cantidad');
+                    
+                    // Siempre decrementar reservado
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $productoId)
+                        ->decrement('stock_cantidad_reservada', $cantidad);
 
-                        DB::table('pro_lotes')
-                            ->where('lote_id', $mov->mov_lote_id)
-                            ->increment('lote_cantidad_disponible', $mov->mov_cantidad);
-
-                        // Reactivar lote si estaba agotado
-                        $lote = DB::table('pro_lotes')->where('lote_id', $mov->mov_lote_id)->first();
-                        if ($lote && $lote->lote_cantidad_disponible > 0 && $lote->lote_situacion == 0) {
-                            DB::table('pro_lotes')
-                                ->where('lote_id', $mov->mov_lote_id)
-                                ->update(['lote_situacion' => 1]);
-                        }
-                    }
-
-                    // Cancelar movimientos de lotes
-                    $lotesIds = $movimientosLotes->pluck('mov_lote_id')->unique();
-                    DB::table('pro_movimientos')
-                        ->whereIn('mov_lote_id', $lotesIds)
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 3)
-                        ->update(['mov_situacion' => 0]);
-
-                    // Revertir stock reservado
-                    foreach ($movimientosLotes->groupBy('mov_producto_id') as $productoId => $movs) {
-                        $cantidad = $movs->sum('mov_cantidad');
+                    // Si ya estaba autorizada
+                    if ($yaAutorizada) {
                         DB::table('pro_stock_actual')
                             ->where('stock_producto_id', $productoId)
-                            ->decrement('stock_cantidad_reservada', $cantidad);
+                            ->increment('stock_cantidad_total', $cantidad);
+                        
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $productoId)
+                            ->increment('stock_cantidad_disponible', $cantidad);
                     }
                 }
+            }
 
-                // 1.3 Cancelar movimientos sin serie ni lote (situación 1 - ya autorizados previamente o stock general)
-                $movimientosGenerales = DB::table('pro_movimientos')
+            // ========================================
+            // 3. STOCK GENERAL (sin series ni lotes)
+            // ========================================
+            $movimientosGenerales = DB::table('pro_movimientos')
+                ->where('mov_documento_referencia', $ref)
+                ->whereIn('mov_situacion', $yaAutorizada ? [1, 3] : [3])
+                ->whereNull('mov_serie_id')
+                ->whereNull('mov_lote_id')
+                ->get();
+
+            if ($movimientosGenerales->isNotEmpty()) {
+                // Anular movimientos
+                DB::table('pro_movimientos')
                     ->where('mov_documento_referencia', $ref)
-                    ->where('mov_situacion', 1)
                     ->whereNull('mov_serie_id')
                     ->whereNull('mov_lote_id')
-                    ->get();
+                    ->update(['mov_situacion' => 0, 'updated_at' => now()]);
 
-                if ($movimientosGenerales->isNotEmpty()) {
-                    foreach ($movimientosGenerales->groupBy('mov_producto_id') as $productoId => $movs) {
-                        $cantidad = $movs->sum('mov_cantidad');
-
-                        // Estos movimientos ya estaban confirmados, no tienen stock reservado que revertir
-                        // Solo se marcan como ANULADAs
+                // Revertir stock
+                foreach ($movimientosGenerales->groupBy('mov_producto_id') as $productoId => $movs) {
+                    $cantidad = $movs->sum('mov_cantidad');
+                    
+                    // Siempre decrementar reservado
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $productoId)
+                        ->decrement('stock_cantidad_reservada', $cantidad);
+                    
+                    // Si ya estaba autorizada, revertir total y disponible
+                    if ($yaAutorizada) {
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $productoId)
+                            ->increment('stock_cantidad_total', $cantidad);
+                        
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $productoId)
+                            ->increment('stock_cantidad_disponible', $cantidad);
                     }
-
-                    DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 1)
-                        ->whereNull('mov_serie_id')
-                        ->whereNull('mov_lote_id')
-                        ->update(['mov_situacion' => 0]);
                 }
+            }
 
-                // 2. CANCELAR DETALLES DE VENTA
-                DB::table('pro_detalle_ventas')
-                    ->where('det_ven_id', $venId)
-                    ->update(['det_situacion' => 'ANULADA']);
+            // ========================================
+            // 4. ELIMINAR PAGOS Y CUOTAS
+            // ========================================
+            $pago = DB::table('pro_pagos')
+                ->where('pago_venta_id', $venId)
+                ->first();
 
-                // 3. CANCELAR VENTA
-                DB::table('pro_ventas')
-                    ->where('ven_id', $venId)
-                    ->update([
-                        'ven_situacion' => 'ANULADA',
-                        'ven_observaciones' => $motivoCancelacion
-                    ]);
+            if ($pago) {
+                // 🔥 Eliminar en cascada
+                // Esto eliminará automáticamente:
+                // - pro_detalle_pagos (por FK con onDelete cascade)
+                // - pro_cuotas (por FK con onDelete cascade)
+                DB::table('pro_pagos')
+                    ->where('pago_id', $pago->pago_id)
+                    ->delete();
+            }
 
-                // 4. CANCELAR PAGOS Y CUOTAS
-                $pago = DB::table('pro_pagos')
-                    ->where('pago_venta_id', $venId)
-                    ->first();
+            // ========================================
+            // 5. CANCELAR DETALLES DE VENTA
+            // ========================================
+            DB::table('pro_detalle_ventas')
+                ->where('det_ven_id', $venId)
+                ->update(['det_situacion' => 'ANULADA']);
 
-                if ($pago) {
-                    // Cancelar pago principal
-                    DB::table('pro_pagos')
-                        ->where('pago_id', $pago->pago_id)
-                        ->update([
-                            'pago_estado' => 'ANULADA',
-                            'updated_at' => now()
-                        ]);
+            // ========================================
+            // 6. CANCELAR VENTA
+            // ========================================
+            DB::table('pro_ventas')
+                ->where('ven_id', $venId)
+                ->update([
+                    'ven_situacion' => 'ANULADA',
+                    'ven_observaciones' => $motivoCancelacion,
+                    'updated_at' => now()
+                ]);
 
-                    // Cancelar detalles de pago
-                    DB::table('pro_detalle_pagos')
-                        ->where('det_pago_pago_id', $pago->pago_id)
-                        ->update([
-                            'det_pago_estado' => 'ANULADO',
-                            'updated_at' => now()
-                        ]);
+            // ========================================
+            // 7. CANCELAR COMISIÓN DEL VENDEDOR
+            // ========================================
+            DB::table('pro_porcentaje_vendedor')
+                ->where('porc_vend_ven_id', $venId)
+                ->update([
+                    'porc_vend_estado' => 'CANCELADO',
+                    'porc_vend_situacion' => 'INACTIVO',
+                    'updated_at' => now()
+                ]);
 
-                    // Cancelar cuotas si existen
-                    DB::table('pro_cuotas')
-                        ->where('cuota_control_id', $pago->pago_id)
-                        ->update([
-                            'cuota_estado' => 'ANULADA',
-                            'updated_at' => now()
-                        ]);
-                }
+            // ========================================
+            // 8. ACTUALIZAR HISTORIAL DE CAJA
+            // ========================================
+            DB::table('cja_historial')
+                ->where('cja_id_venta', $venId)
+                ->update([
+                    'cja_situacion' => 'ANULADA',
+                    'cja_observaciones' => $motivoCancelacion
+                ]);
 
-                // 5. CANCELAR COMISIÓN DEL VENDEDOR
-                DB::table('pro_porcentaje_vendedor')
-                    ->where('porc_vend_ven_id', $venId)
-                    ->update([
-                        'porc_vend_estado' => 'CANCELADO',
-                        'porc_vend_situacion' => 'INACTIVO'
-                    ]);
+        }, 3);
 
-                // 6. ACTUALIZAR HISTORIAL DE CAJA
-                DB::table('cja_historial')
-                    ->where('cja_id_venta', $venId)
-                    ->update([
-                        'cja_situacion' => 'ANULADA',
-                        'cja_observaciones' => $motivoCancelacion
-                    ]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Venta cancelada y stock revertido exitosamente',
+            'venta_id' => $venId
+        ]);
 
-            }, 3);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Venta cancelada exitosamente',
-                'venta_id' => $venId
-            ]);
-
-        } catch (\Throwable $e) {
-            report($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'No se pudo cancelar la venta.',
-                'detalle' => $e->getMessage()
-            ], 500);
-        }
+    } catch (\Throwable $e) {
+        report($e);
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
-
+}
 
 public function procesarVenta(Request $request): JsonResponse
 {
