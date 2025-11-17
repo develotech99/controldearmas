@@ -1859,20 +1859,30 @@ public function procesarVenta(Request $request): JsonResponse
             $cantidadPagos = 1;
         }
 
-        // 5. COMISIÓN
         $porcentaje = 2.5;
-        $ganancia = $totalVenta * ($porcentaje / 100);
 
+        //  NUEVO: Calcular total de tenencias cobradas
+        $totalTenencias = 0;
+        foreach ($request->productos as $productoData) {
+            if (isset($productoData['series_con_tenencia']) && is_array($productoData['series_con_tenencia'])) {
+                $totalTenencias += count($productoData['series_con_tenencia']) * self::MONTO_TENENCIA;
+            }
+        }
+        
+        //  Base para comisión = Total venta - Tenencias
+        $montoBaseComision = $totalVenta - $totalTenencias;
+        $ganancia = $montoBaseComision * ($porcentaje / 100);
+        
         DB::table('pro_porcentaje_vendedor')->insert([
             'porc_vend_user_id' => auth()->id(),
             'porc_vend_ven_id' => $ventaId,
             'porc_vend_porcentaje' => $porcentaje,
             'porc_vend_cantidad_ganancia' => $ganancia,
-            'porc_vend_monto_base' => $totalVenta,
+            'porc_vend_monto_base' => $montoBaseComision, //  Sin tenencia
             'porc_vend_fecha_asignacion' => now(),
             'porc_vend_estado' => 'PENDIENTE',
             'porc_vend_situacion' => 'ACTIVO',
-            'porc_vend_observaciones' => 'Comisión por venta',
+            'porc_vend_observaciones' => "Comisión por venta (sin incluir Q{$totalTenencias} de tenencia)",
         ]);
 
         // 6. CAJA

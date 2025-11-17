@@ -310,7 +310,7 @@
                                             <!-- Abono -->
                                             <div>
                                                 <label class="text-sm font-semibold text-gray-700">Abono inicial</label>
-                                                <input type="number" id="abonoInicial" min="0" step="0.01" value=""
+                                                <input type="number" id="abonoInicial"  step="0.01"  min="0" value=""
                                                     class="mt-1 w-full px-2 py-1 border rounded text-right text-sm"
                                                     placeholder="Ingrese el abono"
                                                     oninput="this.value = this.value.replace(/[^0-9.]/g, '')" />
@@ -343,7 +343,7 @@
                                         <!-- Número de pagos + repartir -->
                                         <div class="mt-3 flex items-center gap-2">
                                             <label class="text-sm font-semibold text-gray-700">Número de pagos</label>
-                                            <input type="number" id="cuotasNumero" min="2" max="36" value="2"
+                                            <input type="number" id="cuotasNumero" min="1" max="36" value="2"
                                                 class="w-20 px-2 py-1 border rounded text-center text-sm">
                                             <button type="button" id="cuotasRepartir"
                                                 class="px-3 py-1 rounded text-sm border bg-white hover:bg-gray-50">

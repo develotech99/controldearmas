@@ -3023,17 +3023,11 @@ function validarCuotas() {
 }
 
 // Repartir según total y cantidad actual
+// Repartir según total y cantidad actual
 function updateCuotasFromTotal() {
     const cont = document.getElementById("cuotasContainer");
     if (!cont || cont.classList.contains("hidden")) return; // solo si método 6
 
-    const n = Math.max(
-        2,
-        Math.min(
-            36,
-            Number(document.getElementById("cuotasNumero")?.value || 2)
-        )
-    );
     const total = getTotalVenta();
 
     // Restar abono del total
@@ -3042,6 +3036,10 @@ function updateCuotasFromTotal() {
         Math.max(0, Number(document.getElementById("abonoInicial")?.value || 0))
     );
     const saldo = Math.max(0, total - abono);
+
+    // Si hay abono, permite 1 cuota; si no, mínimo 2
+    const minCuotas = abono > 0 ? 1 : 2;
+    const n = Math.max(minCuotas, Math.min(36, Number(document.getElementById("cuotasNumero")?.value || 2)));
 
     // (opcional) mostrar saldo si tienes #saldoCuotas en el HTML
     const saldoEl = document.getElementById("saldoCuotas");
