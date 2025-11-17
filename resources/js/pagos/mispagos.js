@@ -60,18 +60,131 @@ const confirmAction = async (title, text) => {
     return r.isConfirmed;
 };
 
-
 const datatable = new DataTable('#tablaFacturas', {
-    data: [], pageLength: 10, responsive: true, language: ES_LANG,
+    data: [], 
+    pageLength: 10, 
+    responsive: true, 
+    language: ES_LANG,
+    order: [[1, 'desc']], // Ordenar por fecha descendente
     columns: [
-        { title: 'Factura #', data: 'venta_id' },
-        { title: 'Concepto', data: 'concepto', defaultContent: '—' },
-        { title: 'Monto Total', data: 'monto_total', render: d => fmtQ(d) },
-        { title: 'Pagos Realizados', data: 'pagado', render: d => fmtQ(d) },
-        { title: 'Monto Pendiente', data: 'pendiente', render: d => fmtQ(d) },
-        { title: 'Estado', data: 'estado', render: d => badge(d) },
+        { 
+            title: 'Factura #', 
+            data: 'venta_id',
+            render: (d) => `<span class="font-bold text-blue-600">#${d}</span>`
+        },
+        { 
+            title: 'Fecha', 
+            data: 'fecha',
+            render: (d) => {
+                const fecha = new Date(d);
+                return `<span class="text-sm text-gray-700">${fecha.toLocaleDateString('es-GT')}</span>`;
+            }
+        },
+        { 
+            title: 'Cliente', 
+            data: null,
+            render: (d, t, row) => {
+                const cliente = row.cliente || {};
+                let html = `<div class="text-sm">
+                    <div class="font-semibold text-gray-900">${cliente.nombre || 'N/A'}</div>`;
+                
+                // Si es cliente empresa (tipo 3), mostrar empresa
+                if (cliente.tipo === 3 && cliente.empresa && cliente.empresa !== 'Sin Empresa') {
+                    html += `<div class="text-xs text-gray-600 mt-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                            <i class="fas fa-building text-xs mr-1"></i>
+                            ${cliente.empresa}
+                        </span>
+                    </div>`;
+                }
+                
+                // NIT si existe
+                if (cliente.nit && cliente.nit !== '—') {
+                    html += `<div class="text-xs text-gray-500 mt-0.5">NIT: ${cliente.nit}</div>`;
+                }
+                
+                html += `</div>`;
+                return html;
+            }
+        },
+        { 
+            title: 'Vendedor', 
+            data: null,
+            render: (d, t, row) => {
+                const vendedor = row.vendedor || {};
+                return `<div class="text-sm">
+                    <div class="text-gray-700">${vendedor.nombre || 'N/A'}</div>
+                </div>`;
+            }
+        },
+        { 
+            title: 'Productos', 
+            data: 'concepto',
+            render: (d, t, row) => {
+                const concepto = d || 'Sin productos';
+                const itemsCount = row.items_count || 0;
+                return `<div class="text-xs">
+                    <div class="text-gray-700 max-w-xs truncate font-medium" title="${concepto}">
+                        ${concepto}
+                    </div>
+                    <div class="text-gray-500 mt-0.5">${itemsCount} artículo${itemsCount !== 1 ? 's' : ''}</div>
+                </div>`;
+            }
+        },
+        { 
+            title: 'Precio Aplicado', 
+            data: null,
+            render: (d, t, row) => {
+                const precios = row.precios || {};
+                const cliente = row.cliente || {};
+                
+                let html = `<div class="text-xs">`;
+                
+                if (cliente.tipo === 3) {
+                    // Cliente empresa - mostrar precio empresa
+                    html += `<div class="font-semibold text-blue-600">${fmtQ(precios.empresa || 0)}</div>`;
+                    html += `<div class="text-gray-500">Precio Empresa</div>`;
+                } else {
+                    // Cliente individual - mostrar precio individual
+                    html += `<div class="font-semibold text-gray-900">${fmtQ(precios.individual || 0)}</div>`;
+                    html += `<div class="text-gray-500">Precio Individual</div>`;
+                }
+                
+                // Precio real aplicado si es diferente
+                if (precios.aplicado && precios.aplicado !== precios.individual && precios.aplicado !== precios.empresa) {
+                    html += `<div class="text-green-600 font-medium mt-1">${fmtQ(precios.aplicado)}</div>`;
+                    html += `<div class="text-gray-500 text-xs">Precio Real</div>`;
+                }
+                
+                html += `</div>`;
+                return html;
+            }
+        },
+        { 
+            title: 'Total Venta', 
+            data: 'monto_total', 
+            render: (d) => `<span class="font-bold text-gray-900 text-sm">${fmtQ(d)}</span>`
+        },
+        { 
+            title: 'Pagado', 
+            data: 'pagado', 
+            render: (d) => `<span class="text-green-600 font-semibold text-sm">${fmtQ(d)}</span>`
+        },
+        { 
+            title: 'Pendiente', 
+            data: 'pendiente', 
+            render: (d) => `<span class="text-red-600 font-semibold text-sm">${fmtQ(d)}</span>`
+        },
+        { 
+            title: 'Estado', 
+            data: 'estado_pago', 
+            render: (d) => badge(d) 
+        },
         {
-            title: 'Acciones', data: null, orderable: false, searchable: false,
+            title: 'Acciones', 
+            data: null, 
+            orderable: false, 
+            searchable: false,
             render: (_d, _t, row) => {
                 if (Number(row.pendiente) > 0) {
                     const totalPend = Array.isArray(row.cuotas_pendientes) ? row.cuotas_pendientes.length : 0;
@@ -86,21 +199,207 @@ const datatable = new DataTable('#tablaFacturas', {
                         : 'No hay cuotas disponibles (algunas en revisión)';
 
                     return `
-            <div class="flex gap-2 items-center">
-              ${bloquearSolo ? '<span class="px-2 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800">Cuotas en revisión</span>' : ''}
-              <button class="btn-pagar ${btnClass} px-3 py-1 rounded ${dis}" data-venta="${row.venta_id}" title="${title}">Pagar</button>
-              <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded" data-venta="${row.venta_id}">Detalle</button>
-            </div>`;
+                        <div class="flex gap-2 items-center">
+                          ${bloquearSolo ? '<span class="px-2 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800"><i class="fas fa-clock mr-1"></i>En revisión</span>' : ''}
+                          <button class="btn-pagar ${btnClass} px-3 py-1 rounded text-sm font-medium ${dis}" 
+                                  data-venta="${row.venta_id}" 
+                                  title="${title}">
+                            <i class="fas fa-money-bill-wave mr-1"></i>Pagar
+                          </button>
+                          <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
+                                  data-venta="${row.venta_id}">
+                            <i class="fas fa-eye mr-1"></i>Ver
+                          </button>
+                        </div>`;
                 }
                 return `
-          <div class="flex gap-2">
-            <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">PAGADA</span>
-            <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded" data-venta="${row.venta_id}">Detalle</button>
-          </div>`;
+                    <div class="flex gap-2">
+                      <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">
+                        <i class="fas fa-check-circle mr-1"></i>PAGADA
+                      </span>
+                      <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
+                              data-venta="${row.venta_id}">
+                        <i class="fas fa-eye mr-1"></i>Ver
+                      </button>
+                    </div>`;
             }
         }
-
+    ],
+    // Configuración responsiva mejorada
+    columnDefs: [
+        {
+            targets: [4, 5], // Productos y Precio
+            className: 'min-w-[150px]'
+        },
+        {
+            targets: [6, 7, 8], // Totales
+            className: 'text-right'
+        }
     ]
+});
+
+
+// Función para mostrar detalle completo de la venta
+const mostrarDetalleVenta = async (ventaId) => {
+    const venta = ventaIndex.get(Number(ventaId));
+    if (!venta) {
+        showError('Error', 'No se encontró la información de la venta');
+        return;
+    }
+
+    const cliente = venta.cliente || {};
+    const vendedor = venta.vendedor || {};
+    const precios = venta.precios || {};
+    const pagoMaster = venta.pago_master || {};
+    const pagosRealizados = venta.pagos_realizados || [];
+    const cuotasPendientes = venta.cuotas_pendientes || [];
+
+    let cuotasHTML = '';
+    if (cuotasPendientes.length > 0) {
+        cuotasHTML = `
+            <div class="mt-4">
+                <h4 class="font-semibold text-gray-800 mb-2">Cuotas Pendientes:</h4>
+                <div class="space-y-2">
+                    ${cuotasPendientes.map(c => `
+                        <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <span class="text-sm">Cuota #${c.numero} ${c.en_revision ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800">En revisión</span>' : ''}</span>
+                            <span class="font-semibold">${fmtQ(c.monto)}</span>
+                            <span class="text-xs text-gray-600">${c.vence}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    let historialHTML = '';
+    if (pagosRealizados.length > 0) {
+        historialHTML = `
+            <div class="mt-4">
+                <h4 class="font-semibold text-gray-800 mb-2">Historial de Pagos:</h4>
+                <div class="space-y-2">
+                    ${pagosRealizados.map(p => `
+                        <div class="flex justify-between items-center p-2 bg-green-50 rounded">
+                            <span class="text-sm">${p.fecha}</span>
+                            <span class="font-semibold text-green-600">${fmtQ(p.monto)}</span>
+                            <span class="text-xs text-gray-600">${p.metodo}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    await Swal.fire({
+        title: `Detalle de Venta #${ventaId}`,
+        html: `
+            <div class="text-left space-y-4">
+                <!-- Cliente -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-blue-800 mb-2">
+                        <i class="fas fa-user mr-2"></i>Cliente
+                    </h4>
+                    <p class="text-sm"><strong>Nombre:</strong> ${cliente.nombre || 'N/A'}</p>
+                    ${cliente.tipo === 3 && cliente.empresa !== 'Sin Empresa' ? `<p class="text-sm"><strong>Empresa:</strong> ${cliente.empresa}</p>` : ''}
+                    ${cliente.nit !== '—' ? `<p class="text-sm"><strong>NIT:</strong> ${cliente.nit}</p>` : ''}
+                    ${cliente.telefono !== '—' ? `<p class="text-sm"><strong>Teléfono:</strong> ${cliente.telefono}</p>` : ''}
+                </div>
+
+                <!-- Vendedor -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-user-tie mr-2"></i>Vendedor
+                    </h4>
+                    <p class="text-sm">${vendedor.nombre || 'N/A'}</p>
+                </div>
+
+                <!-- Productos -->
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-yellow-800 mb-2">
+                        <i class="fas fa-box mr-2"></i>Productos (${venta.items_count || 0})
+                    </h4>
+                    <p class="text-sm">${venta.concepto || 'Sin productos'}</p>
+                </div>
+
+                <!-- Precios -->
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-green-800 mb-2">
+                        <i class="fas fa-tags mr-2"></i>Precios
+                    </h4>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                            <strong>Individual:</strong> ${fmtQ(precios.individual || 0)}
+                        </div>
+                        <div>
+                            <strong>Empresa:</strong> ${fmtQ(precios.empresa || 0)}
+                        </div>
+                        ${precios.aplicado ? `
+                            <div class="col-span-2">
+                                <strong>Aplicado:</strong> <span class="text-green-600 font-bold">${fmtQ(precios.aplicado)}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Totales -->
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-purple-800 mb-2">
+                        <i class="fas fa-calculator mr-2"></i>Resumen Financiero
+                    </h4>
+                    <div class="space-y-1 text-sm">
+                        <div class="flex justify-between">
+                            <span>Total Venta:</span>
+                            <span class="font-bold">${fmtQ(venta.monto_total || 0)}</span>
+                        </div>
+                        <div class="flex justify-between text-green-600">
+                            <span>Pagado:</span>
+                            <span class="font-bold">${fmtQ(venta.pagado || 0)}</span>
+                        </div>
+                        <div class="flex justify-between text-red-600">
+                            <span>Pendiente:</span>
+                            <span class="font-bold">${fmtQ(venta.pendiente || 0)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                ${cuotasHTML}
+                ${historialHTML}
+            </div>
+        `,
+        width: '600px',
+        confirmButtonText: 'Cerrar',
+        confirmButtonColor: '#3B82F6',
+        customClass: {
+            popup: 'rounded-lg'
+        }
+    });
+};
+
+// Actualizar el event listener de la tabla
+document.getElementById('tablaFacturas')?.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('button');
+    if (!btn) return;
+
+    if (btn.classList.contains('btn-pagar')) {
+        const ventaId = btn.dataset.venta;
+        const venta = ventaIndex.get(Number(ventaId));
+        if (!venta) return;
+
+        const disponibles = (venta.cuotas_pendientes || []).filter(c => !c.en_revision);
+        if (disponibles.length === 0) {
+            showWarning('Sin cuotas disponibles', 'Todas las cuotas de esta venta tienen comprobante en revisión.');
+            return;
+        }
+
+        renderCuotas(venta);
+        btnSubir && (btnSubir.dataset.venta = ventaId);
+        openModal();
+    }
+
+    if (btn.classList.contains('btn-detalle')) {
+        const ventaId = btn.dataset.venta;
+        mostrarDetalleVenta(ventaId);
+    }
 });
 
 const GetFacturas = async () => {

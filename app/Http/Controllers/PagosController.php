@@ -33,19 +33,12 @@ class PagosController extends Controller
         return view('pagos.administrar');
     }
 
-    /**
-     * ⭐ MÉTODO ACTUALIZADO: Muestra TODOS los pagos (general)
-     * Incluye información del cliente en cada registro
-     */
     public function MisFacturasPendientes(Request $request)
     {
         try {
-            // ✅ ELIMINAMOS la validación de usuario autenticado
-            // Ya no filtramos por cliente específico
-            
             $verTodas = (bool) $request->boolean('all', false);
             $corte    = $verTodas ? Carbon::create(1900, 1, 1) : Carbon::now()->subMonths(4)->startOfDay();
-
+    
             // ===== Concepto por venta =====
             $labelsAgg = DB::table('pro_detalle_ventas as d')
                 ->join('pro_productos as p', 'p.producto_id', '=', 'd.det_producto_id')
@@ -66,7 +59,7 @@ class PagosController extends Controller
                     DB::raw('MAX(d.det_id) as ord')
                 ])
                 ->groupBy('d.det_ven_id', 'label');
-
+    
             $conceptoSub = DB::query()->fromSub($labelsAgg, 'x')
                 ->select([
                     'x.det_ven_id',
@@ -74,13 +67,26 @@ class PagosController extends Controller
                     DB::raw('COUNT(*) as items_count')
                 ])
                 ->groupBy('x.det_ven_id');
-
-            // ===== Ventas activas (TODAS) con información del cliente =====
+    
+            // ===== 🔥 NUEVO: Precios aplicados por venta =====
+            $preciosSub = DB::table('pro_detalle_ventas as dv')
+                ->join('pro_productos as p', 'p.producto_id', '=', 'dv.det_producto_id')
+                ->leftJoin('pro_precios as pr', 'pr.precio_producto_id', '=', 'p.producto_id')
+                ->select([
+                    'dv.det_ven_id',
+                    DB::raw('MAX(pr.precio_venta) as precio_individual'),
+                    DB::raw('MAX(pr.precio_venta_empresa) as precio_empresa'),
+                    DB::raw('MAX(dv.det_precio) as precio_aplicado') // el precio real de la venta
+                ])
+                ->groupBy('dv.det_ven_id');
+    
+            // ===== Ventas activas (TODAS) con información completa =====
             $ventas = DB::table('pro_ventas as v')
                 ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
-                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')  // ⭐ JOIN con clientes
+                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+                ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user') // 🔥 JOIN con vendedor
                 ->leftJoinSub($conceptoSub, 'cx', fn($j) => $j->on('cx.det_ven_id', '=', 'v.ven_id'))
-                // ✅ ELIMINAMOS: ->where('v.ven_cliente', $cliente->cliente_id)
+                ->leftJoinSub($preciosSub, 'px', fn($j) => $j->on('px.det_ven_id', '=', 'v.ven_id')) // 🔥 JOIN precios
                 ->where('v.ven_situacion', 'ACTIVA')
                 ->select([
                     'v.ven_id',
@@ -89,8 +95,9 @@ class PagosController extends Controller
                     'v.ven_total_vendido',
                     'v.ven_descuento',
                     'v.ven_observaciones',
+                    'v.ven_user', // 🔥 ID del vendedor
                     
-                    // ⭐ Información del cliente
+                    // Información del cliente
                     DB::raw("
                         CASE 
                             WHEN c.cliente_tipo = 3 THEN 
@@ -112,8 +119,24 @@ class PagosController extends Controller
                         END as cliente_nombre
                     "),
                     DB::raw("COALESCE(c.cliente_nom_empresa, 'Sin Empresa') as cliente_empresa"),
+                    'c.cliente_tipo',
                     'c.cliente_nit',
                     'c.cliente_telefono',
+                    
+                    // 🔥 Información del vendedor
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(vendedor.user_primer_nombre, ''),
+                            COALESCE(vendedor.user_segundo_nombre, ''),
+                            COALESCE(vendedor.user_primer_apellido, ''),
+                            COALESCE(vendedor.user_segundo_apellido, '')
+                        )) as vendedor_nombre
+                    "),
+                    
+                    // 🔥 Precios
+                    'px.precio_individual',
+                    'px.precio_empresa',
+                    'px.precio_aplicado',
                     
                     'pg.pago_id',
                     'pg.pago_tipo_pago',
@@ -131,7 +154,7 @@ class PagosController extends Controller
                 ])
                 ->orderBy('v.ven_fecha', 'desc')
                 ->get();
-
+    
             if ($ventas->isEmpty()) {
                 return response()->json([
                     'codigo'  => 1,
@@ -144,17 +167,17 @@ class PagosController extends Controller
                     ]
                 ]);
             }
-
+    
             $pagoIds  = $ventas->pluck('pago_id')->all();
             $ventaIds = $ventas->pluck('ven_id')->all();
-
+    
             // ===== Cuotas pendientes o vencidas =====
             $cuotas = DB::table('pro_cuotas as ct')
                 ->whereIn('ct.cuota_control_id', $pagoIds)
                 ->whereIn('ct.cuota_estado', ['PENDIENTE', 'VENCIDA'])
                 ->orderBy('ct.cuota_control_id')->orderBy('ct.cuota_numero')
                 ->get()->groupBy('cuota_control_id');
-
+    
             // ===== Pagos válidos (historial) =====
             $pagosValidos = DB::table('pro_detalle_pagos as dp')
                 ->whereIn('dp.det_pago_pago_id', $pagoIds)
@@ -172,29 +195,29 @@ class PagosController extends Controller
                 ])
                 ->orderBy('dp.det_pago_fecha', 'asc')
                 ->get()->groupBy('det_pago_pago_id');
-
-            // ===== Cuotas EN REVISIÓN por venta (de la bandeja) =====
+    
+            // ===== Cuotas EN REVISIÓN por venta =====
             $pendRows = DB::table('pro_pagos_subidos')
                 ->whereIn('ps_venta_id', $ventaIds)
                 ->where('ps_estado', 'PENDIENTE_VALIDACION')
                 ->get(['ps_venta_id', 'ps_cuotas_json']);
-
+    
             $cuotasEnRevisionPorVenta = [];
             foreach ($pendRows as $row) {
                 $lista = json_decode($row->ps_cuotas_json, true) ?: [];
                 $vid   = (int) $row->ps_venta_id;
                 $cuotasEnRevisionPorVenta[$vid] = array_values(array_unique(array_merge($cuotasEnRevisionPorVenta[$vid] ?? [], array_map('intval', $lista))));
             }
-
+    
             // ===== Clasificación =====
             $pendientes    = [];
             $pagadasUlt4m  = [];
-
+    
             foreach ($ventas as $v) {
                 $pendiente = isset($v->pago_monto_pendiente) && $v->pago_monto_pendiente !== null
                     ? (float)$v->pago_monto_pendiente
                     : max((float)$v->calculo_pendiente, 0.0);
-
+    
                 $hist = ($pagosValidos[$v->pago_id] ?? collect())->map(fn($p) => [
                     'id'            => $p->det_pago_id,
                     'fecha'         => $p->det_pago_fecha,
@@ -204,14 +227,12 @@ class PagosController extends Controller
                     'no_referencia' => $p->det_pago_numero_autorizacion,
                     'comprobante'   => $p->det_pago_imagen_boucher,
                 ])->values();
-
+    
                 $ultimaFechaPago = ($pagosValidos[$v->pago_id] ?? collect())->max('det_pago_fecha');
                 $fechaCompletado = $v->pago_fecha_completado ?? $ultimaFechaPago;
-
-                // Cuotas en revisión para esta venta:
+    
                 $enRevIds = collect($cuotasEnRevisionPorVenta[$v->ven_id] ?? []);
-
-                // Todas las cuotas pendientes + bandera en_revision
+    
                 $cuotasPend = ($cuotas[$v->pago_id] ?? collect())->map(function ($c) use ($enRevIds) {
                     $id = (int)$c->cuota_id;
                     return [
@@ -223,9 +244,9 @@ class PagosController extends Controller
                         'en_revision'  => $enRevIds->contains($id),
                     ];
                 })->values();
-
+    
                 $disponibles = $cuotasPend->filter(fn($q) => !$q['en_revision'])->count();
-
+    
                 $base = [
                     'venta_id'         => $v->ven_id,
                     'fecha'            => $v->ven_fecha,
@@ -236,20 +257,33 @@ class PagosController extends Controller
                     'pendiente'        => $pendiente,
                     'estado_pago'      => $v->pago_estado ?? ($pendiente > 0 ? 'PENDIENTE' : 'COMPLETADO'),
                     'observaciones'    => $v->ven_observaciones,
-
-                    // ⭐ INFORMACIÓN DEL CLIENTE (NUEVO)
+    
+                    // 🔥 Información del cliente
                     'cliente' => [
                         'id'       => $v->ven_cliente,
                         'nombre'   => $v->cliente_nombre ?? 'Sin Nombre',
                         'empresa'  => $v->cliente_empresa ?? 'Sin Empresa',
+                        'tipo'     => $v->cliente_tipo ?? 1, // 🔥 Tipo de cliente
                         'nit'      => $v->cliente_nit ?? '—',
                         'telefono' => $v->cliente_telefono ?? '—',
                     ],
-
-                    // lista explícita para el front:
+    
+                    // 🔥 Información del vendedor (NUEVO)
+                    'vendedor' => [
+                        'id'     => $v->ven_user,
+                        'nombre' => $v->vendedor_nombre ?? 'Sin Vendedor',
+                    ],
+    
+                    // 🔥 Precios (NUEVO)
+                    'precios' => [
+                        'individual' => (float)($v->precio_individual ?? 0),
+                        'empresa'    => (float)($v->precio_empresa ?? 0),
+                        'aplicado'   => (float)($v->precio_aplicado ?? 0),
+                    ],
+    
                     'cuotas_en_revision'   => $enRevIds->values(),
                     'cuotas_disponibles'   => $disponibles,
-
+    
                     'pago_master' => [
                         'pago_id'        => (int)$v->pago_id,
                         'tipo'           => $v->pago_tipo_pago,
@@ -260,11 +294,11 @@ class PagosController extends Controller
                     ],
                     'pagos_realizados' => $hist,
                 ];
-
+    
                 if ($pendiente > 0) {
                     $pendientes[] = $base + [
-                        'cuotas_pendientes'    => $cuotasPend,                      // todas, con flag en_revision
-                        'puede_pagar_en_linea' => $disponibles > 0,                // solo si hay cuotas sin revisión
+                        'cuotas_pendientes'    => $cuotasPend,
+                        'puede_pagar_en_linea' => $disponibles > 0,
                     ];
                 } else {
                     if ($fechaCompletado && Carbon::parse($fechaCompletado)->gte($corte)) {
@@ -275,8 +309,7 @@ class PagosController extends Controller
                     }
                 }
             }
-
-            // "facturas pendientes" = ventas con saldo (plano)
+    
             $facturasPendientesAll = collect($pendientes)->map(fn($r) => [
                 'venta_id'  => $r['venta_id'],
                 'fecha'     => $r['fecha'],
@@ -285,9 +318,11 @@ class PagosController extends Controller
                 'pagado'    => $r['pagado'],
                 'pendiente' => $r['pendiente'],
                 'estado'    => $r['estado_pago'],
-                'cliente'   => $r['cliente'],  // ⭐ Incluir info del cliente
+                'cliente'   => $r['cliente'],
+                'vendedor'  => $r['vendedor'], // 🔥 NUEVO
+                'precios'   => $r['precios'],  // 🔥 NUEVO
             ])->values();
-
+    
             return response()->json([
                 'codigo'  => 1,
                 'mensaje' => 'Datos devueltos correctamente',
@@ -304,7 +339,7 @@ class PagosController extends Controller
                 'linea' => $e->getLine(),
                 'archivo' => $e->getFile()
             ]);
-
+    
             return response()->json([
                 'codigo'  => 0,
                 'mensaje' => 'Error al obtener datos',
