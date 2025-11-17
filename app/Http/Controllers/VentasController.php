@@ -989,14 +989,42 @@ public function actualizarLicencias(Request $request): JsonResponse
                             ], 422);
                         }
 
-                        // Actualizar series: cambiar a pendiente (reservado)
-                        $seriesIds = $seriesInfo->pluck('serie_id');
-                        DB::table('pro_series_productos')
-                            ->whereIn('serie_id', $seriesIds)
-                            ->update([
-                                'serie_estado' => 'reserva', // Usar pendiente como estado de reserva
-                                'serie_situacion' => 1, // Mantener activo (no 0 porque es reserva, no venta)
-                            ]);
+                        // // Actualizar series: cambiar a pendiente (reservado)
+                        // $seriesIds = $seriesInfo->pluck('serie_id');
+                        // DB::table('pro_series_productos')
+                        //     ->whereIn('serie_id', $seriesIds)
+                        //     ->update([
+                        //         'serie_estado' => 'reserva', // Usar pendiente como estado de reserva
+                        //         'serie_situacion' => 1, // Mantener activo (no 0 porque es reserva, no venta)
+                        //     ]);
+
+                        // Actualizar series: cambiar a reserva
+                            $seriesIds = $seriesInfo->pluck('serie_id');
+
+                            // 🔥 NUEVO: Determinar qué series tienen tenencia en la reserva
+                            $seriesConTenencia = $productoData['series_con_tenencia'] ?? [];
+                            $tieneTenenciaMap = [];
+
+                            foreach ($seriesInfo as $serieInfo) {
+                                $numeroSerie = $serieInfo->serie_numero_serie;
+                                $tieneTenenciaMap[$serieInfo->serie_id] = isset($seriesConTenencia[$numeroSerie]) ? 1 : 0;
+                            }
+
+                            // Actualizar cada serie individualmente con su tenencia
+                            foreach ($seriesIds as $serieId) {
+                                $tieneTenencia = $tieneTenenciaMap[$serieId] ?? 0;
+                                $montoTenencia = $tieneTenencia ? self::MONTO_TENENCIA : 0;
+                                
+                                DB::table('pro_series_productos')
+                                    ->where('serie_id', $serieId)
+                                    ->update([
+                                        'serie_estado' => 'reserva',
+                                        'serie_situacion' => 1,
+                                        'serie_tiene_tenencia' => $tieneTenencia,
+                                        'serie_monto_tenencia' => $montoTenencia,
+                                        'updated_at' => now()
+                                    ]);
+                            }
 
                         // Registrar movimiento por cada serie
                         foreach ($seriesInfo as $serieInfo) {
@@ -1561,13 +1589,33 @@ public function procesarVenta(Request $request): JsonResponse
                     }
 
                     // Actualizar series a pendiente
+                                    // Actualizar series a pendiente
                     $seriesIds = $seriesInfo->pluck('serie_id');
-                    DB::table('pro_series_productos')
-                        ->whereIn('serie_id', $seriesIds)
-                        ->update([
-                            'serie_estado' => 'pendiente',
-                            'serie_situacion' => 0,
-                        ]);
+
+                    //  NUEVO: Determinar qué series tienen tenencia
+                    $seriesConTenencia = $productoData['series_con_tenencia'] ?? [];
+                    $tieneTenenciaMap = []; // Mapa: numero_serie => tiene_tenencia
+
+                    foreach ($seriesInfo as $serieInfo) {
+                        $numeroSerie = $serieInfo->serie_numero_serie;
+                        $tieneTenenciaMap[$serieInfo->serie_id] = isset($seriesConTenencia[$numeroSerie]) ? 1 : 0;
+                    }
+
+                    // Actualizar cada serie individualmente con su tenencia
+                    foreach ($seriesIds as $serieId) {
+                        $tieneTenencia = $tieneTenenciaMap[$serieId] ?? 0;
+                        $montoTenencia = $tieneTenencia ? self::MONTO_TENENCIA : 0;
+                        
+                        DB::table('pro_series_productos')
+                            ->where('serie_id', $serieId)
+                            ->update([
+                                'serie_estado' => 'pendiente',
+                                'serie_situacion' => 0,
+                                'serie_tiene_tenencia' => $tieneTenencia,
+                                'serie_monto_tenencia' => $montoTenencia,
+                                'updated_at' => now()
+                            ]);
+                    }
 
                     // Registrar/actualizar movimientos
                     if ($esDeReserva) {
