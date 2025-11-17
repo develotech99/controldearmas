@@ -28,7 +28,7 @@ class VentasController extends Controller
 {
 
     // Constante para el monto de tenencia
-private const MONTO_TENENCIA = 60.00;
+ const MONTO_TENENCIA = 60.00;
 
     public function index()
     {
@@ -194,6 +194,7 @@ private const MONTO_TENENCIA = 60.00;
                 'foto_url',
                 'stock_cantidad_total',
                 'stock_cantidad_reservada',
+                'stock_cantidad_reservada2',
                 'producto_requiere_stock'
             )
             ->orderBy('producto_nombre')
@@ -207,9 +208,10 @@ private const MONTO_TENENCIA = 60.00;
             // 👇 Calcular stock real
             $stockTotal = $producto->stock_cantidad_total ?? 0;
             $stockReservado = $producto->stock_cantidad_reservada ?? 0;
+            $stockReservado2 = $producto->stock_cantidad_reservada2 ?? 0;
 
             // 👇 IMPORTANTE: Sobrescribir stock_cantidad_total con el stock real disponible
-            $productoArray['stock_cantidad_total'] = max(0, $stockTotal - $stockReservado);
+            $productoArray['stock_cantidad_total'] = max(0, $stockTotal - $stockReservado-$stockReservado2);
 
 
 
@@ -581,8 +583,26 @@ public function obtenerVentasPendientes(Request $request): JsonResponse
                         $detallesProcesados[] = 'Series procesadas: ' . $seriesCantidades
                             ->map(fn($qty, $id) => "$id ($qty)")
                             ->implode(', ');
+                                    if ($qtyTotal > 0) {
+            DB::table('pro_stock_actual')
+                ->where('stock_producto_id', $productoId)
+                ->where('stock_cantidad_reservada', '>', 0)
+                ->decrement('stock_cantidad_reservada', $qtyTotal);
+
+         
+
+            DB::table('pro_stock_actual')
+                ->where('stock_producto_id', $productoId)
+                ->decrement('stock_cantidad_disponible', $qtyTotal);
+
+            DB::table('pro_stock_actual')
+                ->where('stock_producto_id', $productoId)
+                ->decrement('stock_cantidad_total', $qtyTotal);
+        }
                     }
+                    
                 }
+                
 
                 // Paso 4: LOTES
                 if ($lotesIds->isNotEmpty()) {
@@ -614,7 +634,10 @@ public function obtenerVentasPendientes(Request $request): JsonResponse
                 if ($qtyTotal > 0) {
                     DB::table('pro_stock_actual')
                         ->where('stock_producto_id', $productoId)
+                         ->where('stock_cantidad_reservada', '>', 0)
                         ->decrement('stock_cantidad_reservada', $qtyTotal);
+                    
+                
 
                     DB::table('pro_stock_actual')
                         ->where('stock_producto_id', $productoId)
@@ -715,6 +738,7 @@ public function actualizarLicencias(Request $request): JsonResponse
         ], 500);
     }
 }
+
     public function buscarReservaPorCliente(int $clienteId): JsonResponse
     {
         $resultados = DB::select("
@@ -871,316 +895,353 @@ public function actualizarLicencias(Request $request): JsonResponse
         ]);
     }
 
-    public function procesarReserva(Request $request): JsonResponse
-    {
-        try {
-            $request->validate([
-                'cliente_id' => 'required|exists:pro_clientes,cliente_id',
-                'fecha_reserva' => 'required|date',
-                'subtotal' => 'required|numeric|min:0',
-                'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
-                'descuento_monto' => 'nullable|numeric|min:0',
-                'total' => 'required|numeric|min:0',
-                'productos' => 'required|array|min:1',
-                'productos.*.producto_id' => 'required|exists:pro_productos,producto_id',
-                'productos.*.cantidad' => 'required|integer|min:1',
-                'productos.*.precio_unitario' => 'required|numeric|min:0',
-                'productos.*.subtotal_producto' => 'required|numeric|min:0',
-                'productos.*.requiere_serie' => 'required|in:0,1',
-                'productos.*.producto_requiere_stock' => 'required|in:0,1',
-                'productos.*.series_seleccionadas' => 'nullable|array',
-                'productos.*.series_con_tenencia' => 'nullable|array',
-                'productos.*.tiene_lotes' => 'required|boolean',
-                'productos.*.lotes_seleccionados' => 'nullable|array',
-                'productos.*.lotes_seleccionados.*.lote_id' => 'nullable|exists:pro_lotes,lote_id',
-                'productos.*.lotes_seleccionados.*.cantidad' => 'nullable|integer|min:1',
-                'observaciones' => 'nullable|string|max:500',
-                'dias_vigencia' => 'nullable|integer|min:1|max:30',
+public function marcarSeriesDisponibles(Request $request)
+{
+    try {
+        // 👀 Ver qué llega del JS
+        Log::info('marcarSeriesDisponibles - payload', [
+            'body' => $request->all()
+        ]);
+
+        $serieIds = $request->input('seriesSeleccionadas', []);
+
+        if (empty($serieIds) || !is_array($serieIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se recibieron series seleccionadas válidas.',
+                'data_recibida' => $serieIds,
+            ], 400);
+        }
+
+        // 👀 Log antes del update
+        Log::info('marcarSeriesDisponibles - IDs a actualizar', [
+            'serie_numero_serie' => $serieIds
+        ]);
+
+        // OJO: estos nombres deben existir tal cual en la BD
+        $afectadas = DB::table('pro_series_productos')
+            ->whereIn('serie_numero_serie', $serieIds)
+            ->update([
+                'serie_estado' => 'disponible',
+                'updated_at'   => now(), // quita si no tienes este campo
             ]);
 
-            DB::beginTransaction();
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Series actualizadas a disponible correctamente.',
+            'afectadas' => $serieIds,
+        ]);
+    } catch (\Throwable $e) {
+        Log::error('Error en marcarSeriesDisponibles', [
+            'error' => $e->getMessage(),
+        ]);
 
-            // 1. CREAR LA RESERVA EN pro_ventas
-            $reservaId = DB::table('pro_ventas')->insertGetId([
-                'ven_user' => auth()->id(),
-                'ven_fecha' => $request->fecha_reserva,
-                'ven_cliente' => $request->cliente_id,
-                'ven_total_vendido' => $request->total,
-                'ven_descuento' => $request->descuento_monto ?? 0,
-                'ven_observaciones' => $request->observaciones ?? 'Reserva - Vigente por ' . ($request->dias_vigencia ?? 7) . ' días',
-                'ven_situacion' => 'RESERVADA'
-            ]);
+        // 🔥 Mientras depuras, devuelve el mensaje real
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
 
-            // 2. PROCESAR CADA PRODUCTO
-            foreach ($request->productos as $productoData) {
-                $producto = DB::table('pro_productos')->where('producto_id', $productoData['producto_id'])->first();
+public function procesarReserva(Request $request): JsonResponse
+{
+    try {
+        $request->validate([
+            'cliente_id' => 'required|exists:pro_clientes,cliente_id',
+            'fecha_reserva' => 'required|date',
+            'subtotal' => 'required|numeric|min:0',
+            'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
+            'descuento_monto' => 'nullable|numeric|min:0',
+            'total' => 'required|numeric|min:0',
+            'productos' => 'required|array|min:1',
+            'productos.*.producto_id' => 'required|exists:pro_productos,producto_id',
+            'productos.*.cantidad' => 'required|integer|min:1',
+            'productos.*.precio_unitario' => 'required|numeric|min:0',
+            'productos.*.subtotal_producto' => 'required|numeric|min:0',
+            'productos.*.requiere_serie' => 'required|in:0,1',
+            'productos.*.producto_requiere_stock' => 'required|in:0,1',
+            'productos.*.series_seleccionadas' => 'nullable|array',
+            'productos.*.series_con_tenencia' => 'nullable|array',
+            'productos.*.tiene_lotes' => 'required|boolean',
+            'productos.*.lotes_seleccionados' => 'nullable|array',
+            'productos.*.lotes_seleccionados.*.lote_id' => 'nullable|exists:pro_lotes,lote_id',
+            'productos.*.lotes_seleccionados.*.cantidad' => 'nullable|integer|min:1',
+            'observaciones' => 'nullable|string|max:500',
+            'dias_vigencia' => 'nullable|integer|min:1|max:30',
+        ]);
 
-                if (!$producto) {
+        DB::beginTransaction();
+
+        $ahora = now()->format('Y-m-d H:i:s');
+
+        // 1. CREAR LA RESERVA
+        $reservaId = DB::table('pro_ventas')->insertGetId([
+            'ven_user' => auth()->id(),
+            'ven_fecha' => $request->fecha_reserva,
+            'ven_cliente' => $request->cliente_id,
+            'ven_total_vendido' => $request->total,
+            'ven_descuento' => isset($request->descuento_monto) ? $request->descuento_monto : 0,
+            'ven_observaciones' => isset($request->observaciones) ? $request->observaciones : 'Reserva - Vigente por ' . (isset($request->dias_vigencia) ? $request->dias_vigencia : 30) . ' días',
+            'ven_situacion' => 'RESERVADA'
+        ]);
+
+        // 2. PROCESAR CADA PRODUCTO
+        foreach ($request->productos as $productoData) {
+            $producto = DB::table('pro_productos')->where('producto_id', $productoData['producto_id'])->first();
+
+            if (!$producto) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Producto con ID {$productoData['producto_id']} no encontrado"
+                ], 422);
+            }
+
+            // Validar stock
+            if ($productoData['producto_requiere_stock'] == 1) {
+                $stockActual = DB::table('pro_stock_actual')
+                    ->where('stock_producto_id', $producto->producto_id)
+                    ->first();
+
+                if (!$stockActual) {
+                    $stockActual = (object)[
+                        'stock_cantidad_disponible' => 0,
+                        'stock_cantidad_reservada'  => 0,
+                        'stock_cantidad_reservada2' => 0,
+                    ];
+                }
+
+                $disponible = isset($stockActual->stock_cantidad_disponible) ? $stockActual->stock_cantidad_disponible : 0;
+                $reservada = isset($stockActual->stock_cantidad_reservada) ? $stockActual->stock_cantidad_reservada : 0;
+                $reservada2 = isset($stockActual->stock_cantidad_reservada2) ? $stockActual->stock_cantidad_reservada2 : 0;
+
+                $stockDisponibleReal = max(0, $disponible - $reservada - $reservada2);
+
+                if ($stockDisponibleReal < $productoData['cantidad']) {
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => "Producto con ID {$productoData['producto_id']} no encontrado"
+                        'message' => "Stock insuficiente para reservar: {$producto->producto_nombre}. Disponible: {$stockDisponibleReal}"
                     ], 422);
-                }
-
-                // Validar stock disponible SOLO si el producto lo necesita
-                if ($productoData['producto_requiere_stock'] == 1) {
-                    $stockActual = DB::table('pro_stock_actual')->where('stock_producto_id', $producto->producto_id)->first();
-
-                    // Para reservas, considerar el stock ya reservado
-                    $stockDisponibleReal = ($stockActual->stock_cantidad_disponible ?? 0) - ($stockActual->stock_cantidad_reservada ?? 0);
-
-                    if ($stockDisponibleReal < $productoData['cantidad']) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Stock insuficiente para reservar: {$producto->producto_nombre}. Disponible: {$stockDisponibleReal}"
-                        ], 422);
-                    }
-                }
-
-                // Insertar detalle de reserva en pro_detalle_ventas
-                $detalleId = DB::table('pro_detalle_ventas')->insertGetId([
-                    'det_ven_id' => $reservaId,
-                    'det_producto_id' => $producto->producto_id,
-                    'det_cantidad' => $productoData['cantidad'],
-                    'det_precio' => $productoData['precio_unitario'],
-                    'det_descuento' => 0,
-                    'det_situacion' => 'PENDIENTE', // Usar PENDIENTE ya que está en tu ENUM
-                ]);
-
-                if ($productoData['producto_requiere_stock'] == 1) {
-                    // PROCESAR SEGÚN TIPO DE PRODUCTO
-                    if ($productoData['requiere_serie'] == 1) {
-                        // ===============================
-                        // PRODUCTO CON SERIES
-                        // ===============================
-                        $seriesSeleccionadas = $productoData['series_seleccionadas'] ?? [];
-
-                        if (empty($seriesSeleccionadas)) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => "El producto {$producto->producto_nombre} requiere series"
-                            ], 422);
-                        }
-
-                        if (count($seriesSeleccionadas) !== $productoData['cantidad']) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Debe seleccionar exactamente {$productoData['cantidad']} serie(s) para {$producto->producto_nombre}"
-                            ], 422);
-                        }
-
-                        // Obtener IDs de series por número de serie
-                        $seriesInfo = DB::table('pro_series_productos')
-                            ->whereIn('serie_numero_serie', $seriesSeleccionadas)
-                            ->where('serie_producto_id', $producto->producto_id)
-                            ->where('serie_estado', 'disponible')
-                            ->where('serie_situacion', 1)
-                            ->get();
-
-                        if ($seriesInfo->count() !== count($seriesSeleccionadas)) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Una o más series no están disponibles para el producto {$producto->producto_nombre}"
-                            ], 422);
-                        }
-
-                        // // Actualizar series: cambiar a pendiente (reservado)
-                        // $seriesIds = $seriesInfo->pluck('serie_id');
-                        // DB::table('pro_series_productos')
-                        //     ->whereIn('serie_id', $seriesIds)
-                        //     ->update([
-                        //         'serie_estado' => 'reserva', // Usar pendiente como estado de reserva
-                        //         'serie_situacion' => 1, // Mantener activo (no 0 porque es reserva, no venta)
-                        //     ]);
-
-                        // Actualizar series: cambiar a reserva
-                            $seriesIds = $seriesInfo->pluck('serie_id');
-
-                            // 🔥 NUEVO: Determinar qué series tienen tenencia en la reserva
-                            $seriesConTenencia = $productoData['series_con_tenencia'] ?? [];
-                            $tieneTenenciaMap = [];
-
-                            foreach ($seriesInfo as $serieInfo) {
-                                $numeroSerie = $serieInfo->serie_numero_serie;
-                                $tieneTenenciaMap[$serieInfo->serie_id] = isset($seriesConTenencia[$numeroSerie]) ? 1 : 0;
-                            }
-
-                            // Actualizar cada serie individualmente con su tenencia
-                            foreach ($seriesIds as $serieId) {
-                                $tieneTenencia = $tieneTenenciaMap[$serieId] ?? 0;
-                                $montoTenencia = $tieneTenencia ? self::MONTO_TENENCIA : 0;
-                                
-                                DB::table('pro_series_productos')
-                                    ->where('serie_id', $serieId)
-                                    ->update([
-                                        'serie_estado' => 'reserva',
-                                        'serie_situacion' => 1,
-                                        'serie_tiene_tenencia' => $tieneTenencia,
-                                        'serie_monto_tenencia' => $montoTenencia,
-                                        'updated_at' => now()
-                                    ]);
-                            }
-
-                        // Registrar movimiento por cada serie
-                        foreach ($seriesInfo as $serieInfo) {
-                            DB::table('pro_movimientos')->insert([
-                                'mov_producto_id' => $producto->producto_id,
-                                'mov_tipo' => 'reserva',
-                                'mov_origen' => 'almacen',
-                                'mov_destino' => 'reservado',
-                                'mov_cantidad' => 1,
-                                'mov_precio_unitario' => $productoData['precio_unitario'],
-                                'mov_valor_total' => $productoData['precio_unitario'],
-                                'mov_fecha' => now(),
-                                'mov_usuario_id' => auth()->id(),
-                                'mov_serie_id' => $serieInfo->serie_id,
-                                'mov_documento_referencia' => "RESERVA-{$reservaId}",
-                                'mov_observaciones' => "Reserva - Serie: {$serieInfo->serie_numero_serie}",
-                                'mov_situacion' => 2, // situacion 2 = reservado
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]);
-                        }
-
-                        // Actualizar stock reservado
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $producto->producto_id)
-                            ->increment('stock_cantidad_reservada', count($seriesSeleccionadas));
-
-                    } else {
-                        // ===============================
-                        // PRODUCTO SIN SERIES (CON O SIN LOTES)
-                        // ===============================
-                        if ($productoData['tiene_lotes'] && !empty($productoData['lotes_seleccionados'])) {
-                            // PRODUCTO CON LOTES
-                            $lotesSeleccionados = $productoData['lotes_seleccionados'];
-                            $totalAsignado = array_sum(array_column($lotesSeleccionados, 'cantidad'));
-
-                            if ($totalAsignado !== $productoData['cantidad']) {
-                                DB::rollBack();
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => "La cantidad asignada en lotes ($totalAsignado) debe coincidir con la cantidad del producto (" . $productoData['cantidad'] . ") para " . $producto->producto_nombre
-                                ], 422);
-                            }
-
-                            // Procesar cada lote
-                            foreach ($lotesSeleccionados as $loteData) {
-                                $lote = DB::table('pro_lotes')->where('lote_id', $loteData['lote_id'])->first();
-
-                                if (!$lote || $lote->lote_cantidad_disponible < $loteData['cantidad']) {
-                                    DB::rollBack();
-                                    return response()->json([
-                                        'success' => false,
-                                        'message' => 'El lote ' . ($lote->lote_codigo ?? 'desconocido') . ' no tiene suficiente stock disponible',
-                                    ], 422);
-                                }
-
-                                // NO DECREMENTAR el stock del lote en reservas, solo marcar como reservado
-                                // Si quieres llevar control, deberías tener un campo lote_cantidad_reservada
-
-                                // Registrar movimiento de lote (solo registro, sin afectar inventario)
-                                DB::table('pro_movimientos')->insert([
-                                    'mov_producto_id' => $producto->producto_id,
-                                    'mov_tipo' => 'reserva',
-                                    'mov_origen' => 'almacen',
-                                    'mov_destino' => 'reservado',
-                                    'mov_cantidad' => $loteData['cantidad'],
-                                    'mov_precio_unitario' => $productoData['precio_unitario'],
-                                    'mov_valor_total' => $productoData['precio_unitario'] * $loteData['cantidad'],
-                                    'mov_fecha' => now(),
-                                    'mov_usuario_id' => auth()->id(),
-                                    'mov_lote_id' => $loteData['lote_id'],
-                                    'mov_documento_referencia' => "RESERVA-{$reservaId}",
-                                    'mov_observaciones' => "Reserva - Lote: {$lote->lote_codigo}",
-                                    'mov_situacion' => 2, // situacion 2 = reservado
-                                    'created_at' => now(),
-                                    'updated_at' => now()
-                                ]);
-                            }
-                        } else {
-                            // PRODUCTO SIN LOTES (STOCK GENERAL)
-                            DB::table('pro_movimientos')->insert([
-                                'mov_producto_id' => $producto->producto_id,
-                                'mov_tipo' => 'reserva',
-                                'mov_origen' => 'almacen',
-                                'mov_destino' => 'reservado',
-                                'mov_cantidad' => $productoData['cantidad'],
-                                'mov_precio_unitario' => $productoData['precio_unitario'],
-                                'mov_valor_total' => $productoData['precio_unitario'] * $productoData['cantidad'],
-                                'mov_fecha' => now(),
-                                'mov_usuario_id' => auth()->id(),
-                                'mov_lote_id' => null,
-                                'mov_documento_referencia' => "RESERVA-{$reservaId}",
-                                'mov_observaciones' => "Reserva - Stock general",
-                                'mov_situacion' => 2, // situacion 2 = reservado
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]);
-                        }
-
-                        // Incrementar stock reservado
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $producto->producto_id)
-                            ->increment('stock_cantidad_reservada', $productoData['cantidad']);
-                    }
-                } else {
-                    // Productos que NO requieren stock
-                    DB::table('pro_movimientos')->insert([
-                        'mov_producto_id' => $producto->producto_id,
-                        'mov_tipo' => 'reserva',
-                        'mov_origen' => 'almacen',
-                        'mov_destino' => 'reservado',
-                        'mov_cantidad' => $productoData['cantidad'],
-                        'mov_precio_unitario' => $productoData['precio_unitario'],
-                        'mov_valor_total' => $productoData['precio_unitario'] * $productoData['cantidad'],
-                        'mov_fecha' => now(),
-                        'mov_usuario_id' => auth()->id(),
-                        'mov_lote_id' => null,
-                        'mov_documento_referencia' => "RESERVA-{$reservaId}",
-                        'mov_observaciones' => "Reserva - Producto sin control de stock",
-                        'mov_situacion' => 2, // situacion 2 = reservado
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
                 }
             }
 
-            DB::commit();
+            // Insertar detalle
+            DB::table('pro_detalle_ventas')->insertGetId([
+                'det_ven_id' => $reservaId,
+                'det_producto_id' => $producto->producto_id,
+                'det_cantidad' => $productoData['cantidad'],
+                'det_precio' => $productoData['precio_unitario'],
+                'det_descuento' => 0,
+                'det_situacion' => 'PENDIENTE',
+            ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Reserva procesada exitosamente',
-                'reserva_id' => $reservaId,
-                'numero_reserva' => "RESERVA-{$reservaId}",
-                'vigencia_dias' => $request->dias_vigencia ?? 30
-            ], 201);
+            if ($productoData['producto_requiere_stock'] == 1) {
+                if ($productoData['requiere_serie'] == 1) {
+                    // PRODUCTO CON SERIES
+                    $seriesSeleccionadas = isset($productoData['series_seleccionadas']) ? $productoData['series_seleccionadas'] : array();
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errors' => $e->errors()
-            ], 422);
+                    if (empty($seriesSeleccionadas)) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "El producto {$producto->producto_nombre} requiere series"
+                        ], 422);
+                    }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error procesando reserva: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+                    if (count($seriesSeleccionadas) !== $productoData['cantidad']) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Debe seleccionar exactamente {$productoData['cantidad']} serie(s)"
+                        ], 422);
+                    }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error interno del servidor al procesar la reserva',
-                'error' => $e->getMessage()
-            ], 500);
+                    $seriesInfo = DB::table('pro_series_productos')
+                        ->whereIn('serie_numero_serie', $seriesSeleccionadas)
+                        ->where('serie_producto_id', $producto->producto_id)
+                        ->where('serie_estado', 'disponible')
+                        ->where('serie_situacion', 1)
+                        ->get();
+
+                    if ($seriesInfo->count() !== count($seriesSeleccionadas)) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Series no disponibles"
+                        ], 422);
+                    }
+
+                    $seriesIds = $seriesInfo->pluck('serie_id');
+                    $seriesConTenencia = isset($productoData['series_con_tenencia']) ? $productoData['series_con_tenencia'] : array();
+                    $tieneTenenciaMap = array();
+
+                    foreach ($seriesInfo as $serieInfo) {
+                        $numeroSerie = $serieInfo->serie_numero_serie;
+                        $tieneTenenciaMap[$serieInfo->serie_id] = isset($seriesConTenencia[$numeroSerie]) ? 1 : 0;
+                    }
+
+                    foreach ($seriesIds as $serieId) {
+                        $tieneTenencia = (int)(isset($tieneTenenciaMap[$serieId]) ? $tieneTenenciaMap[$serieId] : 0);
+                        $montoTenencia = $tieneTenencia ? (float)self::MONTO_TENENCIA : 0.00;
+                        
+                        DB::table('pro_series_productos')
+                            ->where('serie_id', $serieId)
+                            ->update([
+                                'serie_estado' => 'reserva',
+                                'serie_situacion' => 1,
+                                'serie_tiene_tenencia' => $tieneTenencia,
+                                'serie_monto_tenencia' => $montoTenencia,
+                                'updated_at' => $ahora
+                            ]);
+                    }
+
+                    foreach ($seriesInfo as $serieInfo) {
+                        DB::table('pro_movimientos')->insert([
+                            'mov_producto_id' => $producto->producto_id,
+                            'mov_tipo' => 'reserva',
+                            'mov_origen' => 'almacen',
+                            'mov_destino' => 'reservado',
+                            'mov_cantidad' => 1,
+                            'mov_precio_unitario' => $productoData['precio_unitario'],
+                            'mov_valor_total' => $productoData['precio_unitario'],
+                            'mov_fecha' => $ahora,
+                            'mov_usuario_id' => auth()->id(),
+                            'mov_serie_id' => $serieInfo->serie_id,
+                            'mov_documento_referencia' => "RESERVA-{$reservaId}",
+                            'mov_observaciones' => "Reserva - Serie: {$serieInfo->serie_numero_serie}",
+                            'mov_situacion' => 2,
+                            'created_at' => $ahora,
+                            'updated_at' => $ahora
+                        ]);
+                    }
+
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $producto->producto_id)
+                        ->increment('stock_cantidad_reservada2', count($seriesSeleccionadas));
+
+                } else {
+                    // SIN SERIES
+                    if ($productoData['tiene_lotes'] && !empty($productoData['lotes_seleccionados'])) {
+                        // CON LOTES
+                        $lotesSeleccionados = $productoData['lotes_seleccionados'];
+                        $totalAsignado = array_sum(array_column($lotesSeleccionados, 'cantidad'));
+
+                        if ($totalAsignado !== $productoData['cantidad']) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Cantidad en lotes no coincide"
+                            ], 422);
+                        }
+
+                        foreach ($lotesSeleccionados as $loteData) {
+                            $lote = DB::table('pro_lotes')->where('lote_id', $loteData['lote_id'])->first();
+
+                            if (!$lote || $lote->lote_cantidad_disponible < $loteData['cantidad']) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => "Lote sin stock suficiente"
+                                ], 422);
+                            }
+
+                            DB::table('pro_movimientos')->insert([
+                                'mov_producto_id' => $producto->producto_id,
+                                'mov_tipo' => 'reserva',
+                                'mov_origen' => 'almacen',
+                                'mov_destino' => 'reservado',
+                                'mov_cantidad' => $loteData['cantidad'],
+                                'mov_precio_unitario' => $productoData['precio_unitario'],
+                                'mov_valor_total' => $productoData['precio_unitario'] * $loteData['cantidad'],
+                                'mov_fecha' => $ahora,
+                                'mov_usuario_id' => auth()->id(),
+                                'mov_lote_id' => $loteData['lote_id'],
+                                'mov_documento_referencia' => "RESERVA-{$reservaId}",
+                                'mov_observaciones' => "Reserva - Lote: {$lote->lote_codigo}",
+                                'mov_situacion' => 2,
+                                'created_at' => $ahora,
+                                'updated_at' => $ahora
+                            ]);
+                        }
+                    } else {
+                        // SIN LOTES
+                        DB::table('pro_movimientos')->insert([
+                            'mov_producto_id' => $producto->producto_id,
+                            'mov_tipo' => 'reserva',
+                            'mov_origen' => 'almacen',
+                            'mov_destino' => 'reservado',
+                            'mov_cantidad' => $productoData['cantidad'],
+                            'mov_precio_unitario' => $productoData['precio_unitario'],
+                            'mov_valor_total' => $productoData['precio_unitario'] * $productoData['cantidad'],
+                            'mov_fecha' => $ahora,
+                            'mov_usuario_id' => auth()->id(),
+                            'mov_lote_id' => null,
+                            'mov_documento_referencia' => "RESERVA-{$reservaId}",
+                            'mov_observaciones' => "Reserva - Stock general",
+                            'mov_situacion' => 2,
+                            'created_at' => $ahora,
+                            'updated_at' => $ahora
+                        ]);
+                    }
+
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $producto->producto_id)
+                        ->increment('stock_cantidad_reservada2', $productoData['cantidad']);
+                }
+            
+            } else {
+                // Sin control de stock
+                DB::table('pro_movimientos')->insert([
+                    'mov_producto_id' => $producto->producto_id,
+                    'mov_tipo' => 'reserva',
+                    'mov_origen' => 'almacen',
+                    'mov_destino' => 'reservado',
+                    'mov_cantidad' => $productoData['cantidad'],
+                    'mov_precio_unitario' => $productoData['precio_unitario'],
+                    'mov_valor_total' => $productoData['precio_unitario'] * $productoData['cantidad'],
+                    'mov_fecha' => $ahora,
+                    'mov_usuario_id' => auth()->id(),
+                    'mov_lote_id' => null,
+                    'mov_documento_referencia' => "RESERVA-{$reservaId}",
+                    'mov_observaciones' => "Reserva - Producto sin control de stock",
+                    'mov_situacion' => 2,
+                    'created_at' => $ahora,
+                    'updated_at' => $ahora
+                ]);
+            }
         }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reserva procesada exitosamente',
+            'reserva_id' => $reservaId,
+            'numero_reserva' => "RESERVA-{$reservaId}",
+            'vigencia_dias' => isset($request->dias_vigencia) ? $request->dias_vigencia : 30
+        ], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Error de validación',
+            'errors' => $e->errors()
+        ], 422);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Error procesando reserva: ' . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
+
 
 
     ///////// termino morales batz no estaba bien implementado cooregido bmar
@@ -1242,9 +1303,18 @@ public function actualizarLicencias(Request $request): JsonResponse
                     $cantidad = $movs->sum('mov_cantidad');
                     
                     // Siempre decrementar reservado
+            
+
                     DB::table('pro_stock_actual')
                         ->where('stock_producto_id', $productoId)
+                        ->where('stock_cantidad_reservada', '>', 0)
                         ->decrement('stock_cantidad_reservada', $cantidad);
+
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $productoId)
+                        ->where('stock_cantidad_reservada2', '>', 0)
+                        ->decrement('stock_cantidad_reservada2', $cantidad);
+
 
                     // Si ya estaba autorizada, también revertir total y disponible
                     if ($yaAutorizada) {
@@ -1300,6 +1370,9 @@ public function actualizarLicencias(Request $request): JsonResponse
                     DB::table('pro_stock_actual')
                         ->where('stock_producto_id', $productoId)
                         ->decrement('stock_cantidad_reservada', $cantidad);
+                 DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $productoId)
+                        ->decrement('stock_cantidad_reservada2', $cantidad);
 
                     // Si ya estaba autorizada
                     if ($yaAutorizada) {
@@ -1340,6 +1413,9 @@ public function actualizarLicencias(Request $request): JsonResponse
                     DB::table('pro_stock_actual')
                         ->where('stock_producto_id', $productoId)
                         ->decrement('stock_cantidad_reservada', $cantidad);
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $productoId)
+                        ->decrement('stock_cantidad_reservada2', $cantidad);
                     
                     // Si ya estaba autorizada, revertir total y disponible
                     if ($yaAutorizada) {
@@ -1461,6 +1537,7 @@ public function procesarVenta(Request $request): JsonResponse
         // ========================================
         $esDeReserva = false;
         $reservaExistente = null;
+        $isDisponible = false;
 
         if ($request->has('reserva_id') && $request->reserva_id) {
             // Buscar reserva existente
@@ -1512,16 +1589,16 @@ public function procesarVenta(Request $request): JsonResponse
                 ->delete();
 
             // ACTUALIZAR MOVIMIENTOS PREVIOS DE RESERVA A VENTA
-            DB::table('pro_movimientos')
-                ->where('mov_documento_referencia', "RESERVA-{$ventaId}")
-                ->update([
-                    'mov_tipo' => 'venta',
-                    'mov_destino' => 'cliente',
-                    'mov_documento_referencia' => "VENTA-{$ventaId}",
-                    'mov_observaciones' => DB::raw("REPLACE(mov_observaciones, 'Reserva', 'Venta')"),
-                    'mov_situacion' => 3, // Pendiente de validar
-                    'updated_at' => now()
-                ]);
+            // DB::table('pro_movimientos')
+            //     ->where('mov_documento_referencia', "RESERVA-{$ventaId}")
+            //     ->update([
+            //         'mov_tipo' => 'venta',
+            //         'mov_destino' => 'cliente',
+            //         'mov_documento_referencia' => "VENTA-{$ventaId}",
+            //         'mov_observaciones' => DB::raw("REPLACE(mov_observaciones, 'Reserva', 'Venta')"),
+            //         'mov_situacion' => 3, // Pendiente de validar
+            //         'updated_at' => now()
+            //     ]);
 
         } else {
             // CREAR NUEVA VENTA
@@ -1645,6 +1722,7 @@ public function procesarVenta(Request $request): JsonResponse
                         
                         DB::table('pro_series_productos')
                             ->where('serie_id', $serieId)
+                            ->where('serie_estado','disponible')
                             ->update([
                                 'serie_estado' => 'pendiente',
                                 'serie_situacion' => 0,
@@ -1688,15 +1766,43 @@ public function procesarVenta(Request $request): JsonResponse
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+                            $isDisponible = DB::table('pro_series_productos')
+                            ->where('serie_id', $serieInfo->serie_id)
+                            ->where('serie_estado', 'pendiente')
+                            ->exists();
+
+    
                         }
                     }
 
-                    // Actualizar stock: si viene de reserva, solo cambiar de reservado a vendido
-                    if (!$esDeReserva) {
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $producto->producto_id)
-                            ->increment('stock_cantidad_reservada', count($seriesSeleccionadas));
-                    }
+                  
+                                        
+                            $seriesCount = count($seriesSeleccionadas);
+
+                                           
+                            $accionStock = null;
+
+                            if ($isDisponible === true ) {
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $producto->producto_id)
+                                    ->increment('stock_cantidad_reservada',$seriesCount);
+                                
+                                $accionStock = 'mover stock disponible';
+                                
+                            } elseif ($esDeReserva > 0) {
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $producto->producto_id)
+                                    ->decrement('stock_cantidad_reservada2', $seriesCount);
+                                
+                                $accionStock = 'mover stock en reserva';
+                                
+                            } else {
+                                $accionStock = 'sin_series_sin_cambios';
+                            }
+
+ 
+
+                    
 
                 } else {
                     // ===============================
@@ -1813,13 +1919,37 @@ public function procesarVenta(Request $request): JsonResponse
                         }
                     }
 
-                    // Actualizar stock
-                    if (!$esDeReserva) {
+                        $seriesCount = count($loteData);
+
+         $accionStock = null;
+
+                if ($seriesCount > 0) {
+                    if ($esDeReserva) {
                         DB::table('pro_stock_actual')
                             ->where('stock_producto_id', $producto->producto_id)
-                            ->increment('stock_cantidad_reservada', $productoData['cantidad']);
+                            ->where('stock_cantidad_reservada2', '>=', $seriesCount)
+                            ->decrement('stock_cantidad_reservada2', $seriesCount);
+
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $producto->producto_id)
+                            ->increment('stock_cantidad_reservada', $seriesCount);
+
+                        $accionStock = 'mover_de_reserva2_a_reserva1 lotes o general'; 
+
+                    } else {
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $producto->producto_id)
+                            ->increment('stock_cantidad_reservada', $seriesCount);
+
+                        $accionStock = 'solo_increment_reserva1 lotes o general'; 
                     }
+                } else {
+                    $accionStock = 'sin_series_sin_cambios kljlj'; 
                 }
+
+
+
+            }
             } else {
                 // Productos sin control de stock
                 DB::table('pro_movimientos')->insert([
@@ -1992,7 +2122,9 @@ public function procesarVenta(Request $request): JsonResponse
             'venta_id' => $ventaId,
             'folio' => "VENTA-{$ventaId}",
             'pago_id' => $pagoId,
-            'fue_reserva' => $esDeReserva
+            'fue_reserva' => $esDeReserva,
+             'accion_stock' => $accionStock,
+             //'accion disponible '=> $isDisponible,
         ]);
 
     } catch (\Illuminate\Validation\ValidationException $e) {

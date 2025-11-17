@@ -660,6 +660,7 @@ async autorizarVentaClick(buttonElement) {
       throw new Error(`Error ${response.status}: ${await response.text()}`);
 
     const result = await response.json();
+console.log('qtyTotal:', result.meta.qty_total);
     if (result.codigo !== 1)
       throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
 

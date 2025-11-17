@@ -1089,8 +1089,7 @@ function eliminarProducto(producto_id) {
 }
 
 function routeReservarURL() {
-  // Si usas Ziggy: return route('reservas.procesar');
-  return '/reservas/procesar';
+    return '/reservas/procesar';  
 }
 
 async function procesarReserva() {
@@ -1636,6 +1635,9 @@ async function aplicarCargaReservaSeleccion(seleccion) {
   
   // Obtener IDs de productos para consultar stock actual
   const productosIds = seleccion.map(s => s.producto_id);
+
+  // 🆕 Colección para guardar todas las series que se están cargando
+  const seriesSeleccionadasSet = new Set();
   
   try {
     // Consultar stock actual de los productos
@@ -1677,6 +1679,11 @@ async function aplicarCargaReservaSeleccion(seleccion) {
         stockFinal = (stockInfo.stock_total - stockInfo.stock_reservado) + cantidadCargando;
       } else {
         stockFinal = Number(sel.stock_cantidad_total ?? 0) + cantidadCargando;
+      }
+
+      // 🆕 Acumular series a cargar para luego mandarlas al backend
+      if (Array.isArray(sel.series_a_cargar) && sel.series_a_cargar.length > 0) {
+        sel.series_a_cargar.forEach(serieId => seriesSeleccionadasSet.add(serieId));
       }
 
       if (existe) {
@@ -1793,6 +1800,30 @@ async function aplicarCargaReservaSeleccion(seleccion) {
       }
     });
 
+    // 🆕 Enviar las series al backend para marcar serie_estado = 'disponible'
+    const seriesSeleccionadas = Array.from(seriesSeleccionadasSet);
+    console.log('series seleccionadas',seriesSeleccionadas)
+    if (seriesSeleccionadas.length > 0) {
+      try {
+      const resp = await fetch('/ventas/marcar-disponibles', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+    },
+    body: JSON.stringify({ seriesSeleccionadas })
+});
+
+// Leer texto porque si hay error HTML o JSON malformado, igual lo vemos
+const data = await resp.text();
+
+console.log("📡 RESPUESTA DEL BACKEND:", resp.status, data);
+
+      } catch (e) {
+        console.error('⚠️ Error al actualizar estado de series:', e);
+      }
+    }
+
     // Actualizar vista del carrito
     actualizarVistaCarrito();
     
@@ -1901,6 +1932,7 @@ async function aplicarCargaReservaSeleccion(seleccion) {
     }, 100);
   }
 }
+
 
 // ========================================
 // FUNCIÓN DE DEPURACIÓN OPCIONAL
@@ -2326,11 +2358,11 @@ const puedeReservar = carritoProductos.every(p => {
   return seriesOK && lotesOK && stockOK;
 });
 
-// 3) Botonera inferior
+
 const htmlAcciones = `
   <div class="mt-4 flex flex-col sm:flex-row items-center gap-2 sm:justify-end">
     <button type="button"
-            id="btnReservar"
+            data-action="reservar"
             class="px-4 py-2 rounded-lg text-sm font-semibold transition
                    ${puedeReservar
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -2403,14 +2435,7 @@ container.querySelectorAll('[data-action="precio-personalizado"]').forEach(input
     });
 
 // Botón Reservar
-const btnReservar = document.getElementById('btnReservar');
-btnReservar?.addEventListener('click', async () => {
-  try {
-    await procesarReserva();
-  } catch {
-    Swal?.fire?.('Error', 'No se pudo completar la reserva', 'error');
-  }
-});
+
 
 
 
@@ -2426,6 +2451,12 @@ btnReservar?.addEventListener('click', async () => {
         if (!btn) return;
 
         const action = btn.dataset.action;
+              if (action === "reservar") {
+            e.preventDefault();
+            e.stopPropagation();
+            procesarReserva();
+            return;
+        }
         const id = btn.dataset.id;
         if (!id) return;
 
@@ -3692,6 +3723,7 @@ async function procesarVentaFinal() {
 
         const resultado = await response.json();
         console.log('resultado proceso de venta: ',resultado);
+        return;
 
         if (response.ok && resultado.success) {
             // Éxito
