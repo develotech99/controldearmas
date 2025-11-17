@@ -471,35 +471,156 @@ const renderMovimientos = (rows = []) => {
     console.log("Renderizando movimientos:", rows);
 
     const data = rows.map((r) => {
-        const fecha = r.cja_fecha ? new Date(r.cja_fecha).toLocaleString() : "—";
+        const fecha = r.cja_fecha ? new Date(r.cja_fecha).toLocaleString('es-GT', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : "—";
+        
         const tipo = r.cja_tipo || "—";
         const ref = r.cja_no_referencia || "—";
-        const descripcion = r.cja_observaciones || "—";
         const metodo = r.metodo || "—";
+        
         const esIn = ["VENTA", "DEPOSITO", "AJUSTE_POS"].includes(tipo);
-        const monto = `<span class="${esIn ? "text-emerald-600" : "text-rose-600"}">${fmtQ(
-            r.cja_monto
-        )}</span>`;
+        const monto = `<span class="${esIn ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}">${fmtQ(r.cja_monto)}</span>`;
+        
         const est = r.cja_situacion || "—";
 
+        // ⭐ NUEVA COLUMNA: Cliente
+        const cliente = r.cliente ? `
+            <div class="text-sm">
+                <div class="font-medium text-gray-900">${r.cliente.nombre || 'N/A'}</div>
+                ${r.cliente.tipo === 3 && r.cliente.empresa ? `
+                    <div class="text-xs text-gray-600 mt-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                            <i class="fas fa-building text-xs mr-1"></i>
+                            ${r.cliente.empresa}
+                        </span>
+                    </div>
+                ` : ''}
+                ${r.cliente.nit && r.cliente.nit !== '—' ? `
+                    <div class="text-xs text-gray-500 mt-0.5">NIT: ${r.cliente.nit}</div>
+                ` : ''}
+            </div>
+        ` : `<span class="text-xs text-gray-400">—</span>`;
+
+        // ⭐ NUEVA COLUMNA: Vendedor
+        const vendedor = r.vendedor ? `
+            <div class="text-sm">
+                <div class="text-gray-700">
+                    <i class="fas fa-user-tie text-xs text-gray-500 mr-1"></i>
+                    ${r.vendedor.nombre}
+                </div>
+            </div>
+        ` : `<span class="text-xs text-gray-400">—</span>`;
+
+        // ⭐ NUEVA COLUMNA: Productos (si es venta)
+        const productos = r.productos ? `
+            <div class="text-xs">
+                <div class="text-gray-700 max-w-xs truncate font-medium" title="${r.productos.concepto}">
+                    ${r.productos.concepto}
+                </div>
+                <div class="text-gray-500 mt-0.5">${r.productos.items_count} artículo${r.productos.items_count !== 1 ? 's' : ''}</div>
+                ${r.venta_total ? `
+                    <div class="text-green-600 font-semibold mt-1">Total: ${fmtQ(r.venta_total)}</div>
+                ` : ''}
+            </div>
+        ` : tipo === 'VENTA' && r.cja_id_venta ? `
+            <span class="text-xs text-gray-500">Venta #${r.cja_id_venta}</span>
+        ` : `<span class="text-xs text-gray-400">—</span>`;
+
+        // ⭐ DESCRIPCIÓN MEJORADA (con observaciones + usuario)
+        let descripcion = `<div class="text-sm">`;
+        
+        // Observaciones principales
+        if (r.cja_observaciones) {
+            descripcion += `<div class="font-medium text-gray-800">${r.cja_observaciones}</div>`;
+        }
+        
+        // Usuario que registró
+        if (r.usuario_registro) {
+            descripcion += `
+                <div class="text-xs text-gray-500 mt-1">
+                    <i class="fas fa-user text-xs mr-1"></i>
+                    Registrado por: <span class="font-medium">${r.usuario_registro.nombre}</span>
+                </div>
+            `;
+        }
+        
+        descripcion += `</div>`;
+        
+        if (!r.cja_observaciones && !r.usuario_registro) {
+            descripcion = `<span class="text-xs text-gray-400">—</span>`;
+        }
+
+        // ⭐ TIPO CON BADGE
+        const tipoBadges = {
+            'VENTA': 'bg-green-100 text-green-800',
+            'DEPOSITO': 'bg-blue-100 text-blue-800',
+            'EGRESO': 'bg-red-100 text-red-800',
+            'IMPORTACION': 'bg-purple-100 text-purple-800',
+            'AJUSTE_POS': 'bg-yellow-100 text-yellow-800'
+        };
+        const tipoBadge = `
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${tipoBadges[tipo] || 'bg-gray-100 text-gray-800'}">
+                ${tipo}
+            </span>
+        `;
+
+        // ⭐ ESTADO CON BADGE
+        const estadoBadges = {
+            'ACTIVO': 'bg-green-100 text-green-800',
+            'PENDIENTE': 'bg-yellow-100 text-yellow-800',
+            'ANULADA': 'bg-red-100 text-red-800'
+        };
+        const estadoBadge = `
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${estadoBadges[est] || 'bg-gray-100 text-gray-800'}">
+                ${est}
+            </span>
+        `;
+
+        // ⭐ ACCIONES MEJORADAS
         const acciones = est === "PENDIENTE" ? `
             <div class="flex justify-center gap-1">
                 <button class="btn-validar-mov bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1 rounded"
-                    data-id="${r.cja_id}" data-tipo="${tipo}" data-monto="${r.cja_monto}" data-ref="${ref}" data-descripcion="${descripcion}">
-                    Validar
+                    data-id="${r.cja_id}" 
+                    data-tipo="${tipo}" 
+                    data-monto="${r.cja_monto}" 
+                    data-ref="${ref}" 
+                    data-descripcion="${r.cja_observaciones || '—'}">
+                    <i class="fas fa-check mr-1"></i>Validar
                 </button>
                 <button class="btn-rechazar-mov bg-rose-600 hover:bg-rose-700 text-white text-xs px-2 py-1 rounded"
-                    data-id="${r.cja_id}" data-tipo="${tipo}" data-monto="${r.cja_monto}" data-ref="${ref}" data-descripcion="${descripcion}">
-                    Rechazar
+                    data-id="${r.cja_id}" 
+                    data-tipo="${tipo}" 
+                    data-monto="${r.cja_monto}" 
+                    data-ref="${ref}" 
+                    data-descripcion="${r.cja_observaciones || '—'}">
+                    <i class="fas fa-times mr-1"></i>Rechazar
                 </button>
             </div>
         ` : est === "ACTIVO"
-            ? `<span class="text-xs text-emerald-600 font-medium">Validado</span>`
+            ? `<span class="text-xs text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Validado</span>`
             : est === "ANULADA"
-                ? `<span class="text-xs text-rose-600 font-medium">Rechazado</span>`
+                ? `<span class="text-xs text-rose-600 font-medium"><i class="fas fa-times-circle mr-1"></i>Rechazado</span>`
                 : `<span class="text-xs text-gray-400">${est}</span>`;
 
-        return [fecha, tipo, descripcion, ref, metodo, monto, est, acciones];
+        // ⭐ RETORNAR ARRAY CON TODAS LAS COLUMNAS
+        return [
+            fecha,           // 0
+            tipoBadge,       // 1
+            cliente,         // 2 - NUEVO
+            vendedor,        // 3 - NUEVO
+            productos,       // 4 - NUEVO
+            descripcion,     // 5 - MEJORADO
+            ref,             // 6
+            metodo,          // 7
+            monto,           // 8
+            estadoBadge,     // 9
+            acciones         // 10
+        ];
     });
 
     if (dtMovimientos) {
@@ -519,9 +640,34 @@ const renderMovimientos = (rows = []) => {
         perPageSelect: [5, 10, 20, 50],
         labels: labelsES,
         data: {
-            headings: ["Fecha", "Tipo", "Descripción", "Referencia", "Método", "Monto", "Estado", "Acciones"],
+            headings: [
+                "Fecha",
+                "Tipo",
+                "Cliente",           // NUEVO
+                "Vendedor",          // NUEVO
+                "Productos",         // NUEVO
+                "Descripción",
+                "Referencia",
+                "Método",
+                "Monto",
+                "Estado",
+                "Acciones"
+            ],
             data: data,
         },
+        columns: [
+            { select: 0, sortable: true },   // Fecha
+            { select: 1, sortable: true },   // Tipo
+            { select: 2, sortable: false },  // Cliente
+            { select: 3, sortable: false },  // Vendedor
+            { select: 4, sortable: false },  // Productos
+            { select: 5, sortable: false },  // Descripción
+            { select: 6, sortable: true },   // Referencia
+            { select: 7, sortable: true },   // Método
+            { select: 8, sortable: false, type: "html" }, // Monto
+            { select: 9, sortable: true },   // Estado
+            { select: 10, sortable: false }, // Acciones
+        ]
     });
 
     console.log("DataTable inicializado con", data.length, "filas");
