@@ -840,7 +840,11 @@
                                         <span class="font-medium text-green-600" id="detalle_stock_disponible">0</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-gray-400">Reservado:</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Venta Pendiente:</span>
+                                        <span class="font-medium text-yellow-600" id="detalle_stock_venta_pendiente">0</span>
+                                    </div>
+                                       <div class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-gray-400">En Reserva:</span>
                                         <span class="font-medium text-yellow-600" id="detalle_stock_reservado">0</span>
                                     </div>
                                     <hr class="border-gray-300 dark:border-gray-600">

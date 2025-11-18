@@ -3815,11 +3815,17 @@ renderDetalleProducto(producto) {
         descripcionContainer.classList.add('hidden');
     }
     
-    // Stock
-    document.getElementById('detalle_stock_total').textContent = producto.stock_cantidad_total || 0;
-    document.getElementById('detalle_stock_disponible').textContent = producto.stock_cantidad_disponible || 0;
-    document.getElementById('detalle_stock_reservado').textContent = producto.stock_cantidad_reservada || 0;
-    document.getElementById('detalle_stock_minimo').textContent = producto.producto_stock_minimo || 0;
+ 
+
+// ✅ Acceder a stock_actual correctamente
+const stockActual = producto.stock_actual || {};
+
+// Stock
+document.getElementById('detalle_stock_total').textContent = stockActual.stock_cantidad_total || 0;
+document.getElementById('detalle_stock_disponible').textContent = stockActual.stock_cantidad_disponible || 0;
+document.getElementById('detalle_stock_venta_pendiente').textContent = stockActual.stock_cantidad_reservada || 0;
+document.getElementById('detalle_stock_reservado').textContent = stockActual.stock_cantidad_reservada2 || 0; // ✅ Ahora sí funcionará
+document.getElementById('detalle_stock_minimo').textContent = producto.producto_stock_minimo || 0;
     
     // Foto principal
     this.renderFotoPrincipal(producto.foto_principal);

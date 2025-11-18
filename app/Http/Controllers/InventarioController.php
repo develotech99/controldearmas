@@ -1926,6 +1926,7 @@ public function getDetalleProducto($id): JsonResponse
         $productoData['stock_cantidad_total'] = $stock ? $stock->stock_cantidad_total : 0;
         $productoData['stock_cantidad_disponible'] = $stock ? $stock->stock_cantidad_disponible : 0;
         $productoData['stock_cantidad_reservada'] = $stock ? $stock->stock_cantidad_reservada : 0;
+        $productoData['stock_cantidad_reservada2'] = $stock ? $stock->stock_cantidad_reservada2 : 0;
         
         // Precios actuales
         $productoData['precios'] = $producto->precios->map(function($precio) {

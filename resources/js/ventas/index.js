@@ -15,7 +15,7 @@ async function clientesParticulares() {
 
     const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
     const data = await res.json();
-    console.log(data);
+    //console.log('venttas desde el buscar',data);
 
     // Siempre limpiamos el select
     select.innerHTML = "";
@@ -861,7 +861,7 @@ function abrirCarrito() {
     const panel = document.getElementById("panelCarrito");
 const v = validarCliente();
  const clienteId = v.clienteId;
- console.log('cliente desde abrir carrito',clienteId);
+ //console.log('cliente desde abrir carrito',clienteId);
  cargarReservaCliente(clienteId);
 
     modal.classList.remove("hidden");
@@ -890,11 +890,13 @@ function agregarAlCarrito(producto_id) {
 }
 
 function agregarProductoAlCarrito(producto) {
+   // console.log('🔵 Producto entrante:', producto);
     const id = String(producto.producto_id);
     const existente = carritoProductos.find(
         (p) => String(p.producto_id) === id
     );
 
+   // console.log('productos  para ver todo ',producto)
     // Normaliza datos del producto entrante
     const stockProducto = Number(producto.stock_cantidad_total ?? 0);
     const necesitaStock = Number(producto.producto_requiere_stock ?? 1) === 1;
@@ -1089,8 +1091,7 @@ function eliminarProducto(producto_id) {
 }
 
 function routeReservarURL() {
-  // Si usas Ziggy: return route('reservas.procesar');
-  return '/reservas/procesar';
+    return '/reservas/procesar';  
 }
 
 async function procesarReserva() {
@@ -1289,8 +1290,6 @@ function limpiarVistaReserva() {
 // ============================================
 // Renderiza una lista de reservas con su botón "Agregar al Carrito"
 function mostrarReservasCliente(reservas) {
-
-    //console.log('mostrar muchas reservas');
   const container = document.getElementById('productosCarritoReserva');
   const vacio = document.getElementById('carritoVacioReserva');
   if (!container) return;
@@ -1299,121 +1298,133 @@ function mostrarReservasCliente(reservas) {
 
   // Guardamos una copia para usar por índice (evita meter JSON gigante en data-*)
   window._reservasClienteCache = reservas;
-  //console.log('reservas muchas',html)
 
   const html = reservas.map((res, idx) => {
     // res.items es el arreglo de productos de ESA reserva
     const items = Array.isArray(res.items) ? res.items : [];
 
-    const card = `
-      <!-- Banner de una reserva -->
-      <div class="bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg p-4 mb-4 shadow-sm">
-        <div class="flex items-start gap-3">
-          <div class="flex-shrink-0">
-            <i class="fas fa-exclamation-circle text-amber-600 text-2xl"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h4 class="text-sm font-bold text-amber-900 mb-2">
-              ${res.numero} — ${res.situacion ?? 'RESERVADA'}
-            </h4>
-            <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-              <div><span class="text-gray-600">Fecha:</span> <span class="ml-1 font-semibold text-gray-800">${res.fecha}</span></div>
-              <div><span class="text-gray-600">Total:</span> <span class="ml-1 font-bold text-emerald-600">Q${Number(res.total||0).toFixed(2)}</span></div>
-              <div class="col-span-2"><span class="text-gray-600">Vendedor:</span> <span class="ml-1 font-semibold text-gray-800">${res.vendedor||''}</span></div>
-            </div>
-            <div class="flex gap-2">
-              <button type="button"
-                      class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1.5 btnCargarReserva"
-                      data-index="${idx}">
-                <i class="fas fa-shopping-cart"></i>
-                Agregar al Carrito
-              </button>
-            </div>
-          </div>
+   const card = `
+  <!-- Banner de una reserva -->
+  <div class="bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg p-4 mb-4 shadow-sm">
+    <div class="flex items-start gap-3">
+      <div class="flex-shrink-0">
+        <i class="fas fa-exclamation-circle text-amber-600 text-2xl"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h4 class="text-sm font-bold text-amber-900 mb-2">
+          ${res.numero} — ${res.situacion ?? 'RESERVADA'}
+        </h4>
+        <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+          <div><span class="text-gray-600">Fecha:</span> <span class="ml-1 font-semibold text-gray-800">${res.fecha}</span></div>
+          <div><span class="text-gray-600">Total:</span> <span class="ml-1 font-bold text-emerald-600">Q${Number(res.total||0).toFixed(2)}</span></div>
+          <div class="col-span-2"><span class="text-gray-600">Vendedor:</span> <span class="ml-1 font-semibold text-gray-800">${res.vendedor||''}</span></div>
+        </div>
+        <div class="flex gap-2 items-center">
+          <button type="button"
+                  class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1.5 btnCargarReserva"
+                  data-index="${idx}">
+            <i class="fas fa-shopping-cart"></i>
+            Agregar al Carrito
+          </button>
+
+          <!-- Botón pequeñito para borrar reserva -->
+          <button type="button"
+                  class="p-1.5 rounded-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs flex items-center justify-center btnBorrarReserva"
+                  data-index="${idx}"
+                  title="Eliminar esta reserva">
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Lista de productos de la reserva -->
-      <div class="space-y-2 mb-6">
-        ${items.map((item) => {
-          const necesitaStock = Number(item.producto_requiere_stock ?? 1) === 1;
-          const requiereSerie  = Number(item.producto_requiere_serie ?? 0) === 1;
-          const seriesSel = Array.isArray(item.seriesSeleccionadas) ? item.seriesSeleccionadas : [];
-          const tieneSuficientesSeries = !requiereSerie || seriesSel.length === Number(item.cantidad || 0);
+  <!-- Lista de productos de la reserva -->
+  <div class="space-y-2 mb-6">
+    ${items.map((item) => {
+      const necesitaStock = Number(item.producto_requiere_stock ?? 1) === 1;
+      const requiereSerie  = Number(item.producto_requiere_serie ?? 0) === 1;
+      const seriesSel = Array.isArray(item.seriesSeleccionadas) ? item.seriesSeleccionadas : [];
+      const tieneSuficientesSeries = !requiereSerie || seriesSel.length === Number(item.cantidad || 0);
 
-          const badgeSerie = (necesitaStock && requiereSerie)
-            ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${tieneSuficientesSeries ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
-                 <i class="fas fa-barcode mr-1"></i>
-                 Serie: ${seriesSel.length}/${item.cantidad}
-               </span>`
-            : "";
+      const badgeSerie = (necesitaStock && requiereSerie)
+        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${tieneSuficientesSeries ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
+             <i class="fas fa-barcode mr-1"></i>
+             Serie: ${seriesSel.length}/${item.cantidad}
+           </span>`
+        : "";
 
-          const hasLotes = Array.isArray(item.lotes) && item.lotes.length > 0;
-          const asignadoLotes = Array.isArray(item.lotesSeleccionados)
-            ? item.lotesSeleccionados.reduce((acc, it) => acc + Number(it.cantidad || 0), 0)
-            : 0;
+      const hasLotes = Array.isArray(item.lotes) && item.lotes.length > 0;
+      const asignadoLotes = Array.isArray(item.lotesSeleccionados)
+        ? item.lotesSeleccionados.reduce((acc, it) => acc + Number(it.cantidad || 0), 0)
+        : 0;
 
-          const badgeLotes = (necesitaStock && hasLotes)
-            ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${asignadoLotes === Number(item.cantidad || 0) ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
-                 <i class="fas fa-layer-group mr-1"></i>
-                 Lotes: ${asignadoLotes}/${item.cantidad}
-               </span>`
-            : "";
+      const badgeLotes = (necesitaStock && hasLotes)
+        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${asignadoLotes === Number(item.cantidad || 0) ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
+             <i class="fas fa-layer-group mr-1"></i>
+             Lotes: ${asignadoLotes}/${item.cantidad}
+           </span>`
+        : "";
 
-          return `
-            <div class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow duration-200">
-              <div class="flex items-start gap-3">
-                <div class="relative flex-shrink-0" style="width: 64px; height: 64px;">
-                  ${
-                    item.imagen
-                      ? `<img src="${item.imagen}" alt="${item.nombre}" class="w-full h-full object-cover rounded-lg border border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                         <div style="display:none; width:64px; height:64px;" class="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold rounded-lg text-lg">
-                           ${String(item.nombre||'PR').substring(0,2).toUpperCase()}
-                         </div>`
-                      : `<div style="width:64px; height:64px;" class="bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold rounded-lg text-lg">
-                           ${String(item.nombre||'PR').substring(0,2).toUpperCase()}
-                         </div>`
-                  }
-                  <div class="absolute bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white" style="top:-8px; right:-8px;">
-                    ${item.cantidad}x
-                  </div>
+      return `
+        <div class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow duration-200">
+          <div class="flex items-start gap-3">
+            <div class="relative flex-shrink-0" style="width: 64px; height: 64px;">
+              ${
+                item.imagen
+                  ? `<img src="${item.imagen}" alt="${item.nombre}" class="w-full h-full object-cover rounded-lg border border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                     <div style="display:none; width:64px; height:64px;" class="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold rounded-lg text-lg">
+                       ${String(item.nombre||'PR').substring(0,2).toUpperCase()}
+                     </div>`
+                  : `<div style="width:64px; height:64px;" class="bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold rounded-lg text-lg">
+                       ${String(item.nombre||'PR').substring(0,2).toUpperCase()}
+                     </div>`
+              }
+              <div class="absolute bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white" style="top:-8px; right:-8px;">
+                ${item.cantidad}x
+              </div>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <h5 class="font-semibold text-sm text-gray-900 truncate mb-1">${item.nombre}</h5>
+              ${item.marca ? `<p class="text-xs text-gray-500 flex items-center gap-1 mb-2"><i class="fas fa-industry text-[9px]"></i> ${item.marca}</p>` : ''}
+
+              <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                ${necesitaStock ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                   <i class="fas fa-box mr-1"></i> Stock: ${item.stock_cantidad_total || 0}
+                 </span>` : ''}
+                ${badgeSerie}
+                ${badgeLotes}
+              </div>
+
+              <div class="flex items-center justify-between">
+                <div class="text-xs text-gray-600">
+                  <span>Precio unitario:</span>
+                  <span class="ml-1 font-semibold text-gray-900">Q${Number(item.precio||0).toFixed(2)}</span>
                 </div>
-
-                <div class="flex-1 min-w-0">
-                  <h5 class="font-semibold text-sm text-gray-900 truncate mb-1">${item.nombre}</h5>
-                  ${item.marca ? `<p class="text-xs text-gray-500 flex items-center gap-1 mb-2"><i class="fas fa-industry text-[9px]"></i> ${item.marca}</p>` : ''}
-
-                  <div class="flex flex-wrap items-center gap-1.5 mb-2">
-                    ${necesitaStock ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                       <i class="fas fa-box mr-1"></i> Stock: ${item.stock_cantidad_total || 0}
-                     </span>` : ''}
-                    ${badgeSerie}
-                    ${badgeLotes}
-                  </div>
-
-                  <div class="flex items-center justify-between">
-                    <div class="text-xs text-gray-600">
-                      <span>Precio unitario:</span>
-                      <span class="ml-1 font-semibold text-gray-900">Q${Number(item.precio||0).toFixed(2)}</span>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-xs text-gray-500">Total</div>
-                      <div class="font-bold text-emerald-600">Q${(Number(item.precio||0) * Number(item.cantidad||0)).toFixed(2)}</div>
-                    </div>
-                  </div>
+                <div class="text-right">
+                  <div class="text-xs text-gray-500">Total</div>
+                  <div class="font-bold text-emerald-600">Q${(Number(item.precio||0) * Number(item.cantidad||0)).toFixed(2)}</div>
                 </div>
               </div>
             </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+          </div>
+        </div>
+      `;
+    }).join('')}
+  </div>
+`;
+
     return card;
   }).join('');
 
   container.innerHTML = html;
 
-  // Eventos por cada botón "Agregar al Carrito"
+  // ========================================
+  // EVENT LISTENERS DESPUÉS DE RENDERIZAR
+  // ========================================
+
+  // ✅ Botones "Agregar al Carrito"
   container.querySelectorAll('.btnCargarReserva').forEach(btn => {
     btn.addEventListener('click', async function () {
       const idx = Number(this.dataset.index);
@@ -1421,10 +1432,143 @@ function mostrarReservasCliente(reservas) {
       if (!reserva) return;
 
       try {
-        await cargarReservaEnCarrito(reserva.items); // ← usa tu flujo de modal y carga parcial
+        await cargarReservaEnCarrito(reserva.items);
+        return;
       } catch (e) {
         console.error(e);
         Swal?.fire?.('Error', 'No se pudo cargar la reserva.', 'error');
+      }
+    });
+  });
+
+  // ✅ Botones "Eliminar Reserva"
+  container.querySelectorAll('.btnBorrarReserva').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const idx = Number(this.dataset.index);
+      const reserva = window._reservasClienteCache?.[idx];
+      
+      if (!reserva) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró la información de la reserva'
+        });
+        return;
+      }
+
+      // Confirmación
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar reserva?',
+        html: `
+          <div class="text-left px-4">
+            <p class="mb-3 text-gray-700">Esta acción cancelará la venta y revertirá todo el stock (series, lotes, inventario).</p>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-600">Reserva:</span>
+                <span class="font-semibold text-gray-900">${reserva.numero}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-600">Total:</span>
+                <span class="font-semibold text-emerald-600">Q${Number(reserva.total||0).toFixed(2)}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-600">Situación:</span>
+                <span class="font-semibold text-amber-600">${reserva.situacion || 'RESERVADA'}</span>
+              </div>
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        confirmButtonColor: '#ef4444',
+        cancelButtonText: 'Cancelar',
+        cancelButtonColor: '#6b7280',
+        width: '500px'
+      });
+
+      if (!result.isConfirmed) return;
+
+      // Mostrar loading
+      Swal.fire({
+        title: 'Cancelando reserva...',
+        html: '<div class="text-sm text-gray-600 mt-2">Revirtiendo stock y series...</div>',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      try {
+        const response = await fetch('/ventas/cancelarReserva', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            reserva_id: reserva.ven_id,
+            motivo: 'Eliminación de reserva desde el carrito del cliente'
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Error al cancelar la venta');
+        }
+
+        // Éxito
+        await Swal.fire({
+          icon: 'success',
+          title: '¡Reserva Eliminada!',
+          html: `
+            <div class="text-center">
+              <p class="text-gray-700 mb-2">La reserva ha sido cancelada exitosamente</p>
+              <div class="text-sm text-gray-600">
+                <p>✓ Stock revertido</p>
+                <p>✓ Series liberadas</p>
+                <p>✓ Lotes actualizados</p>
+              </div>
+            </div>
+          `,
+          timer: 3000,
+          showConfirmButton: false
+        });
+
+        // Remover del cache local
+        window._reservasClienteCache.splice(idx, 1);
+        window.reload;
+        
+        // Recargar UI con las reservas actualizadas
+        const v = validarCliente();
+        if (v.valido && v.clienteId) {
+          cargarReservaCliente(v.clienteId);
+        } else {
+          // Si no hay cliente válido, limpiar la vista
+          container.innerHTML = '';
+          vacio?.classList.remove('hidden');
+        }
+
+      } catch (error) {
+        console.error('Error al cancelar reserva:', error);
+        
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al Cancelar',
+          html: `
+            <div class="text-left px-4">
+              <p class="text-gray-700 mb-2">No se pudo cancelar la reserva:</p>
+              <p class="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
+                ${error.message || 'Error desconocido'}
+              </p>
+            </div>
+          `,
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#ef4444'
+        });
       }
     });
   });
@@ -1636,6 +1780,9 @@ async function aplicarCargaReservaSeleccion(seleccion) {
   
   // Obtener IDs de productos para consultar stock actual
   const productosIds = seleccion.map(s => s.producto_id);
+
+  // 🆕 Colección para guardar todas las series que se están cargando
+  const seriesSeleccionadasSet = new Set();
   
   try {
     // Consultar stock actual de los productos
@@ -1677,6 +1824,11 @@ async function aplicarCargaReservaSeleccion(seleccion) {
         stockFinal = (stockInfo.stock_total - stockInfo.stock_reservado) + cantidadCargando;
       } else {
         stockFinal = Number(sel.stock_cantidad_total ?? 0) + cantidadCargando;
+      }
+
+      // 🆕 Acumular series a cargar para luego mandarlas al backend
+      if (Array.isArray(sel.series_a_cargar) && sel.series_a_cargar.length > 0) {
+        sel.series_a_cargar.forEach(serieId => seriesSeleccionadasSet.add(serieId));
       }
 
       if (existe) {
@@ -1793,6 +1945,30 @@ async function aplicarCargaReservaSeleccion(seleccion) {
       }
     });
 
+    // 🆕 Enviar las series al backend para marcar serie_estado = 'disponible'
+    const seriesSeleccionadas = Array.from(seriesSeleccionadasSet);
+    console.log('series seleccionadas',seriesSeleccionadas)
+    if (seriesSeleccionadas.length > 0) {
+//       try {
+//       const resp = await fetch('/ventas/marcar-disponibles', {
+//     method: 'POST',
+//     headers: {
+//         'Content-Type': 'application/json',
+//         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+//     },
+//     body: JSON.stringify({ seriesSeleccionadas })
+// });
+
+// // Leer texto porque si hay error HTML o JSON malformado, igual lo vemos
+// const data = await resp.text();
+
+// console.log("📡 RESPUESTA DESDE AGREGAR AL CARRITO:", resp.status, data);
+
+//       } catch (e) {
+//         console.error('⚠️ Error al actualizar estado de series:', e);
+//       }
+    }
+
     // Actualizar vista del carrito
     actualizarVistaCarrito();
     
@@ -1902,6 +2078,7 @@ async function aplicarCargaReservaSeleccion(seleccion) {
   }
 }
 
+
 // ========================================
 // FUNCIÓN DE DEPURACIÓN OPCIONAL
 // ========================================
@@ -1973,13 +2150,15 @@ async function cargarReservaEnCarrito(items) {
 
 
 
+
+
 function actualizarVistaCarrito() {
     const container = document.getElementById("productosCarrito");
     const carritoVacio = document.getElementById("carritoVacio");
        const v = validarCliente();
  const clienteId = v.clienteId;
  console.log('cliente desde el actualizar',clienteId);
- //cargarReservaCliente(clienteId);
+
 
     if (!container) return;
 
@@ -2326,11 +2505,11 @@ const puedeReservar = carritoProductos.every(p => {
   return seriesOK && lotesOK && stockOK;
 });
 
-// 3) Botonera inferior
+
 const htmlAcciones = `
   <div class="mt-4 flex flex-col sm:flex-row items-center gap-2 sm:justify-end">
     <button type="button"
-            id="btnReservar"
+            data-action="reservar"
             class="px-4 py-2 rounded-lg text-sm font-semibold transition
                    ${puedeReservar
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -2403,14 +2582,7 @@ container.querySelectorAll('[data-action="precio-personalizado"]').forEach(input
     });
 
 // Botón Reservar
-const btnReservar = document.getElementById('btnReservar');
-btnReservar?.addEventListener('click', async () => {
-  try {
-    await procesarReserva();
-  } catch {
-    Swal?.fire?.('Error', 'No se pudo completar la reserva', 'error');
-  }
-});
+
 
 
 
@@ -2426,6 +2598,12 @@ btnReservar?.addEventListener('click', async () => {
         if (!btn) return;
 
         const action = btn.dataset.action;
+              if (action === "reservar") {
+            e.preventDefault();
+            e.stopPropagation();
+            procesarReserva();
+            return;
+        }
         const id = btn.dataset.id;
         if (!id) return;
 
@@ -3564,6 +3742,8 @@ async function procesarVentaFinal() {
         
         // Calcular totales
         const subtotal = carritoProductos.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+       // console.log('carritosproducotos',carritoProductos)
+     
 
         // ✅ NUEVO: Calcular tenencia
         const totalTenencia = carritoProductos.reduce((sum, p) => {
@@ -3692,6 +3872,7 @@ async function procesarVentaFinal() {
 
         const resultado = await response.json();
         console.log('resultado proceso de venta: ',resultado);
+        return;
 
         if (response.ok && resultado.success) {
             // Éxito
