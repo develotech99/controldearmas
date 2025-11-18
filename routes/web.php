@@ -315,6 +315,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/ventas/actualizar-licencias', [VentasController::class, 'actualizarLicencias']);
    Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
     ->name('ventas.marcar-disponibles');
+    Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
+
 
     Route::post('/reservas/procesar', [VentasController::class, 'procesarReserva'])
         ->middleware('auth')

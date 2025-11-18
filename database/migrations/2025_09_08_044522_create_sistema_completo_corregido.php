@@ -485,6 +485,7 @@ return new class extends Migration
             $table->integer('stock_cantidad_total')->default(0);
             $table->integer('stock_cantidad_disponible')->default(0);
             $table->integer('stock_cantidad_reservada')->default(0);
+            $table->integer('stock_cantidad_reservada2')->default(0);
             $table->decimal('stock_valor_total', 12, 2)->default(0);
             $table->timestamp('stock_ultimo_movimiento')->useCurrent()->useCurrentOnUpdate();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
