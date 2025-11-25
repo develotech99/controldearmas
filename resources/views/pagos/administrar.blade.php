@@ -611,5 +611,9 @@
     </div>
 
     @endsection
+    <script>
+    window.URL_MIS_PAGOS = "{{ route('misfacturas.pendientes') }}";
+</script>
+
 
     @vite('resources/js/pagos/administrar.js')

@@ -241,6 +241,8 @@ const datatable = new DataTable('#tablaFacturas', {
 
 // Función para mostrar detalle completo de la venta
 const mostrarDetalleVenta = async (ventaId) => {
+      console.log('mostrarDetalleVenta llamada con ventaId =', ventaId);
+    console.log('venta en el mapa =', ventaIndex.get(Number(ventaId)));
     const venta = ventaIndex.get(Number(ventaId));
     if (!venta) {
         showError('Error', 'No se encontró la información de la venta');

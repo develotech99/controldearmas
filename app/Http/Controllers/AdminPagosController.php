@@ -469,62 +469,439 @@ class AdminPagosController extends Controller
      * GET /admin/pagos/movimientos
      * =========================== */
 
-    public function movimientos(Request $request)
-    {
-        try {
-            $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
-            $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
-            $metodoId = $request->query('metodo_id');
+//  public function movimientos(Request $request)
+// {
+//     try {
+//                // ===== Concepto por venta =====
+//             $labelsAgg = DB::table('pro_detalle_ventas as d')
+//                 ->join('pro_productos as p', 'p.producto_id', '=', 'd.det_producto_id')
+//                 ->leftJoin('pro_marcas as ma',  'ma.marca_id',  '=', 'p.producto_marca_id')
+//                 ->leftJoin('pro_modelo as mo',  'mo.modelo_id', '=', 'p.producto_modelo_id')
+//                 ->leftJoin('pro_calibres as ca', 'ca.calibre_id', '=', 'p.producto_calibre_id')
+//                 ->select([
+//                     'd.det_ven_id',
+//                     DB::raw("
+//                     TRIM(CONCAT_WS(' ',
+//                         ma.marca_descripcion,
+//                         mo.modelo_descripcion,
+//                         p.producto_nombre,
+//                         IF(ca.calibre_nombre IS NULL OR ca.calibre_nombre = '', '', CONCAT('(', ca.calibre_nombre, ')'))
+//                     )) as label
+//                 "),
+//                     DB::raw('SUM(d.det_cantidad) as qty'),
+//                     DB::raw('MAX(d.det_id) as ord')
+//                 ])
+//                 ->groupBy('d.det_ven_id', 'label');
 
-            $q = DB::table('cja_historial as h')
-                ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
-                ->select(
-                    'h.cja_id',
-                    'h.cja_fecha',
-                    'h.cja_tipo',
-                    'h.cja_no_referencia',
-                    'h.cja_observaciones', // ← AGREGAR ESTE CAMPO
-                    'm.metpago_descripcion as metodo',
-                    'h.cja_monto',
-                    'h.cja_situacion'
-                )
-                ->whereDate('h.cja_fecha', '>=', $from)
-                ->whereDate('h.cja_fecha', '<=', $to)
-                ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
-                ->orderBy('h.cja_fecha', 'desc');
+//               $conceptoSub = DB::query()->fromSub($labelsAgg, 'x')
+//                 ->select([
+//                     'x.det_ven_id',
+//                     DB::raw("GROUP_CONCAT(CONCAT(x.qty, ' ', x.label) ORDER BY x.ord SEPARATOR ', ') as concepto_resumen"),
+//                     DB::raw('COUNT(*) as items_count')
+//                 ])
+//                 ->groupBy('x.det_ven_id');
+    
+//             // ===== 🔥 NUEVO: Precios aplicados por venta =====
+//             $preciosSub = DB::table('pro_detalle_ventas as dv')
+//                 ->join('pro_productos as p', 'p.producto_id', '=', 'dv.det_producto_id')
+//                 ->leftJoin('pro_precios as pr', 'pr.precio_producto_id', '=', 'p.producto_id')
+//                 ->select([
+//                     'dv.det_ven_id',
+//                     DB::raw('MAX(pr.precio_venta) as precio_individual'),
+//                     DB::raw('MAX(pr.precio_venta_empresa) as precio_empresa'),
+//                     DB::raw('MAX(dv.det_precio) as precio_aplicado') // el precio real de la venta
+//                 ])
+//                 ->groupBy('dv.det_ven_id');
+//                     $ventas = DB::table('pro_ventas as v')
+//                 ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
+//                 ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+//                 ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user') // 🔥 JOIN con vendedor
+//                 ->leftJoinSub($conceptoSub, 'cx', fn($j) => $j->on('cx.det_ven_id', '=', 'v.ven_id'))
+//                 ->leftJoinSub($preciosSub, 'px', fn($j) => $j->on('px.det_ven_id', '=', 'v.ven_id')) // 🔥 JOIN precios
+//                 ->where('v.ven_situacion', 'ACTIVA')
+//                 ->select([
+//                     'v.ven_id',
+//                     'v.ven_cliente',
+//                     'v.ven_fecha',
+//                     'v.ven_total_vendido',
+//                     'v.ven_descuento',
+//                     'v.ven_observaciones',
+//                     'v.ven_user', // 🔥 ID del vendedor
+                    
+//                     // Información del cliente
+//                     DB::raw("
+//                         CASE 
+//                             WHEN c.cliente_tipo = 3 THEN 
+//                                 CONCAT(
+//                                     COALESCE(c.cliente_nom_empresa, ''), 
+//                                     ' | ', 
+//                                     TRIM(CONCAT_WS(' ', 
+//                                         COALESCE(c.cliente_nombre1, ''), 
+//                                         COALESCE(c.cliente_apellido1, '')
+//                                     ))
+//                                 )
+//                             ELSE 
+//                                 TRIM(CONCAT_WS(' ', 
+//                                     COALESCE(c.cliente_nombre1, ''),
+//                                     COALESCE(c.cliente_nombre2, ''),
+//                                     COALESCE(c.cliente_apellido1, ''),
+//                                     COALESCE(c.cliente_apellido2, '')
+//                                 ))
+//                         END as cliente_nombre
+//                     "),
+//                     DB::raw("COALESCE(c.cliente_nom_empresa, 'Sin Empresa') as cliente_empresa"),
+//                     'c.cliente_tipo',
+//                     'c.cliente_nit',
+//                     'c.cliente_telefono',
+                    
+//                     // 🔥 Información del vendedor
+//                     DB::raw("
+//                         TRIM(CONCAT_WS(' ',
+//                             COALESCE(vendedor.user_primer_nombre, ''),
+//                             COALESCE(vendedor.user_segundo_nombre, ''),
+//                             COALESCE(vendedor.user_primer_apellido, ''),
+//                             COALESCE(vendedor.user_segundo_apellido, '')
+//                         )) as vendedor_nombre
+//                     "),
+                    
+//                     // 🔥 Precios
+//                     'px.precio_individual',
+//                     'px.precio_empresa',
+//                     'px.precio_aplicado',
+                    
+//                     'pg.pago_id',
+//                     'pg.pago_tipo_pago',
+//                     'pg.pago_monto_total',
+//                     'pg.pago_monto_pagado',
+//                     'pg.pago_monto_pendiente',
+//                     'pg.pago_estado',
+//                     'pg.pago_cantidad_cuotas',
+//                     'pg.pago_abono_inicial',
+//                     'pg.pago_fecha_inicio',
+//                     'pg.pago_fecha_completado',
+//                     DB::raw('(pg.pago_monto_total - pg.pago_monto_pagado) as calculo_pendiente'),
+//                     DB::raw('COALESCE(cx.concepto_resumen, "—") as concepto'),
+//                     DB::raw('COALESCE(cx.items_count, 0) as items_count'),
+//                 ])
+//                 ->orderBy('v.ven_fecha', 'desc')
+//                 ->get();
+    
+//             if ($ventas->isEmpty()) {
+//                 return response()->json([
+//                     'codigo'  => 1,
+//                     'mensaje' => 'Sin ventas activas',
+//                     'data'    => [
+//                         'pendientes' => [],
+//                         'pagadas_ult4m' => [],
+//                         'facturas_pendientes_all' => [],
+//                         'all' => $verTodas
+//                     ]
+//                 ]);
+//             }
+    
+//             $pagoIds  = $ventas->pluck('pago_id')->all();
+//             $ventaIds = $ventas->pluck('ven_id')->all();
+//         // Rango de fechas (si no mandan, usa el mes actual)
+//         $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
+//         $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
+//         $metodoId = $request->query('metodo_id');
 
-            $rows = $q->get();
+//         $rows = DB::table('cja_historial as h')
+//             ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
+//             ->whereDate('h.cja_fecha', '>=', $from)
+//             ->whereDate('h.cja_fecha', '<=', $to)
+//             ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
+//             ->orderBy('h.cja_fecha', 'desc')
+//             ->get([
+//                 'h.cja_id',
+//                 'h.cja_fecha',
+//                 'h.cja_tipo',
+//                 'h.cja_no_referencia',
+//                 'h.cja_observaciones',
+//                 'h.cja_monto',
+//                 'h.cja_situacion',
+//                 'm.metpago_descripcion as metodo',
 
-            $total = 0.0;
-            foreach ($rows as $r) {
-                // Solo sumar movimientos ACTIVOS para el total
-                if ($r->cja_situacion === 'ACTIVO') {
-                    $total += in_array($r->cja_tipo, ['VENTA', 'DEPOSITO', 'AJUSTE_POS'])
-                        ? (float) $r->cja_monto
-                        : -(float) $r->cja_monto;
+//                 // 👇 NUEVO: venta_id extraído de "VENTA-82"
+//                 DB::raw("
+//                     CASE 
+//                         WHEN h.cja_no_referencia LIKE 'VENTA-%'
+//                         THEN CAST(SUBSTRING_INDEX(h.cja_no_referencia, '-', -1) AS UNSIGNED)
+//                         ELSE NULL
+//                     END AS venta_id
+//                 "),
+//             ]);
+
+//         // Total de caja (solo movimientos ACTIVOS, con signo según tipo)
+//         $total = 0.0;
+//         foreach ($rows as $r) {
+//             if ($r->cja_situacion === 'ACTIVO') {
+//                 $monto = (float) $r->cja_monto;
+
+//                 if (in_array($r->cja_tipo, ['VENTA', 'DEPOSITO', 'AJUSTE_POS'])) {
+//                     $total += $monto;   // entra dinero
+//                 } else {
+//                     $total -= $monto;   // sale dinero
+//                 }
+//             }
+//         }
+
+//         return response()->json([
+//             'codigo'  => 1,
+//             'mensaje' => 'Movimientos obtenidos exitosamente',
+//             'data'    => [
+//                 'movimientos' => $rows,
+//                 'total'       => round($total, 2),
+//             ]
+//         ], 200);
+
+//     } catch (Exception $e) {
+//         return response()->json([
+//             'codigo'  => 0,
+//             'mensaje' => 'Error al obtener los movimientos',
+//             'detalle' => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+public function movimientos(Request $request)
+{
+    try {
+        // ===== Concepto por venta =====
+        $labelsAgg = DB::table('pro_detalle_ventas as d')
+            ->join('pro_productos as p', 'p.producto_id', '=', 'd.det_producto_id')
+            ->leftJoin('pro_marcas as ma',  'ma.marca_id',  '=', 'p.producto_marca_id')
+            ->leftJoin('pro_modelo as mo',  'mo.modelo_id', '=', 'p.producto_modelo_id')
+            ->leftJoin('pro_calibres as ca', 'ca.calibre_id', '=', 'p.producto_calibre_id')
+            ->select([
+                'd.det_ven_id',
+                DB::raw("
+                    TRIM(CONCAT_WS(' ',
+                        ma.marca_descripcion,
+                        mo.modelo_descripcion,
+                        p.producto_nombre,
+                        IF(ca.calibre_nombre IS NULL OR ca.calibre_nombre = '', '', CONCAT('(', ca.calibre_nombre, ')'))
+                    )) as label
+                "),
+                DB::raw('SUM(d.det_cantidad) as qty'),
+                DB::raw('MAX(d.det_id) as ord')
+            ])
+            ->groupBy('d.det_ven_id', 'label');
+
+        $conceptoSub = DB::query()->fromSub($labelsAgg, 'x')
+            ->select([
+                'x.det_ven_id',
+                DB::raw("GROUP_CONCAT(CONCAT(x.qty, ' ', x.label) ORDER BY x.ord SEPARATOR ', ') as concepto_resumen"),
+                DB::raw('COUNT(*) as items_count')
+            ])
+            ->groupBy('x.det_ven_id');
+
+        // ===== Precios aplicados por venta =====
+        $preciosSub = DB::table('pro_detalle_ventas as dv')
+            ->join('pro_productos as p', 'p.producto_id', '=', 'dv.det_producto_id')
+            ->leftJoin('pro_precios as pr', 'pr.precio_producto_id', '=', 'p.producto_id')
+            ->select([
+                'dv.det_ven_id',
+                DB::raw('MAX(pr.precio_venta) as precio_individual'),
+                DB::raw('MAX(pr.precio_venta_empresa) as precio_empresa'),
+                DB::raw('MAX(dv.det_precio) as precio_aplicado')
+            ])
+            ->groupBy('dv.det_ven_id');
+
+        // ===== Ventas con cliente, vendedor, concepto y precios =====
+        $ventas = DB::table('pro_ventas as v')
+            // 👇 LEFT JOIN para no perder ventas sin pagos aún
+            ->leftJoin('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
+            ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+            ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
+            ->leftJoinSub($conceptoSub, 'cx', fn($j) => $j->on('cx.det_ven_id', '=', 'v.ven_id'))
+            ->leftJoinSub($preciosSub, 'px', fn($j) => $j->on('px.det_ven_id', '=', 'v.ven_id'))
+            ->where('v.ven_situacion', 'ACTIVA')
+            ->select([
+                'v.ven_id',
+                'v.ven_cliente',
+                'v.ven_fecha',
+                'v.ven_total_vendido',
+                'v.ven_descuento',
+                'v.ven_observaciones',
+                'v.ven_user',
+
+                // Cliente
+                DB::raw("
+                    CASE 
+                        WHEN c.cliente_tipo = 3 THEN 
+                            CONCAT(
+                                COALESCE(c.cliente_nom_empresa, ''), 
+                                ' | ', 
+                                TRIM(CONCAT_WS(' ', 
+                                    COALESCE(c.cliente_nombre1, ''), 
+                                    COALESCE(c.cliente_apellido1, '')
+                                ))
+                            )
+                        ELSE 
+                            TRIM(CONCAT_WS(' ', 
+                                COALESCE(c.cliente_nombre1, ''),
+                                COALESCE(c.cliente_nombre2, ''),
+                                COALESCE(c.cliente_apellido1, ''),
+                                COALESCE(c.cliente_apellido2, '')
+                            ))
+                    END as cliente_nombre
+                "),
+                DB::raw("COALESCE(c.cliente_nom_empresa, 'Sin Empresa') as cliente_empresa"),
+                'c.cliente_tipo',
+                'c.cliente_nit',
+                'c.cliente_telefono',
+
+                // Vendedor
+                DB::raw("
+                    TRIM(CONCAT_WS(' ',
+                        COALESCE(vendedor.user_primer_nombre, ''),
+                        COALESCE(vendedor.user_segundo_nombre, ''),
+                        COALESCE(vendedor.user_primer_apellido, ''),
+                        COALESCE(vendedor.user_segundo_apellido, '')
+                    )) as vendedor_nombre
+                "),
+
+                // Precios
+                'px.precio_individual',
+                'px.precio_empresa',
+                'px.precio_aplicado',
+
+                // Pago
+                'pg.pago_id',
+                'pg.pago_tipo_pago',
+                'pg.pago_monto_total',
+                'pg.pago_monto_pagado',
+                'pg.pago_monto_pendiente',
+                'pg.pago_estado',
+                'pg.pago_cantidad_cuotas',
+                'pg.pago_abono_inicial',
+                'pg.pago_fecha_inicio',
+                'pg.pago_fecha_completado',
+                DB::raw('(pg.pago_monto_total - pg.pago_monto_pagado) as calculo_pendiente'),
+
+                DB::raw("COALESCE(cx.concepto_resumen, '—') as concepto"),
+                DB::raw('COALESCE(cx.items_count, 0) as items_count'),
+            ])
+            ->orderBy('v.ven_fecha', 'desc')
+            ->get();
+
+        // Indexar ventas por ID
+        $ventasById = $ventas->keyBy('ven_id');
+
+        // ===== Rango de fechas =====
+        $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
+        $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
+        $metodoId = $request->query('metodo_id');
+
+        // ===== Movimientos de caja =====
+        $rows = DB::table('cja_historial as h')
+            ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
+            ->whereDate('h.cja_fecha', '>=', $from)
+            ->whereDate('h.cja_fecha', '<=', $to)
+            ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
+            ->orderBy('h.cja_fecha', 'desc')
+            ->get([
+                'h.cja_id',
+                'h.cja_fecha',
+                'h.cja_tipo',
+                'h.cja_no_referencia',
+                'h.cja_observaciones',
+                'h.cja_monto',
+                'h.cja_situacion',
+                'm.metpago_descripcion as metodo',
+                DB::raw("
+                    CASE 
+                        WHEN h.cja_no_referencia LIKE 'VENTA-%'
+                        THEN CAST(SUBSTRING_INDEX(h.cja_no_referencia, '-', -1) AS UNSIGNED)
+                        ELSE NULL
+                    END AS venta_id
+                "),
+            ]);
+
+        // ===== Total de caja =====
+        $total = 0.0;
+        foreach ($rows as $r) {
+            if ($r->cja_situacion === 'ACTIVO') {
+                $monto = (float) $r->cja_monto;
+
+                if (in_array($r->cja_tipo, ['VENTA', 'DEPOSITO', 'AJUSTE_POS'])) {
+                    $total += $monto;   // entra dinero
+                } else {
+                    $total -= $monto;   // sale dinero
                 }
             }
-
-            return response()->json([
-                'codigo' => 1,
-                'mensaje' => 'Movimientos obtenidos exitosamente',
-                'data' => [
-                    'movimientos' => $rows,
-                    'total' => round($total, 2),
-                ]
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'codigo' => 0,
-                'mensaje' => 'Error al obtener los movimientos',
-                'detalle' => $e->getMessage()
-            ], 500);
         }
+
+        // ===== Mezclar datos de la venta en cada movimiento =====
+        $rows = $rows->map(function ($r) use ($ventasById) {
+            $venta = null;
+
+            if (!empty($r->venta_id)) {
+                $venta = $ventasById->get($r->venta_id);
+            }
+
+            if ($venta) {
+                $r->venta = [
+                    'id'          => $venta->ven_id,
+                    'fecha'       => $venta->ven_fecha,
+                    'observaciones' => $venta->ven_observaciones,
+
+                    'cliente' => [
+                        'id'       => $venta->ven_cliente,
+                        'nombre'   => $venta->cliente_nombre,
+                        'empresa'  => $venta->cliente_empresa,
+                        'nit'      => $venta->cliente_nit,
+                        'telefono' => $venta->cliente_telefono,
+                        'tipo'     => $venta->cliente_tipo,
+                    ],
+
+                    'vendedor' => [
+                        'id'     => $venta->ven_user,
+                        'nombre' => $venta->vendedor_nombre,
+                    ],
+
+                    'precios' => [
+                        'individual' => $venta->precio_individual,
+                        'empresa'    => $venta->precio_empresa,
+                        'aplicado'   => $venta->precio_aplicado,
+                    ],
+
+                    'concepto'    => $venta->concepto,
+                    'items_count' => (int) $venta->items_count,
+
+                    'monto_total' => (float) $venta->pago_monto_total,
+                    'pagado'      => (float) $venta->pago_monto_pagado,
+                    'pendiente'   => (float) $venta->pago_monto_pendiente,
+                ];
+            } else {
+                $r->venta = null;
+            }
+
+            return $r;
+        });
+
+  return response()->json([
+    'codigo' => 1,
+    'data' => [
+        'movimientos' => $rows,
+        'ventas'      => $ventas,   
+        'total'       => round($total, 2)
+    ]
+]);
+
+
+    } catch (Exception $e) {
+        return response()->json([
+            'codigo'  => 0,
+            'mensaje' => 'Error al obtener los movimientos',
+            'detalle' => $e->getMessage()
+        ], 500);
     }
-    /* ===========================
-    * Registrar egreso de caja
-    * POST /admin/pagos/egresos
-    * =========================== */
+}
+
+
+    
     public function registrarEgreso(Request $request)
     {
         try {
