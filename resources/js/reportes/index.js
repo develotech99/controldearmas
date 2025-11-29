@@ -636,35 +636,41 @@ class ReportesManager {
                 confirmButtonColor: '#10b981', // Verde
                 denyButtonColor: '#3b82f6',    // Azul
                 cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-file-invoice-dollar mr-2"></i>Autorizar y Facturar',
-                denyButtonText: '<i class="fas fa-check mr-2"></i>Solo Autorizar',
+                confirmButtonText: '<i class="fas fa-file-invoice mr-2"></i>Factura Normal',
+                denyButtonText: '<i class="fas fa-file-invoice-dollar mr-2"></i>Factura Cambiaria',
                 cancelButtonText: 'Cancelar',
-                reverseButtons: true
+                footer: '<button id="btn-solo-autorizar" class="swal2-confirm swal2-styled" style="background-color: #8b5cf6; margin-top: 10px;">Solo Autorizar</button>',
+                didOpen: () => {
+                    const btnSoloAutorizar = document.getElementById('btn-solo-autorizar');
+                    if (btnSoloAutorizar) {
+                        btnSoloAutorizar.addEventListener('click', () => {
+                            Swal.close({ value: 'solo_autorizar' });
+                        });
+                    }
+                }
             });
 
-            if (!accion && accion !== false) return; // Cancelado (accion es undefined si se cierra, false si es deny)
+            // accion:
+            // true -> Factura Normal
+            // false -> Factura Cambiaria
+            // 'solo_autorizar' -> Solo Autorizar
+            // undefined -> Cancelar
 
-            // accion === true -> Confirm (Autorizar y Facturar)
-            // accion === false -> Deny (Solo Autorizar)
+            if (accion === undefined) return;
 
-            const tipoAutorizacion = accion ? 'finalizar' : 'solo_autorizar';
+            let modoFacturacion = null;
+            if (accion === true) modoFacturacion = 'normal';
+            else if (accion === false) modoFacturacion = 'cambiaria';
+
+            // Siempre autorizamos primero como 'solo_autorizar'
+            const payloadFinal = { ...payload, tipo: 'solo_autorizar' };
 
             Swal.fire({
-                title: accion ? 'Redirigiendo a facturación...' : 'Autorizando venta...',
+                title: modoFacturacion ? 'Redirigiendo...' : 'Autorizando venta...',
                 html: 'Por favor espere',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
-
-            // Si es "Autorizar y Facturar", primero autorizamos como "solo_autorizar" para asegurar estado
-            // O mejor, usamos el endpoint con tipo='solo_autorizar' y luego redirigimos.
-            // El usuario pidió: "si se autoriza que de una vez facture... y si le da opción que solo desea autorizar, que se pueda facturar"
-
-            // Vamos a usar 'solo_autorizar' siempre para el primer paso si elige "Solo Autorizar".
-            // Si elige "Autorizar y Facturar", también podemos usar 'solo_autorizar' y luego redirigir, 
-            // ya que la facturación se encarga de finalizar (descontar stock).
-
-            const payloadFinal = { ...payload, tipo: 'solo_autorizar' };
 
             const response = await fetch('/ventas/autorizar', {
                 method: 'POST',
@@ -687,23 +693,21 @@ class ReportesManager {
             if (result.codigo !== 1)
                 throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
 
-            // Si eligió "Autorizar y Facturar", redirigir
-            if (accion) {
-                window.location.href = `/facturacion?venta_id=${ventaData.ven_id}`;
+            // Redirección según opción
+            if (modoFacturacion === 'normal') {
+                window.location.href = `/facturacion?venta_id=${ventaData.ven_id}&mode=normal`;
+                return;
+            } else if (modoFacturacion === 'cambiaria') {
+                window.location.href = `/facturacion?venta_id=${ventaData.ven_id}&mode=cambiaria`;
                 return;
             }
 
-            // Si eligió "Solo Autorizar", mostrar éxito y recargar
+            // Si es Solo Autorizar
             let mensajeExito = result.mensaje || '¡Venta autorizada!';
 
             // 💡 Licencias (Solo si se queda en esta pantalla)
             if (seriesArray.length > 0) {
                 // ... (Lógica de licencias existente) ...
-                // NOTA: Si redirige a facturación, las licencias se deberían pedir allá o aquí?
-                // El usuario dijo "si se autoriza que de una vez facture". 
-                // Asumiremos que las licencias se gestionan igual.
-
-                // COPIAR LOGICA DE LICENCIAS AQUI
                 let htmlLicencias = `
         <div style="max-height: 280px; overflow-y: auto; text-align: left;">
           <p class="text-sm text-gray-600 mb-3">Ingresa las licencias para cada serie:</p>

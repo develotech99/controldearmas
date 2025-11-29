@@ -310,6 +310,56 @@ busquedaVentaCambiaria?.addEventListener('keypress', (e) => {
     }
 });
 
+// Event Listeners Globales
+if (btnNuevaFactura) btnNuevaFactura.addEventListener('click', abrirModalNuevaFactura);
+if (btnCerrarModal) btnCerrarModal.addEventListener('click', cerrarModalNuevaFactura);
+if (btnBuscarVenta) btnBuscarVenta.addEventListener('click', buscarVenta);
+if (busquedaVenta) {
+    busquedaVenta.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') buscarVenta();
+    });
+}
+
+// Auto-load venta from URL
+const urlParams = new URLSearchParams(window.location.search);
+const ventaIdParam = urlParams.get('venta_id');
+const modeParam = urlParams.get('mode'); // 'normal' or 'cambiaria'
+
+if (ventaIdParam) {
+    if (modeParam === 'cambiaria') {
+        // Assuming abrirModalFacturaCambiaria is a function that opens the modal and prepares it
+        // If not, you might need to call resetModalFacturaCambiaria() and abrirModal("modalFacturaCambiaria")
+        resetModalFacturaCambiaria();
+        abrirModal("modalFacturaCambiaria");
+        // Esperar un poco para asegurar que el modal esté listo
+        setTimeout(() => {
+            const inputBusqueda = document.getElementById('busquedaVentaCambiaria'); // Correct ID
+            if (inputBusqueda) {
+                inputBusqueda.value = ventaIdParam;
+                buscarVentaCambiaria();
+            }
+        }, 300);
+    } else {
+        // Assuming abrirModalNuevaFactura is a function that opens the modal and prepares it
+        // If not, you might need to call resetModalFactura() and abrirModal("modalFactura")
+        // Note: The original code snippet provided 'abrirModalNuevaFactura' which is not defined in the given context.
+        // Assuming it's equivalent to opening the 'modalFactura' and preparing it.
+        // For this change, I'll use the existing 'abrirModal' for 'modalFactura'
+        abrirModal("modalFactura");
+        setTimeout(() => {
+            // Assuming 'busquedaVenta' is the input for the normal factura modal
+            const inputBusqueda = document.getElementById('busquedaVenta'); // Assuming this ID exists for normal factura
+            if (inputBusqueda) {
+                inputBusqueda.value = ventaIdParam;
+                // Assuming 'buscarVenta' is the function for the normal factura modal
+                buscarVenta();
+            }
+        }, 300);
+    }
+    // Limpiar URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+}
+
 btnQuitarVentaCambiaria?.addEventListener('click', () => {
     facVentaIdCambiaria.value = '';
     ventaSeleccionadaInfoCambiaria.classList.add('hidden');
