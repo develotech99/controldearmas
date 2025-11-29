@@ -698,7 +698,7 @@ class ReportesManager {
             if (modoFacturacion === 'normal' || modoFacturacion === 'cambiaria') {
                 try {
                     Swal.fire({
-                        title: 'Cargando datos...',
+                        title: 'Abriendo facturación...',
                         text: 'Obteniendo detalles de la venta',
                         allowOutsideClick: false,
                         didOpen: () => Swal.showLoading()

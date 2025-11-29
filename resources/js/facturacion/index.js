@@ -310,15 +310,8 @@ busquedaVentaCambiaria?.addEventListener('keypress', (e) => {
     }
 });
 
-// Event Listeners Globales
-if (btnNuevaFactura) btnNuevaFactura.addEventListener('click', abrirModalNuevaFactura);
-if (btnCerrarModal) btnCerrarModal.addEventListener('click', cerrarModalNuevaFactura);
-if (btnBuscarVenta) btnBuscarVenta.addEventListener('click', buscarVenta);
-if (busquedaVenta) {
-    busquedaVenta.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') buscarVenta();
-    });
-}
+// Event Listeners Globales - Limpieza de duplicados
+// (Los listeners correctos ya están definidos más abajo o arriba)
 
 // Auto-load venta from URL
 const urlParams = new URLSearchParams(window.location.search);
