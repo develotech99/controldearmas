@@ -14,6 +14,7 @@ class Facturacion extends Model
     protected $primaryKey = 'fac_id';
 
     protected $fillable = [
+        'fac_venta_id',
         'fac_uuid',
         'fac_referencia',
         'fac_serie',
@@ -137,5 +138,10 @@ class Facturacion extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'fac_usuario_id', 'user_id');
+    }
+
+    public function venta()
+    {
+        return $this->belongsTo(\App\Models\Ventas::class, 'fac_venta_id', 'ven_id');
     }
 }

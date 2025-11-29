@@ -33,7 +33,7 @@ class VentasController extends Controller
     public function index()
     {
         // // Datos necesarios para los selects y filtros
-        $categorias = DB::table('pro_categorias')->where('categoria_situacion', 1)->get();
+        $categorias = DB::table('pro_categorias')->where('categoria_situacion', 1)->orderBy('categoria_nombre')->get();
         $clientes = DB::table('users')->where('user_rol', 2)->get();
         $metodopago = MetodoPago::orderBy('metpago_descripcion')->paginate(15);
 

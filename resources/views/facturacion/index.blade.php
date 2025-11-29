@@ -109,6 +109,47 @@
                 @csrf
 
                 <div class="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
+                    
+                    <!-- BUSCAR VENTA -->
+                    <div class="bg-blue-50 rounded-lg p-4 space-y-4 border border-blue-100">
+                        <h4 class="font-semibold text-blue-700 flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Buscar Venta Pendiente
+                        </h4>
+                        
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <input type="text" id="busquedaVenta" 
+                                    class="w-full rounded-lg border-blue-200 focus:border-blue-400 focus:ring-blue-400 text-sm"
+                                    placeholder="Buscar por ID Venta, Cliente, NIT, SKU o # Serie...">
+                            </div>
+                            <button type="button" id="btnBuscarVenta"
+                                class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
+                                Buscar
+                            </button>
+                        </div>
+
+                        <!-- Resultados de búsqueda -->
+                        <div id="resultadosVenta" class="hidden space-y-2 max-h-40 overflow-y-auto">
+                            <!-- Items dinámicos -->
+                        </div>
+
+                        <!-- Venta Seleccionada -->
+                        <div id="ventaSeleccionadaInfo" class="hidden bg-white p-3 rounded border border-blue-200 text-sm">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="font-bold text-blue-800">Venta #<span id="lblVentaId"></span></span>
+                                    <p class="text-gray-600" id="lblCliente"></p>
+                                </div>
+                                <button type="button" id="btnQuitarVenta" class="text-red-500 hover:text-red-700 text-xs underline">
+                                    Quitar
+                                </button>
+                            </div>
+                            <input type="hidden" name="fac_venta_id" id="fac_venta_id">
+                        </div>
+                    </div>
 
                     <!-- DATOS DEL CLIENTE -->
                     <div class="bg-gray-50 rounded-lg p-4 space-y-4">
@@ -251,6 +292,7 @@
                     <input type="text" name="det_fac_producto_desc[]" required
                         class="w-full rounded-lg border-gray-300 focus:border-emerald-400 focus:ring-emerald-400 text-sm"
                         placeholder="Producto o servicio">
+                    <input type="hidden" name="det_fac_producto_id[]" class="item-producto-id">
                 </div>
 
                 <div class="md:col-span-2">

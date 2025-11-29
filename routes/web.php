@@ -216,7 +216,7 @@ Route::middleware('auth')->group(function () {
     // VENTAS
     // ================================
     Route::get('/ventas', [VentasController::class, 'index'])->name('ventas.index');
-    Route::get('/ventas/search', [VentasController::class, 'search'])->name('ventas.search');
+    Route::get('/ventas/search', [VentasController::class, 'buscarProductos'])->name('ventas.search');
     Route::post('/ventas', [VentasController::class, 'store'])->name('ventas.store');
     Route::put('/ventas/{id}', [VentasController::class, 'update'])->name('ventas.update');
 
@@ -371,6 +371,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('facturacion')->group(function () {
         Route::get('/', [FacturacionController::class, 'index'])->name('facturacion.index');
         Route::post('/buscarNit', [FacturacionController::class, 'buscarNIT'])->name('facturacion.buscarNit');
+        Route::get('/buscar-venta', [FacturacionController::class, 'buscarVenta'])->name('facturacion.buscarVenta');
         Route::post('/certificar', [FacturacionController::class, 'certificar'])->name('facturacion.certificar');
         Route::get('/obtener-facturas', [FacturacionController::class, 'obtenerFacturas'])->name('facturacion.obtener');
         Route::get('/consultar-dte/{uuid}', [FacturacionController::class, 'consultarDte'])->name('facturacion.consultarDte');

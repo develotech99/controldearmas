@@ -13,6 +13,7 @@ class FacturacionDetalle extends Model
         'det_fac_factura_id',
         'det_fac_tipo',
         'det_fac_producto_codigo',
+        'det_fac_producto_id',
         'det_fac_producto_desc',
         'det_fac_cantidad',
         'det_fac_unidad_medida',
