@@ -23,22 +23,22 @@ class ReportesManager {
             comisiones: [],
             pagos: []
         };
-        
+
         this.init();
     }
 
     /**
      * Inicializar el gestor
      */
-init() {
-  
-    this.setupEventListeners();
-    this.setupFechasIniciales();
-    this.loadInitialData();
-    
+    init() {
+
+        this.setupEventListeners();
+        this.setupFechasIniciales();
+        this.loadInitialData();
 
 
-}
+
+    }
     /**
      * Configurar event listeners
      */
@@ -46,7 +46,7 @@ init() {
         // Event listeners para filtros de fecha
         const fechaInicio = document.getElementById('fecha_inicio');
         const fechaFin = document.getElementById('fecha_fin');
-        
+
         if (fechaInicio) {
             fechaInicio.addEventListener('change', (e) => {
                 this.filtros.fecha_inicio = e.target.value;
@@ -103,7 +103,7 @@ init() {
     async loadDashboard() {
         try {
             this.showLoading('dashboard');
-            
+
             const response = await fetch('/reportes/dashboard?' + new URLSearchParams(this.filtros));
             if (response.ok) {
                 const result = await response.json();
@@ -162,7 +162,7 @@ init() {
         if (tabContent) {
             tabContent.classList.remove('hidden');
         }
-        
+
         this.currentTab = tab;
 
         // Cargar datos específicos del tab
@@ -172,31 +172,31 @@ init() {
     /**
      * Cargar datos específicos del tab
      */
-/**
- * Cargar datos específicos del tab
- */
-async loadTabData(tab) {
-    switch (tab) {
-        case 'ventas':
-            await this.loadReporteVentas();
-            break;
-        case 'productos':
-            await this.loadReporteProductos();
-            break;
-        case 'comisiones':
-            await this.loadReporteComisiones();
-            break;
-        case 'pagos':
-            await this.loadReportePagos();
-            break;
-        case 'digecam-armas':
-            await this.loadReporteDigecamArmas();
-            break;
-        case 'digecam-municiones':
-            await this.loadReporteDigecamMuniciones();
-            break;
+    /**
+     * Cargar datos específicos del tab
+     */
+    async loadTabData(tab) {
+        switch (tab) {
+            case 'ventas':
+                await this.loadReporteVentas();
+                break;
+            case 'productos':
+                await this.loadReporteProductos();
+                break;
+            case 'comisiones':
+                await this.loadReporteComisiones();
+                break;
+            case 'pagos':
+                await this.loadReportePagos();
+                break;
+            case 'digecam-armas':
+                await this.loadReporteDigecamArmas();
+                break;
+            case 'digecam-municiones':
+                await this.loadReporteDigecamMuniciones();
+                break;
+        }
     }
-}
 
     /**
      * Actualizar KPIs en el dashboard
@@ -215,7 +215,7 @@ async loadTabData(tab) {
                 element.textContent = value;
             }
         });
-        
+
         // Actualizar promedios
         if (kpis.total_ventas > 0) {
             const promedioEl = document.getElementById('kpi-promedio-productos');
@@ -246,7 +246,7 @@ async loadTabData(tab) {
     createGraficoVentasDias(data) {
         const ctx = document.getElementById('grafico-ventas-dias');
         if (!ctx) return;
-        
+
         if (this.graficos.ventasDias) {
             this.graficos.ventasDias.destroy();
         }
@@ -298,7 +298,7 @@ async loadTabData(tab) {
     createGraficoProductosTop(data) {
         const ctx = document.getElementById('grafico-productos-top');
         if (!ctx) return;
-        
+
         if (this.graficos.productosTop) {
             this.graficos.productosTop.destroy();
         }
@@ -334,7 +334,7 @@ async loadTabData(tab) {
     createGraficoVendedores(data) {
         const ctx = document.getElementById('grafico-vendedores');
         if (!ctx) return;
-        
+
         if (this.graficos.vendedores) {
             this.graficos.vendedores.destroy();
         }
@@ -372,7 +372,7 @@ async loadTabData(tab) {
     createGraficoMetodosPago(data) {
         const ctx = document.getElementById('grafico-metodos-pago');
         if (!ctx) return;
-        
+
         if (this.graficos.metodosPago) {
             this.graficos.metodosPago.destroy();
         }
@@ -401,62 +401,62 @@ async loadTabData(tab) {
      */
 
 
-async loadReporteVentas(filtros = {}) {
-    try {
-        this.showLoading('ventas');
-        
-        
-      
-        const params = new URLSearchParams();
-        if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde);
-        if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta);
-        if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
-        if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
-        
-        const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            
-           
-            if (result.success && result.data) {
-                this.renderTablaVentas(result.data);
-                
-                // Mostrar resumen
-                
+    async loadReporteVentas(filtros = {}) {
+        try {
+            this.showLoading('ventas');
+
+
+
+            const params = new URLSearchParams();
+            if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde);
+            if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta);
+            if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
+            if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
+
+            const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+
+
+                if (result.success && result.data) {
+                    this.renderTablaVentas(result.data);
+
+                    // Mostrar resumen
+
+                } else {
+
+                    this.renderTablaVentas([]);
+                }
             } else {
-               
-                this.renderTablaVentas([]);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-        } else {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+        } catch (error) {
+
+            Swal.fire('Error', 'No se pudieron cargar las ventas pendientes', 'error');
+            this.renderTablaVentas([]);
+        } finally {
+            this.hideLoading('ventas');
         }
-        
-    } catch (error) {
-       
-        Swal.fire('Error', 'No se pudieron cargar las ventas pendientes', 'error');
-        this.renderTablaVentas([]);
-    } finally {
-        this.hideLoading('ventas');
     }
-}
-renderTablaVentas(ventas) {
-    const tbody = document.getElementById('tbody-ventas');
-    if (!tbody) {
-        console.error('❌ No se encontró #tbody-ventas');
-        return;
-    }
-    
-    if (!ventas || ventas.length === 0) {
-        tbody.innerHTML = `
+    renderTablaVentas(ventas) {
+        const tbody = document.getElementById('tbody-ventas');
+        if (!tbody) {
+            console.error('❌ No se encontró #tbody-ventas');
+            return;
+        }
+
+        if (!ventas || ventas.length === 0) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     <i class="fas fa-inbox text-4xl mb-2"></i>
@@ -464,51 +464,51 @@ renderTablaVentas(ventas) {
                 </td>
             </tr>
         `;
-        return;
-    }
-    
-    tbody.innerHTML = ventas.map(venta => {
-        // Preparar los datos para el dataset
-const ventaData = {
-  ven_id: venta.ven_id,
-  ven_user: venta.ven_user,
-  cliente: venta.cliente,
-  det_producto_id: venta.det_producto_id,
-  series_ids: venta.series_numeros || venta.series_ids || '',
-  lotes_ids: venta.lotes_ids || '',
-  precio_venta: venta.precio_venta || 0,
-  precio_venta_empresa: venta.precio_venta_empresa || 0
-};
+            return;
+        }
 
-        
+        tbody.innerHTML = ventas.map(venta => {
+            // Preparar los datos para el dataset
+            const ventaData = {
+                ven_id: venta.ven_id,
+                ven_user: venta.ven_user,
+                cliente: venta.cliente,
+                det_producto_id: venta.det_producto_id,
+                series_ids: venta.series_numeros || venta.series_ids || '',
+                lotes_ids: venta.lotes_ids || '',
+                precio_venta: venta.precio_venta || 0,
+                precio_venta_empresa: venta.precio_venta_empresa || 0
+            };
 
-        let identificadoresDisplay = '';
-   if (venta.series_numeros) {
-  identificadoresDisplay = `
+
+
+            let identificadoresDisplay = '';
+            if (venta.series_numeros) {
+                identificadoresDisplay = `
     <div class="text-xs">
       <span class="font-semibold">Series:</span> ${venta.series_numeros}
     </div>
   `;
-} else if (venta.series_display) {
-  identificadoresDisplay = `
+            } else if (venta.series_display) {
+                identificadoresDisplay = `
     <div class="text-xs">
       <span class="font-semibold">Series:</span> ${venta.series_display}
     </div>
   `;
-}
+            }
 
-        if (venta.lotes_display) {
-            identificadoresDisplay += `
+            if (venta.lotes_display) {
+                identificadoresDisplay += `
                 <div class="text-xs mt-1">
                     <span class="font-semibold">Lotes:</span> ${venta.lotes_display}
                 </div>
             `;
-        }
-        if (!identificadoresDisplay) {
-            identificadoresDisplay = '<span class="text-gray-400">Sin series/lotes</span>';
-        }
-        
-        return `
+            }
+            if (!identificadoresDisplay) {
+                identificadoresDisplay = '<span class="text-gray-400">Sin series/lotes</span>';
+            }
+
+            return `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" 
                 data-venta='${JSON.stringify(ventaData)}'>
                 <!-- Fecha -->
@@ -583,100 +583,133 @@ const ventaData = {
                 </td>
             </tr>
         `;
-    }).join('');
-}
-
-async autorizarVentaClick(buttonElement) {
-  try {
-    const row = buttonElement.closest('tr');
-    const ventaData = JSON.parse(row.dataset.venta);
-    console.log('📦 Datos de la venta:', ventaData);
-
-    // Series -> array<number>
-    const seriesArray = (ventaData.series_ids || '')
-      .split(',')
-      .map(id => parseInt(id.trim(), 10))
-      .filter(id => !isNaN(id) && id > 0);
-
-    // Lotes -> array<number>
-    const lotesArray = (ventaData.lotes_ids || '')
-      .split(',')
-      .map(id => {
-        const t = id.trim();
-        if (t === 'SIN-LOTE' || t === '') return null;
-        return parseInt(t, 10);
-      })
-      .filter(id => id !== null && !isNaN(id) && id > 0);
-
-    const payload = {
-      ven_id: ventaData.ven_id,
-      ven_user: ventaData.ven_user,
-      cliente: ventaData.cliente,
-      det_producto_id: ventaData.det_producto_id,
-      producto_id: ventaData.det_producto_id,
-      series_ids: seriesArray,
-      lotes_ids: lotesArray
-    };
-
-    console.log('📤 Payload a enviar:', payload);
-
-    let detallesHtml = `<p><strong>Cliente:</strong> ${payload.cliente}</p>`;
-    if (seriesArray.length > 0) detallesHtml += `<p><strong>Series:</strong> ${seriesArray.length} serie(s)</p>`;
-    if (lotesArray.length > 0) detallesHtml += `<p><strong>Lotes:</strong> ${lotesArray.length} lote(s)</p>`;
-
-    const confirmacion = await Swal.fire({
-      title: '¿Autorizar esta venta?',
-      html: `<div class="text-left">${detallesHtml}</div>`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#10b981',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: '<i class="fas fa-check mr-2"></i>Sí, autorizar',
-      cancelButtonText: '<i class="fas fa-times mr-2"></i>Cancelar'
-    });
-    if (!confirmacion.isConfirmed) return;
-
-    Swal.fire({
-      title: 'Autorizando venta...',
-      html: 'Por favor espere',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
-
-    const response = await fetch('/ventas/autorizar', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (response.status === 419)
-      throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
-
-    if (!response.ok)
-      throw new Error(`Error ${response.status}: ${await response.text()}`);
-
-    const result = await response.json();
-console.log('qtyTotal:', result.meta.qty_total);
-    if (result.codigo !== 1)
-      throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
-
-    let mensajeExito = result.mensaje || '¡Venta autorizada!';
-    if (result.meta?.qty_total) {
-      mensajeExito += `<br><small><strong>Total procesado:</strong> ${result.meta.qty_total} unidad(es)</small>`;
+        }).join('');
     }
 
-    // 💡 Licencias
-    if (seriesArray.length > 0) {
-      let htmlLicencias = `
+    async autorizarVentaClick(buttonElement) {
+        try {
+            const row = buttonElement.closest('tr');
+            const ventaData = JSON.parse(row.dataset.venta);
+            console.log('📦 Datos de la venta:', ventaData);
+
+            // Series -> array<number>
+            const seriesArray = (ventaData.series_ids || '')
+                .split(',')
+                .map(id => parseInt(id.trim(), 10))
+                .filter(id => !isNaN(id) && id > 0);
+
+            // Lotes -> array<number>
+            const lotesArray = (ventaData.lotes_ids || '')
+                .split(',')
+                .map(id => {
+                    const t = id.trim();
+                    if (t === 'SIN-LOTE' || t === '') return null;
+                    return parseInt(t, 10);
+                })
+                .filter(id => id !== null && !isNaN(id) && id > 0);
+
+            const payload = {
+                ven_id: ventaData.ven_id,
+                ven_user: ventaData.ven_user,
+                cliente: ventaData.cliente,
+                det_producto_id: ventaData.det_producto_id,
+                producto_id: ventaData.det_producto_id,
+                series_ids: seriesArray,
+                lotes_ids: lotesArray
+            };
+
+            console.log('📤 Payload a enviar:', payload);
+
+            let detallesHtml = `<p><strong>Cliente:</strong> ${payload.cliente}</p>`;
+            if (seriesArray.length > 0) detallesHtml += `<p><strong>Series:</strong> ${seriesArray.length} serie(s)</p>`;
+            if (lotesArray.length > 0) detallesHtml += `<p><strong>Lotes:</strong> ${lotesArray.length} lote(s)</p>`;
+
+            const { value: accion } = await Swal.fire({
+                title: 'Autorizar Venta',
+                html: `
+        <div class="text-left mb-4">${detallesHtml}</div>
+        <p class="mb-4 text-sm text-gray-600">Selecciona una acción:</p>
+      `,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: '#10b981', // Verde
+                denyButtonColor: '#3b82f6',    // Azul
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: '<i class="fas fa-file-invoice-dollar mr-2"></i>Autorizar y Facturar',
+                denyButtonText: '<i class="fas fa-check mr-2"></i>Solo Autorizar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
+            });
+
+            if (!accion && accion !== false) return; // Cancelado (accion es undefined si se cierra, false si es deny)
+
+            // accion === true -> Confirm (Autorizar y Facturar)
+            // accion === false -> Deny (Solo Autorizar)
+
+            const tipoAutorizacion = accion ? 'finalizar' : 'solo_autorizar';
+
+            Swal.fire({
+                title: accion ? 'Redirigiendo a facturación...' : 'Autorizando venta...',
+                html: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            // Si es "Autorizar y Facturar", primero autorizamos como "solo_autorizar" para asegurar estado
+            // O mejor, usamos el endpoint con tipo='solo_autorizar' y luego redirigimos.
+            // El usuario pidió: "si se autoriza que de una vez facture... y si le da opción que solo desea autorizar, que se pueda facturar"
+
+            // Vamos a usar 'solo_autorizar' siempre para el primer paso si elige "Solo Autorizar".
+            // Si elige "Autorizar y Facturar", también podemos usar 'solo_autorizar' y luego redirigir, 
+            // ya que la facturación se encarga de finalizar (descontar stock).
+
+            const payloadFinal = { ...payload, tipo: 'solo_autorizar' };
+
+            const response = await fetch('/ventas/autorizar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payloadFinal)
+            });
+
+            if (response.status === 419)
+                throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
+
+            if (!response.ok)
+                throw new Error(`Error ${response.status}: ${await response.text()}`);
+
+            const result = await response.json();
+
+            if (result.codigo !== 1)
+                throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
+
+            // Si eligió "Autorizar y Facturar", redirigir
+            if (accion) {
+                window.location.href = `/facturacion?venta_id=${ventaData.ven_id}`;
+                return;
+            }
+
+            // Si eligió "Solo Autorizar", mostrar éxito y recargar
+            let mensajeExito = result.mensaje || '¡Venta autorizada!';
+
+            // 💡 Licencias (Solo si se queda en esta pantalla)
+            if (seriesArray.length > 0) {
+                // ... (Lógica de licencias existente) ...
+                // NOTA: Si redirige a facturación, las licencias se deberían pedir allá o aquí?
+                // El usuario dijo "si se autoriza que de una vez facture". 
+                // Asumiremos que las licencias se gestionan igual.
+
+                // COPIAR LOGICA DE LICENCIAS AQUI
+                let htmlLicencias = `
         <div style="max-height: 280px; overflow-y: auto; text-align: left;">
           <p class="text-sm text-gray-600 mb-3">Ingresa las licencias para cada serie:</p>
       `;
-      seriesArray.forEach(serieId => {
-        htmlLicencias += `
+                seriesArray.forEach(serieId => {
+                    htmlLicencias += `
           <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; background-color: #f9fafb;">
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #374151;">🔫 Serie ID: ${serieId}</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
@@ -684,107 +717,106 @@ console.log('qtyTotal:', result.meta.qty_total);
               <input id="lic-nueva-${serieId}" class="swal2-input" style="margin:0;padding:6px;font-size:13px;" placeholder="Licencia nueva">
             </div>
           </div>`;
-      });
-      htmlLicencias += '</div>';
+                });
+                htmlLicencias += '</div>';
 
-      const { value: formValues } = await Swal.fire({
-        title: 'Actualizar Licencias',
-        html: htmlLicencias,
-        width: '500px', // 🔹 más pequeño
-        focusConfirm: false,
-        showCancelButton: false,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        confirmButtonText: '<i class="fas fa-save mr-2"></i>Guardar',
-        confirmButtonColor: '#10b981',
-        preConfirm: () => {
-          const licencias = [];
-          let errorMsg = '';
-          seriesArray.forEach(serieId => {
-            const anterior = document.getElementById(`lic-ant-${serieId}`)?.value.trim();
-            const nueva = document.getElementById(`lic-nueva-${serieId}`)?.value.trim();
-            if (!anterior || !nueva) {
-              errorMsg = `⚠️ Debes llenar ambas licencias para la serie ${serieId}`;
+                const { value: formValues } = await Swal.fire({
+                    title: 'Actualizar Licencias',
+                    html: htmlLicencias,
+                    width: '500px',
+                    focusConfirm: false,
+                    showCancelButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    confirmButtonText: '<i class="fas fa-save mr-2"></i>Guardar',
+                    confirmButtonColor: '#10b981',
+                    preConfirm: () => {
+                        const licencias = [];
+                        let errorMsg = '';
+                        seriesArray.forEach(serieId => {
+                            const anterior = document.getElementById(`lic-ant-${serieId}`)?.value.trim();
+                            const nueva = document.getElementById(`lic-nueva-${serieId}`)?.value.trim();
+                            if (!anterior || !nueva) {
+                                errorMsg = `⚠️ Debes llenar ambas licencias para la serie ${serieId}`;
+                            }
+                            licencias.push({ serie_id: serieId, licencia_anterior: anterior, licencia_nueva: nueva });
+                        });
+                        if (errorMsg) {
+                            Swal.showValidationMessage(errorMsg);
+                            return false;
+                        }
+                        return licencias;
+                    }
+                });
+
+                if (formValues && formValues.length > 0) {
+                    Swal.fire({
+                        title: 'Actualizando licencias...',
+                        html: 'Por favor espere',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    const updateResponse = await fetch('/ventas/actualizar-licencias', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ ven_id: ventaData.ven_id, licencias: formValues })
+                    });
+
+                    const updateResult = await updateResponse.json();
+
+                    if (!updateResponse.ok || updateResult.codigo !== 1) {
+                        throw new Error(updateResult.detalle || updateResult.mensaje || 'Error al actualizar licencias');
+                    }
+
+                    mensajeExito += `<br><small class="text-green-600">✅ Licencias actualizadas: ${formValues.length} serie(s)</small>`;
+                }
             }
-            licencias.push({ serie_id: serieId, licencia_anterior: anterior, licencia_nueva: nueva });
-          });
-          if (errorMsg) {
-            Swal.showValidationMessage(errorMsg);
-            return false;
-          }
-          return licencias;
-        }
-      });
 
-      if (formValues && formValues.length > 0) {
-        Swal.fire({
-          title: 'Actualizando licencias...',
-          html: 'Por favor espere',
-          allowOutsideClick: false,
-          didOpen: () => Swal.showLoading()
-        });
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Venta autorizada!',
+                html: mensajeExito,
+                confirmButtonColor: '#10b981'
+            });
 
-        const updateResponse = await fetch('/ventas/actualizar-licencias', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ ven_id: ventaData.ven_id, licencias: formValues })
-        });
+            if (this.cargarVentasPendientes) {
+                this.cargarVentasPendientes();
+            } else if (typeof cargarVentasPendientes === 'function') {
+                cargarVentasPendientes();
+            }
 
-        const updateResult = await updateResponse.json();
-
-        if (!updateResponse.ok || updateResult.codigo !== 1) {
-          throw new Error(updateResult.detalle || updateResult.mensaje || 'Error al actualizar licencias');
-        }
-
-        mensajeExito += `<br><small class="text-green-600">✅ Licencias actualizadas: ${formValues.length} serie(s)</small>`;
-      }
-    }
-
-    await Swal.fire({
-      icon: 'success',
-      title: '¡Venta completada!',
-      html: mensajeExito,
-      confirmButtonColor: '#10b981'
-    });
-
-    // 🔹 Ejecuta correctamente aunque esté dentro de clase
-    if (this.cargarVentasPendientes) {
-      this.cargarVentasPendientes();
-    } else if (typeof cargarVentasPendientes === 'function') {
-      cargarVentasPendientes();
-    }
-
-  } catch (error) {
-    console.error('❌ Error completo:', error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      html: `
+        } catch (error) {
+            console.error('❌ Error completo:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                html: `
         <div class="text-left">
           <p class="font-semibold mb-2">No se pudo autorizar la venta:</p>
           <p class="text-sm">${error.message}</p>
         </div>
       `,
-      confirmButtonColor: '#ef4444'
-    });
-  }
-}
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    }
 
 
 
-/**
- * Cancelar una venta pendiente
- */
-async cancelarVentaClick(ventaId) {
-    try {
-        // Solicitar motivo de cancelación
-        const { value: motivo } = await Swal.fire({
-            title: '¿Cancelar esta venta?',
-            html: `
+    /**
+     * Cancelar una venta pendiente
+     */
+    async cancelarVentaClick(ventaId) {
+        try {
+            // Solicitar motivo de cancelación
+            const { value: motivo } = await Swal.fire({
+                title: '¿Cancelar esta venta?',
+                html: `
                 <p class="text-sm text-gray-600 mb-3">Esta acción no se puede deshacer.</p>
                 <textarea 
                     id="motivo-cancelacion" 
@@ -792,134 +824,134 @@ async cancelarVentaClick(ventaId) {
                     placeholder="Motivo de cancelación (opcional)"
                     rows="3"></textarea>
             `,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta',
-            cancelButtonText: '<i class="fas fa-arrow-left mr-2"></i>No, volver',
-            preConfirm: () => {
-                return document.getElementById('motivo-cancelacion')?.value.trim() || 'Cancelación sin motivo especificado';
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta',
+                cancelButtonText: '<i class="fas fa-arrow-left mr-2"></i>No, volver',
+                preConfirm: () => {
+                    return document.getElementById('motivo-cancelacion')?.value.trim() || 'Cancelación sin motivo especificado';
+                }
+            });
+
+            if (!motivo) return; // Usuario canceló
+
+            // Mostrar loading
+            Swal.fire({
+                title: 'Cancelando venta...',
+                html: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            // Enviar solicitud de cancelación
+            const response = await fetch('/ventas/cancelar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    ven_id: ventaId,
+                    motivo: motivo
+                })
+            });
+
+            if (response.status === 419) {
+                throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
             }
-        });
 
-        if (!motivo) return; // Usuario canceló
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Error ${response.status}: ${errorText}`);
+            }
 
-        // Mostrar loading
-        Swal.fire({
-            title: 'Cancelando venta...',
-            html: 'Por favor espere',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+            const result = await response.json();
 
-        // Enviar solicitud de cancelación
-        const response = await fetch('/ventas/cancelar', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                ven_id: ventaId,
-                motivo: motivo
-            })
-        });
+            if (!result.success) {
+                throw new Error(result.message || 'Error al cancelar la venta');
+            }
 
-        if (response.status === 419) {
-            throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
-        }
+            // Mostrar éxito
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Venta cancelada!',
+                text: 'La venta ha sido cancelada exitosamente',
+                confirmButtonColor: '#10b981'
+            });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Error ${response.status}: ${errorText}`);
-        }
+            // Recargar la tabla de ventas
+            if (this.cargarVentasPendientes) {
+                this.cargarVentasPendientes();
+            } else if (typeof cargarVentasPendientes === 'function') {
+                cargarVentasPendientes();
+            }
 
-        const result = await response.json();
-
-        if (!result.success) {
-            throw new Error(result.message || 'Error al cancelar la venta');
-        }
-
-        // Mostrar éxito
-        await Swal.fire({
-            icon: 'success',
-            title: '¡Venta cancelada!',
-            text: 'La venta ha sido cancelada exitosamente',
-            confirmButtonColor: '#10b981'
-        });
-
-        // Recargar la tabla de ventas
-        if (this.cargarVentasPendientes) {
-            this.cargarVentasPendientes();
-        } else if (typeof cargarVentasPendientes === 'function') {
-            cargarVentasPendientes();
-        }
-
-    } catch (error) {
-        console.error('❌ Error cancelando venta:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            html: `
+        } catch (error) {
+            console.error('❌ Error cancelando venta:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                html: `
                 <div class="text-left">
                     <p class="font-semibold mb-2">No se pudo cancelar la venta:</p>
                     <p class="text-sm">${error.message}</p>
                 </div>
             `,
-            confirmButtonColor: '#ef4444'
-        });
+                confirmButtonColor: '#ef4444'
+            });
+        }
     }
-}
 
 
 
-async cargarVentasPendientes(filtros = {}) {
-    try {
-        console.log('🔄 Cargando ventas pendientes... con los select ', filtros);
-        
-        // Construir query params desde los filtros
-        const params = new URLSearchParams();
-        if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
-        if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
-        
-        const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
-        console.log('📡 URL:', url);
-        
-        const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+    async cargarVentasPendientes(filtros = {}) {
+        try {
+            console.log('🔄 Cargando ventas pendientes... con los select ', filtros);
+
+            // Construir query params desde los filtros
+            const params = new URLSearchParams();
+            if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
+            if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
+
+            const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
+            console.log('📡 URL:', url);
+
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            console.log('📡 Pendientes response status:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}`);
             }
-        });
-        
-        console.log('📡 Pendientes response status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`Error ${response.status}`);
+
+            const data = await response.json();
+            console.log('📥 Ventas pendientes:', data);
+
+            if (data.success) {
+                this.renderTablaVentas(data.data);
+                console.log(`✅ ${data.total} ventas pendientes cargadas`);
+            } else {
+                throw new Error(data.message || 'Error al cargar ventas');
+            }
+
+        } catch (error) {
+            console.error('❌ Error al cargar ventas pendientes:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudieron cargar las ventas pendientes',
+                confirmButtonColor: '#ef4444'
+            });
         }
-        
-        const data = await response.json();
-        console.log('📥 Ventas pendientes:', data);
-        
-        if (data.success) {
-            this.renderTablaVentas(data.data);
-            console.log(`✅ ${data.total} ventas pendientes cargadas`);
-        } else {
-            throw new Error(data.message || 'Error al cargar ventas');
-        }
-        
-    } catch (error) {
-        console.error('❌ Error al cargar ventas pendientes:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudieron cargar las ventas pendientes',
-            confirmButtonColor: '#ef4444'
-        });
     }
-}
 
 
 
@@ -930,10 +962,10 @@ async cargarVentasPendientes(filtros = {}) {
     async loadReporteProductos(filtros = {}) {
         try {
             this.showLoading('productos');
-            
+
             const params = { ...this.filtros, ...filtros };
             const response = await fetch('/reportes/productos?' + new URLSearchParams(params));
-            
+
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
@@ -953,10 +985,10 @@ async cargarVentasPendientes(filtros = {}) {
     async loadReporteComisiones(filtros = {}) {
         try {
             this.showLoading('comisiones');
-            
+
             const params = { ...this.filtros, ...filtros };
             const response = await fetch('/reportes/comisiones?' + new URLSearchParams(params));
-            
+
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
@@ -977,10 +1009,10 @@ async cargarVentasPendientes(filtros = {}) {
     async loadReportePagos(filtros = {}) {
         try {
             this.showLoading('pagos');
-            
+
             const params = { ...this.filtros, ...filtros };
             const response = await fetch('/reportes/pagos?' + new URLSearchParams(params));
-            
+
             if (response.ok) {
                 const result = await response.json();
                 if (result.success && result.data.data) {
@@ -995,88 +1027,88 @@ async cargarVentasPendientes(filtros = {}) {
     }
 
 
-/**
- * Cargar reporte DIGECAM de armas
- */
-async loadReporteDigecamArmas(filtros = {}) {
-    try {
-        this.showLoading('digecam-armas');
-        
-        const mes = filtros.mes || new Date().getMonth() + 1;
-        const anio = filtros.anio || new Date().getFullYear();
-        
-        const mesSelect = document.getElementById('filtro-mes-digecam-armas');
-        const anioSelect = document.getElementById('filtro-anio-digecam-armas');
-        
-        if (mesSelect && !filtros.mes) mesSelect.value = mes;
-        if (anioSelect && !filtros.anio) anioSelect.value = anio;
-        
-        const params = new URLSearchParams({ mes, anio });
-        const response = await fetch(`/reportes/digecam/armas?${params}`);
-        
-        if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-                this.renderTablaDigecamArmas(result.data);
-                this.updateDigecamArmasInfo(result);
-            }
-        }
-    } catch (error) {
-        console.error('Error cargando reporte DIGECAM armas:', error);
-        this.showAlert('error', 'Error', 'No se pudo cargar el reporte de armas');
-    } finally {
-        this.hideLoading('digecam-armas');
-    }
-}
+    /**
+     * Cargar reporte DIGECAM de armas
+     */
+    async loadReporteDigecamArmas(filtros = {}) {
+        try {
+            this.showLoading('digecam-armas');
 
-/**
- * Cargar reporte DIGECAM de municiones
- */
-async loadReporteDigecamMuniciones(filtros = {}) {
-    try {
-        this.showLoading('digecam-municiones');
-        
-        const params = new URLSearchParams({
-            fecha_inicio: filtros.fecha_inicio || this.filtros.fecha_inicio,
-            fecha_fin: filtros.fecha_fin || this.filtros.fecha_fin
-        });
-        
-        const response = await fetch(`/reportes/digecam/municiones?${params}`);
-        
-        if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-                this.renderTablaDigecamMuniciones(result.data);
-                this.updateDigecamMunicionesInfo(result);
-            }
-        }
-    } catch (error) {
-        console.error('Error cargando reporte DIGECAM municiones:', error);
-        this.showAlert('error', 'Error', 'No se pudo cargar el reporte de municiones');
-    } finally {
-        this.hideLoading('digecam-municiones');
-    }
-}
+            const mes = filtros.mes || new Date().getMonth() + 1;
+            const anio = filtros.anio || new Date().getFullYear();
 
-/**
- * Renderizar tabla de armas DIGECAM
- */
-renderTablaDigecamArmas(armas) {
-    const tbody = document.getElementById('tbody-digecam-armas');
-    if (!tbody) return;
-    
-    if (armas.length === 0) {
-        tbody.innerHTML = `
+            const mesSelect = document.getElementById('filtro-mes-digecam-armas');
+            const anioSelect = document.getElementById('filtro-anio-digecam-armas');
+
+            if (mesSelect && !filtros.mes) mesSelect.value = mes;
+            if (anioSelect && !filtros.anio) anioSelect.value = anio;
+
+            const params = new URLSearchParams({ mes, anio });
+            const response = await fetch(`/reportes/digecam/armas?${params}`);
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.renderTablaDigecamArmas(result.data);
+                    this.updateDigecamArmasInfo(result);
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando reporte DIGECAM armas:', error);
+            this.showAlert('error', 'Error', 'No se pudo cargar el reporte de armas');
+        } finally {
+            this.hideLoading('digecam-armas');
+        }
+    }
+
+    /**
+     * Cargar reporte DIGECAM de municiones
+     */
+    async loadReporteDigecamMuniciones(filtros = {}) {
+        try {
+            this.showLoading('digecam-municiones');
+
+            const params = new URLSearchParams({
+                fecha_inicio: filtros.fecha_inicio || this.filtros.fecha_inicio,
+                fecha_fin: filtros.fecha_fin || this.filtros.fecha_fin
+            });
+
+            const response = await fetch(`/reportes/digecam/municiones?${params}`);
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.renderTablaDigecamMuniciones(result.data);
+                    this.updateDigecamMunicionesInfo(result);
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando reporte DIGECAM municiones:', error);
+            this.showAlert('error', 'Error', 'No se pudo cargar el reporte de municiones');
+        } finally {
+            this.hideLoading('digecam-municiones');
+        }
+    }
+
+    /**
+     * Renderizar tabla de armas DIGECAM
+     */
+    renderTablaDigecamArmas(armas) {
+        const tbody = document.getElementById('tbody-digecam-armas');
+        if (!tbody) return;
+
+        if (armas.length === 0) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="12" class="px-6 py-4 text-center text-gray-500">
                     No se encontraron ventas de armas en este período
                 </td>
             </tr>
         `;
-        return;
-    }
+            return;
+        }
 
-    tbody.innerHTML = armas.map((arma, index) => `
+        tbody.innerHTML = armas.map((arma, index) => `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.pro_tenencia_anterior || ''}</td>
@@ -1092,31 +1124,31 @@ renderTablaDigecamArmas(armas) {
             <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.factura || ''}</td>
         </tr>
     `).join('');
-}
+    }
 
-/**
- * Renderizar tabla de municiones DIGECAM
- */
-renderTablaDigecamMuniciones(municiones) {
-    const tbody = document.getElementById('tbody-digecam-municiones');
-    if (!tbody) return;
-    
-    if (municiones.length === 0) {
-        tbody.innerHTML = `
+    /**
+     * Renderizar tabla de municiones DIGECAM
+     */
+    renderTablaDigecamMuniciones(municiones) {
+        const tbody = document.getElementById('tbody-digecam-municiones');
+        if (!tbody) return;
+
+        if (municiones.length === 0) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="11" class="px-6 py-4 text-center text-gray-500">
                     No se encontraron ventas de municiones en este período
                 </td>
             </tr>
         `;
-        return;
-    }
+            return;
+        }
 
-    let totalMuniciones = 0;
-    
-    tbody.innerHTML = municiones.map((municion, index) => {
-        totalMuniciones += parseInt(municion.cantidad) || 0;
-        return `
+        let totalMuniciones = 0;
+
+        tbody.innerHTML = municiones.map((municion, index) => {
+            totalMuniciones += parseInt(municion.cantidad) || 0;
+            return `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
             <td class="px-2 py-2 text-center text-xs">${municion.autorizacion}</td>
@@ -1131,95 +1163,95 @@ renderTablaDigecamMuniciones(municiones) {
             <td class="px-2 py-2 text-center text-xs bg-yellow-100 font-bold">${municion.cantidad}</td>
         </tr>
     `}).join('');
-    
-    const totalEl = document.getElementById('total-municiones-vendidas');
-    if (totalEl) {
-        totalEl.textContent = this.formatNumber(totalMuniciones);
+
+        const totalEl = document.getElementById('total-municiones-vendidas');
+        if (totalEl) {
+            totalEl.textContent = this.formatNumber(totalMuniciones);
+        }
     }
-}
 
-/**
- * Actualizar información del reporte de armas
- */
-updateDigecamArmasInfo(data) {
-    const mesEl = document.getElementById('digecam-armas-mes');
-    const anioEl = document.getElementById('digecam-armas-anio');
-    const totalEl = document.getElementById('digecam-armas-total');
-    
-    if (mesEl) mesEl.textContent = data.mes_nombre;
-    if (anioEl) anioEl.textContent = data.anio;
-    if (totalEl) totalEl.textContent = data.data.length;
-}
+    /**
+     * Actualizar información del reporte de armas
+     */
+    updateDigecamArmasInfo(data) {
+        const mesEl = document.getElementById('digecam-armas-mes');
+        const anioEl = document.getElementById('digecam-armas-anio');
+        const totalEl = document.getElementById('digecam-armas-total');
 
-/**
- * Actualizar información del reporte de municiones
- */
-updateDigecamMunicionesInfo(data) {
-    const fechaInicioEl = document.getElementById('digecam-municiones-fecha-inicio');
-    const fechaFinEl = document.getElementById('digecam-municiones-fecha-fin');
-    const totalEl = document.getElementById('digecam-municiones-total');
-    
-    if (fechaInicioEl) fechaInicioEl.textContent = this.formatearFechaDisplay(data.fecha_inicio);
-    if (fechaFinEl) fechaFinEl.textContent = this.formatearFechaDisplay(data.fecha_fin);
-    if (totalEl) totalEl.textContent = data.data.length;
-}
+        if (mesEl) mesEl.textContent = data.mes_nombre;
+        if (anioEl) anioEl.textContent = data.anio;
+        if (totalEl) totalEl.textContent = data.data.length;
+    }
 
-/**
- * Exportar reporte DIGECAM
- */
-async exportarReporteDigecam(tipo) {
-    try {
-        let params = new URLSearchParams({ tipo });
-        
-        if (tipo === 'armas') {
-            const mes = document.getElementById('filtro-mes-digecam-armas')?.value || new Date().getMonth() + 1;
-            const anio = document.getElementById('filtro-anio-digecam-armas')?.value || new Date().getFullYear();
-            params.append('mes', mes);
-            params.append('anio', anio);
-        } else {
-            params.append('fecha_inicio', this.filtros.fecha_inicio);
-            params.append('fecha_fin', this.filtros.fecha_fin);
+    /**
+     * Actualizar información del reporte de municiones
+     */
+    updateDigecamMunicionesInfo(data) {
+        const fechaInicioEl = document.getElementById('digecam-municiones-fecha-inicio');
+        const fechaFinEl = document.getElementById('digecam-municiones-fecha-fin');
+        const totalEl = document.getElementById('digecam-municiones-total');
+
+        if (fechaInicioEl) fechaInicioEl.textContent = this.formatearFechaDisplay(data.fecha_inicio);
+        if (fechaFinEl) fechaFinEl.textContent = this.formatearFechaDisplay(data.fecha_fin);
+        if (totalEl) totalEl.textContent = data.data.length;
+    }
+
+    /**
+     * Exportar reporte DIGECAM
+     */
+    async exportarReporteDigecam(tipo) {
+        try {
+            let params = new URLSearchParams({ tipo });
+
+            if (tipo === 'armas') {
+                const mes = document.getElementById('filtro-mes-digecam-armas')?.value || new Date().getMonth() + 1;
+                const anio = document.getElementById('filtro-anio-digecam-armas')?.value || new Date().getFullYear();
+                params.append('mes', mes);
+                params.append('anio', anio);
+            } else {
+                params.append('fecha_inicio', this.filtros.fecha_inicio);
+                params.append('fecha_fin', this.filtros.fecha_fin);
+            }
+
+            const url = `/reportes/digecam/exportar-pdf?${params}`;
+            window.open(url, '_blank');
+
+            this.showAlert('success', 'Exportación exitosa', `Reporte DIGECAM de ${tipo} generado correctamente`);
+        } catch (error) {
+            console.error('Error exportando reporte DIGECAM:', error);
+            this.showAlert('error', 'Error', 'No se pudo exportar el reporte');
+        }
+    }
+
+    /**
+     * Aplicar filtros de armas DIGECAM
+     */
+    aplicarFiltrosDigecamArmas() {
+        const mes = document.getElementById('filtro-mes-digecam-armas')?.value;
+        const anio = document.getElementById('filtro-anio-digecam-armas')?.value;
+
+        if (!mes || !anio) {
+            this.showAlert('warning', 'Filtros incompletos', 'Debe seleccionar mes y año');
+            return;
         }
 
-        const url = `/reportes/digecam/exportar-pdf?${params}`;
-        window.open(url, '_blank');
-        
-        this.showAlert('success', 'Exportación exitosa', `Reporte DIGECAM de ${tipo} generado correctamente`);
-    } catch (error) {
-        console.error('Error exportando reporte DIGECAM:', error);
-        this.showAlert('error', 'Error', 'No se pudo exportar el reporte');
+        this.loadReporteDigecamArmas({ mes, anio });
     }
-}
 
-/**
- * Aplicar filtros de armas DIGECAM
- */
-aplicarFiltrosDigecamArmas() {
-    const mes = document.getElementById('filtro-mes-digecam-armas')?.value;
-    const anio = document.getElementById('filtro-anio-digecam-armas')?.value;
-    
-    if (!mes || !anio) {
-        this.showAlert('warning', 'Filtros incompletos', 'Debe seleccionar mes y año');
-        return;
-    }
-    
-    this.loadReporteDigecamArmas({ mes, anio });
-}
+    /**
+     * Aplicar filtros de municiones DIGECAM
+     */
+    aplicarFiltrosDigecamMuniciones() {
+        const fechaInicio = document.getElementById('filtro-fecha-inicio-municiones')?.value;
+        const fechaFin = document.getElementById('filtro-fecha-fin-municiones')?.value;
 
-/**
- * Aplicar filtros de municiones DIGECAM
- */
-aplicarFiltrosDigecamMuniciones() {
-    const fechaInicio = document.getElementById('filtro-fecha-inicio-municiones')?.value;
-    const fechaFin = document.getElementById('filtro-fecha-fin-municiones')?.value;
-    
-    if (!fechaInicio || !fechaFin) {
-        this.showAlert('warning', 'Filtros incompletos', 'Debe seleccionar ambas fechas');
-        return;
+        if (!fechaInicio || !fechaFin) {
+            this.showAlert('warning', 'Filtros incompletos', 'Debe seleccionar ambas fechas');
+            return;
+        }
+
+        this.loadReporteDigecamMuniciones({ fecha_inicio: fechaInicio, fecha_fin: fechaFin });
     }
-    
-    this.loadReporteDigecamMuniciones({ fecha_inicio: fechaInicio, fecha_fin: fechaFin });
-}
 
 
 
@@ -1228,96 +1260,96 @@ aplicarFiltrosDigecamMuniciones() {
     /**
      * Renderizar tabla de ventas
      */
-/**
- * Renderizar tabla de ventas - CORREGIDO
- */
+    /**
+     * Renderizar tabla de ventas - CORREGIDO
+     */
 
 
-/**
- * Aplicar filtros de ventas - CORREGIDO
- */
-/**
- * Aplicar filtros de ventas
- */
-aplicarFiltrosVentas() {
-    const filtros = {};
-    
-    const vendedorEl = document.getElementById('filtro-vendedor-ventas');
-    const clienteEl = document.getElementById('filtro-cliente-ventas');
-    const estadoEl = document.getElementById('filtro-estado-ventas');
-    
-    if (vendedorEl?.value) {
-        filtros.vendedor_id = vendedorEl.value;
-        // vendedor:', vendedorEl.value);
-    }
-    
-    if (clienteEl?.value) {
-        filtros.cliente_id = clienteEl.value;
-        // cliente:', clienteEl.value);
-    }
-    
-    if (estadoEl?.value) {
-        filtros.estado = estadoEl.value;
-        // estado:', estadoEl.value);
-    }
+    /**
+     * Aplicar filtros de ventas - CORREGIDO
+     */
+    /**
+     * Aplicar filtros de ventas
+     */
+    aplicarFiltrosVentas() {
+        const filtros = {};
 
-   // console.log('📋 Aplicando filtros:', filtros);
-    this.cargarVentasPendientes(filtros);
-}
+        const vendedorEl = document.getElementById('filtro-vendedor-ventas');
+        const clienteEl = document.getElementById('filtro-cliente-ventas');
+        const estadoEl = document.getElementById('filtro-estado-ventas');
 
-/**
- * Inicializar Select2 para clientes
- */
-/**
- * Inicializar Select2 para clientes
- */
-/**
- * Inicializar select de clientes (sin Select2, estilo normal)
- */
-async initClienteSelect() {
-    try {
-        console.log('🔄 Cargando clientes...');
-        
-        const response = await fetch('/reportes/buscar-clientes?q=');
-        const data = await response.json();
-        
-        if (data.success && data.results) {
-            this.populateSelect('filtro-cliente-ventas', data.results, 'id', 'text');
-            console.log('✅ Clientes cargados:', data.results.length);
-        } else {
-            console.warn('⚠️ No se encontraron clientes');
+        if (vendedorEl?.value) {
+            filtros.vendedor_id = vendedorEl.value;
+            // vendedor:', vendedorEl.value);
         }
-    } catch (error) {
-        console.error('❌ Error cargando clientes:', error);
-    }
-}
 
-/**
- * Cargar filtros para los formularios
- */
-async loadFiltros() {
-    try {
-        const response = await fetch('/reportes/filtros');
-        if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-                this.populateFiltros(result.data);
-                // ✅ Cargar clientes después de los otros filtros
-                await this.initClienteSelect();
+        if (clienteEl?.value) {
+            filtros.cliente_id = clienteEl.value;
+            // cliente:', clienteEl.value);
+        }
+
+        if (estadoEl?.value) {
+            filtros.estado = estadoEl.value;
+            // estado:', estadoEl.value);
+        }
+
+        // console.log('📋 Aplicando filtros:', filtros);
+        this.cargarVentasPendientes(filtros);
+    }
+
+    /**
+     * Inicializar Select2 para clientes
+     */
+    /**
+     * Inicializar Select2 para clientes
+     */
+    /**
+     * Inicializar select de clientes (sin Select2, estilo normal)
+     */
+    async initClienteSelect() {
+        try {
+            console.log('🔄 Cargando clientes...');
+
+            const response = await fetch('/reportes/buscar-clientes?q=');
+            const data = await response.json();
+
+            if (data.success && data.results) {
+                this.populateSelect('filtro-cliente-ventas', data.results, 'id', 'text');
+                console.log('✅ Clientes cargados:', data.results.length);
+            } else {
+                console.warn('⚠️ No se encontraron clientes');
             }
+        } catch (error) {
+            console.error('❌ Error cargando clientes:', error);
         }
-    } catch (error) {
-        console.error('Error cargando filtros:', error);
     }
-}
-    
+
+    /**
+     * Cargar filtros para los formularios
+     */
+    async loadFiltros() {
+        try {
+            const response = await fetch('/reportes/filtros');
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.populateFiltros(result.data);
+                    // ✅ Cargar clientes después de los otros filtros
+                    await this.initClienteSelect();
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando filtros:', error);
+        }
+    }
+
     /**
      * Renderizar tabla de productos
      */
     renderTablaProductos(productos) {
         const tbody = document.getElementById('tbody-productos');
         if (!tbody) return;
-        
+
         tbody.innerHTML = productos.map((producto, index) => `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -1463,11 +1495,11 @@ async loadFiltros() {
      */
     aplicarFiltrosVentas() {
         const filtros = {};
-        
+
         const vendedorEl = document.getElementById('filtro-vendedor-ventas');
         const clienteEl = document.getElementById('filtro-cliente-ventas');
         const estadoEl = document.getElementById('filtro-estado-ventas');
-        
+
         if (vendedorEl?.value) filtros.vendedor_id = vendedorEl.value;
         if (clienteEl?.value) filtros.cliente_id = clienteEl.value;
         if (estadoEl?.value) filtros.estado = estadoEl.value;
@@ -1480,11 +1512,11 @@ async loadFiltros() {
      */
     aplicarFiltrosProductos() {
         const filtros = {};
-        
+
         const categoriaEl = document.getElementById('filtro-categoria-productos');
         const marcaEl = document.getElementById('filtro-marca-productos');
         const limiteEl = document.getElementById('filtro-limite-productos');
-        
+
         if (categoriaEl?.value) filtros.categoria_id = categoriaEl.value;
         if (marcaEl?.value) filtros.marca_id = marcaEl.value;
         if (limiteEl?.value) filtros.limit = limiteEl.value;
@@ -1497,10 +1529,10 @@ async loadFiltros() {
      */
     aplicarFiltrosComisiones() {
         const filtros = {};
-        
+
         const vendedorEl = document.getElementById('filtro-vendedor-comisiones');
         const estadoEl = document.getElementById('filtro-estado-comisiones');
-        
+
         if (vendedorEl?.value) filtros.vendedor_id = vendedorEl.value;
         if (estadoEl?.value) filtros.estado = estadoEl.value;
 
@@ -1512,10 +1544,10 @@ async loadFiltros() {
      */
     aplicarFiltrosPagos() {
         const filtros = {};
-        
+
         const estadoEl = document.getElementById('filtro-estado-pagos');
         const tipoEl = document.getElementById('filtro-tipo-pagos');
-        
+
         if (estadoEl?.value) filtros.estado = estadoEl.value;
         if (tipoEl?.value) filtros.tipo_pago = tipoEl.value;
 
@@ -1535,7 +1567,7 @@ async loadFiltros() {
 
             const url = `/reportes/exportar-${formato}?${params}`;
             window.open(url, '_blank');
-            
+
             this.showAlert('success', 'Exportación', `Reporte de ${tipo} exportado a ${formato.toUpperCase()}`);
         } catch (error) {
             console.error('Error exportando reporte:', error);
@@ -1602,7 +1634,7 @@ async loadFiltros() {
         if (!container) return;
 
         const { current_page, last_page, per_page, total } = paginationData;
-        
+
         if (last_page <= 1) {
             container.innerHTML = '';
             return;
@@ -1659,7 +1691,7 @@ async loadFiltros() {
      */
     cambiarPagina(pagina) {
         const filtros = { page: pagina };
-        
+
         switch (this.currentTab) {
             case 'ventas':
                 this.loadReporteVentas(filtros);
@@ -1701,11 +1733,11 @@ async loadFiltros() {
      */
     populateFiltros(data) {
         // Vendedores
-        this.populateSelect('filtro-vendedor-ventas', data.vendedores, 'user_id', (item) => 
+        this.populateSelect('filtro-vendedor-ventas', data.vendedores, 'user_id', (item) =>
             `${item.user_primer_nombre} ${item.user_primer_apellido}`);
-        this.populateSelect('filtro-vendedor-comisiones', data.vendedores, 'user_id', (item) => 
+        this.populateSelect('filtro-vendedor-comisiones', data.vendedores, 'user_id', (item) =>
             `${item.user_primer_nombre} ${item.user_primer_apellido}`);
-        
+
         // Categorías y marcas
         this.populateSelect('filtro-categoria-productos', data.categorias, 'categoria_id', 'categoria_nombre');
         this.populateSelect('filtro-marca-productos', data.marcas, 'marca_id', 'marca_descripcion');
@@ -1714,28 +1746,28 @@ async loadFiltros() {
     populateSelect(selectId, options, valueField, textField) {
         const select = document.getElementById(selectId);
         if (!select) return;
-        
+
         const currentValue = select.value;
         const placeholder = select.children[0];
-        
+
         select.innerHTML = '';
         if (placeholder) {
             select.appendChild(placeholder);
         }
-        
+
         options.forEach(option => {
             const optionElement = document.createElement('option');
             optionElement.value = option[valueField];
-            
+
             if (typeof textField === 'function') {
                 optionElement.textContent = textField(option);
             } else {
                 optionElement.textContent = option[textField];
             }
-            
+
             select.appendChild(optionElement);
         });
-        
+
         select.value = currentValue;
     }
 
@@ -1861,7 +1893,7 @@ window.reportesManager = null;
 // Función de inicialización
 function initReportesManager() {
     console.log('🔄 Intentando inicializar ReportesManager...');
-    
+
     // Verificar dependencias
     const dependencies = [
         { name: 'Chart.js', check: () => typeof Chart !== 'undefined' },
@@ -1869,7 +1901,7 @@ function initReportesManager() {
     ];
 
     const missing = dependencies.filter(dep => !dep.optional && !dep.check());
-    
+
     if (missing.length > 0) {
         console.warn('⚠️ Dependencias faltantes:', missing.map(d => d.name).join(', '));
         console.warn('Continuando sin algunas funcionalidades...');
@@ -1885,35 +1917,35 @@ function initReportesManager() {
     try {
         window.reportesManager = new ReportesManager();
         console.log('✅ Sistema de reportes inicializado correctamente');
-        
+
         // Disparar evento personalizado para notificar que está listo
         if (typeof CustomEvent !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('reportesManagerReady', { 
-                detail: { reportesManager: window.reportesManager } 
+            window.dispatchEvent(new CustomEvent('reportesManagerReady', {
+                detail: { reportesManager: window.reportesManager }
             }));
         }
-        
+
         return window.reportesManager;
     } catch (error) {
         console.error('❌ Error inicializando sistema de reportes:', error);
-        
+
         // Crear un objeto fallback para evitar errores
         window.reportesManager = {
-            cambiarTab: function(tab) { console.warn('ReportesManager no inicializado - cambiarTab:', tab); },
-            aplicarFiltroFecha: function() { console.warn('ReportesManager no inicializado - aplicarFiltroFecha'); },
-            exportarReporte: function(tipo, formato) { console.warn('ReportesManager no inicializado - exportarReporte:', tipo, formato); },
-            cambiarTipoGrafico: function(grafico, tipo) { console.warn('ReportesManager no inicializado - cambiarTipoGrafico:', grafico, tipo); },
-            verDetalleProductos: function() { console.warn('ReportesManager no inicializado - verDetalleProductos'); },
-            aplicarFiltrosVentas: function() { console.warn('ReportesManager no inicializado - aplicarFiltrosVentas'); },
-            aplicarFiltrosProductos: function() { console.warn('ReportesManager no inicializado - aplicarFiltrosProductos'); },
-            aplicarFiltrosComisiones: function() { console.warn('ReportesManager no inicializado - aplicarFiltrosComisiones'); },
-            aplicarFiltrosPagos: function() { console.warn('ReportesManager no inicializado - aplicarFiltrosPagos'); },
-            verDetalleVenta: function(id) { console.warn('ReportesManager no inicializado - verDetalleVenta:', id); },
-            imprimirVenta: function(id) { console.warn('ReportesManager no inicializado - imprimirVenta:', id); },
-            pagarComision: function(id) { console.warn('ReportesManager no inicializado - pagarComision:', id); },
-            cambiarPagina: function(pagina) { console.warn('ReportesManager no inicializado - cambiarPagina:', pagina); }
+            cambiarTab: function (tab) { console.warn('ReportesManager no inicializado - cambiarTab:', tab); },
+            aplicarFiltroFecha: function () { console.warn('ReportesManager no inicializado - aplicarFiltroFecha'); },
+            exportarReporte: function (tipo, formato) { console.warn('ReportesManager no inicializado - exportarReporte:', tipo, formato); },
+            cambiarTipoGrafico: function (grafico, tipo) { console.warn('ReportesManager no inicializado - cambiarTipoGrafico:', grafico, tipo); },
+            verDetalleProductos: function () { console.warn('ReportesManager no inicializado - verDetalleProductos'); },
+            aplicarFiltrosVentas: function () { console.warn('ReportesManager no inicializado - aplicarFiltrosVentas'); },
+            aplicarFiltrosProductos: function () { console.warn('ReportesManager no inicializado - aplicarFiltrosProductos'); },
+            aplicarFiltrosComisiones: function () { console.warn('ReportesManager no inicializado - aplicarFiltrosComisiones'); },
+            aplicarFiltrosPagos: function () { console.warn('ReportesManager no inicializado - aplicarFiltrosPagos'); },
+            verDetalleVenta: function (id) { console.warn('ReportesManager no inicializado - verDetalleVenta:', id); },
+            imprimirVenta: function (id) { console.warn('ReportesManager no inicializado - imprimirVenta:', id); },
+            pagarComision: function (id) { console.warn('ReportesManager no inicializado - pagarComision:', id); },
+            cambiarPagina: function (pagina) { console.warn('ReportesManager no inicializado - cambiarPagina:', pagina); }
         };
-        
+
         return window.reportesManager;
     }
 }
@@ -1928,14 +1960,14 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 } else {
     // 2. Si el DOM aún se está cargando, esperar al evento
     console.log('⏳ Esperando a que el DOM esté listo...');
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         console.log('📋 DOM cargado, inicializando...');
         initReportesManager();
     });
 }
 
 // 3. Backup: intentar nuevamente después de un breve delay
-setTimeout(function() {
+setTimeout(function () {
     if (!window.reportesManager || typeof window.reportesManager.cambiarTab !== 'function') {
         console.log('🔄 Reintentando inicialización después del timeout...');
         initReportesManager();
@@ -1944,18 +1976,18 @@ setTimeout(function() {
 
 // 4. Interceptor global para funciones llamadas antes de la inicialización
 window.reportesManagerProxy = new Proxy({}, {
-    get: function(target, prop) {
+    get: function (target, prop) {
         if (window.reportesManager && typeof window.reportesManager[prop] === 'function') {
             return window.reportesManager[prop].bind(window.reportesManager);
         } else {
-            return function(...args) {
+            return function (...args) {
                 console.warn(`⚠️ Función ${prop} llamada antes de la inicialización completa. Args:`, args);
-                
+
                 // Intentar inicializar si no está listo
                 if (!window.reportesManager) {
                     initReportesManager();
                 }
-                
+
                 // Si ahora está disponible, ejecutar
                 if (window.reportesManager && typeof window.reportesManager[prop] === 'function') {
                     return window.reportesManager[prop](...args);

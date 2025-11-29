@@ -534,11 +534,51 @@ public function obtenerVentasPendientes(Request $request): JsonResponse
         $lotesIds = collect($request->input('lotes_ids', []))
             ->map(fn($v) => (int) $v)->filter()->unique()->values();
 
+        $tipo = $request->input('tipo', 'finalizar'); // 'finalizar' (default) o 'solo_autorizar'
+
         $qtyTotal = 0;
         $detallesProcesados = [];
 
         try {
-            DB::transaction(function () use ($venId, $venUser, $productoId, $seriesIds, $lotesIds, &$qtyTotal, &$detallesProcesados) {
+            DB::transaction(function () use ($venId, $venUser, $productoId, $seriesIds, $lotesIds, &$qtyTotal, &$detallesProcesados, $tipo) {
+                
+                // Si es SOLO AUTORIZAR
+                if ($tipo === 'solo_autorizar') {
+                    // Solo cambiamos estado a AUTORIZADA
+                    // NO descontamos stock (sigue reservado)
+                    // NO cambiamos estado de series/lotes (siguen reservados)
+                    
+                    $affected = DB::table('pro_ventas')
+                        ->where('ven_id', $venId)
+                        ->where('ven_user', $venUser)
+                        ->update(['ven_situacion' => 'AUTORIZADA']);
+
+                    if ($affected === 0) {
+                        // Verificar si ya estaba autorizada o no existe
+                        $venta = DB::table('pro_ventas')->where('ven_id', $venId)->first();
+                        if (!$venta) throw new \RuntimeException('Venta no encontrada.');
+                        if ($venta->ven_situacion === 'AUTORIZADA') {
+                            // Ya estaba autorizada, no es error critico
+                        } else {
+                            throw new \RuntimeException('No se pudo autorizar la venta (estado actual: ' . $venta->ven_situacion . ').');
+                        }
+                    }
+                    
+                    // Detalles también a AUTORIZADA? O se quedan PENDIENTE? 
+                    // Mejor dejarlos PENDIENTE o AUTORIZADA para consistencia.
+                    // Usemos AUTORIZADA para indicar que ya pasó revisión.
+                    DB::table('pro_detalle_ventas')
+                        ->where('det_ven_id', $venId)
+                        ->update(['det_situacion' => 'AUTORIZADA']);
+
+                    $detallesProcesados[] = 'Venta marcada como AUTORIZADA. Stock permanece reservado.';
+                    return; 
+                }
+
+                // ==========================================
+                // FLUJO ORIGINAL (FINALIZAR / DESCONTAR STOCK)
+                // ==========================================
+
                 // Paso 1: Activar venta
                 $affected = DB::table('pro_ventas')
                     ->where('ven_id', $venId)
@@ -583,22 +623,6 @@ public function obtenerVentasPendientes(Request $request): JsonResponse
                         $detallesProcesados[] = 'Series procesadas: ' . $seriesCantidades
                             ->map(fn($qty, $id) => "$id ($qty)")
                             ->implode(', ');
-                                    if ($qtyTotal > 0) {
-            DB::table('pro_stock_actual')
-                ->where('stock_producto_id', $productoId)
-                ->where('stock_cantidad_reservada', '>', 0)
-                ->decrement('stock_cantidad_reservada', $qtyTotal);
-
-         
-
-            DB::table('pro_stock_actual')
-                ->where('stock_producto_id', $productoId)
-                ->decrement('stock_cantidad_disponible', $qtyTotal);
-
-            DB::table('pro_stock_actual')
-                ->where('stock_producto_id', $productoId)
-                ->decrement('stock_cantidad_total', $qtyTotal);
-        }
                     }
                     
                 }

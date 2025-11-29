@@ -367,7 +367,7 @@ public function verFacturaCambiaria($id)
             if (!empty($validated['fac_venta_id'])) {
                 $venta = DB::table('pro_ventas')->where('ven_id', $validated['fac_venta_id'])->first();
                 
-                if ($venta && $venta->ven_situacion === 'PENDIENTE') {
+                if ($venta && in_array($venta->ven_situacion, ['PENDIENTE', 'AUTORIZADA'])) {
                     // 1. Marcar venta como ACTIVA
                     DB::table('pro_ventas')
                         ->where('ven_id', $venta->ven_id)
@@ -376,7 +376,7 @@ public function verFacturaCambiaria($id)
                     // 2. Marcar detalles como ACTIVOS
                     DB::table('pro_detalle_ventas')
                         ->where('det_ven_id', $venta->ven_id)
-                        ->update(['det_situacion' => 'ACTIVO']);
+                        ->update(['det_situacion' => 'ACTIVA']);
 
                     // 3. Procesar SERIES y LOTES (Descontar stock)
                     $refVenta = 'VENTA-' . $venta->ven_id;
@@ -863,16 +863,16 @@ public function certificarCambiaria(Request $request)
             if ($factura->fac_venta_id) {
                 $venta = DB::table('pro_ventas')->where('ven_id', $factura->fac_venta_id)->first();
                 
-                if ($venta && $venta->ven_situacion === 'ACTIVA') {
-                    // 1. Anular Venta
-                    DB::table('pro_ventas')
-                        ->where('ven_id', $venta->ven_id)
-                        ->update(['ven_situacion' => 'ANULADA']);
+                if ($venta && in_array($venta->ven_situacion, ['PENDIENTE', 'AUTORIZADA'])) {
+                // Actualizar venta a ACTIVA
+                DB::table('pro_ventas')
+                    ->where('ven_id', $venta->ven_id)
+                    ->update(['ven_situacion' => 'ACTIVA']);
 
-                    // 2. Anular Detalles
-                    DB::table('pro_detalle_ventas')
-                        ->where('det_ven_id', $venta->ven_id)
-                        ->update(['det_situacion' => 'ANULADA']);
+                // Actualizar detalles a ACTIVA
+                DB::table('pro_detalle_ventas')
+                    ->where('det_ven_id', $venta->ven_id)
+                    ->update(['det_situacion' => 'ACTIVA']);
 
                     $refVenta = 'VENTA-' . $venta->ven_id;
 
@@ -995,7 +995,7 @@ public function certificarCambiaria(Request $request)
                      ->whereRaw("m.mov_documento_referencia = CONCAT('VENTA-', v.ven_id)");
             })
             ->leftJoin('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
-            ->where('v.ven_situacion', 'PENDIENTE') // Solo ventas pendientes de facturar
+            ->whereIn('v.ven_situacion', ['PENDIENTE', 'AUTORIZADA']) // Solo ventas pendientes de facturar
             ->where(function($q) use ($busqueda) {
                 $q->where('v.ven_id', $busqueda)
                   ->orWhere('c.cliente_nombre1', 'LIKE', "%{$busqueda}%")
