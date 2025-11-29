@@ -662,11 +662,6 @@ const renderMovimientos = (rows = []) => {
 
     // 2) Construir las columnas solo para las filas que pasaron el filtro
     const data = rowsFiltradas.map((r) => {
-        const fecha = r.cja_fecha
-            ? new Date(r.cja_fecha).toLocaleString("es-GT")
-            : "—";
-
-    const data = rows.map((r) => {
         const fecha = r.cja_fecha ? new Date(r.cja_fecha).toLocaleString('es-GT', {
             year: 'numeric',
             month: '2-digit',
@@ -674,14 +669,14 @@ const renderMovimientos = (rows = []) => {
             hour: '2-digit',
             minute: '2-digit'
         }) : "—";
-        
+
         const tipo = r.cja_tipo || "—";
         const ref = r.cja_no_referencia || "—";
         const metodo = r.metodo || "—";
-        
+
         const esIn = ["VENTA", "DEPOSITO", "AJUSTE_POS"].includes(tipo);
         const monto = `<span class="${esIn ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}">${fmtQ(r.cja_monto)}</span>`;
-        
+
         const est = r.cja_situacion || "—";
 
         // ⭐ NUEVA COLUMNA: Cliente
@@ -729,12 +724,12 @@ const renderMovimientos = (rows = []) => {
 
         // ⭐ DESCRIPCIÓN MEJORADA (con observaciones + usuario)
         let descripcion = `<div class="text-sm">`;
-        
+
         // Observaciones principales
         if (r.cja_observaciones) {
             descripcion += `<div class="font-medium text-gray-800">${r.cja_observaciones}</div>`;
         }
-        
+
         // Usuario que registró
         if (r.usuario_registro) {
             descripcion += `
@@ -744,9 +739,9 @@ const renderMovimientos = (rows = []) => {
                 </div>
             `;
         }
-        
+
         descripcion += `</div>`;
-        
+
         if (!r.cja_observaciones && !r.usuario_registro) {
             descripcion = `<span class="text-xs text-gray-400">—</span>`;
         }
