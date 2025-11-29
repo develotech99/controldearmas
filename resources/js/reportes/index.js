@@ -694,11 +694,49 @@ class ReportesManager {
                 throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
 
             // Redirección según opción
-            if (modoFacturacion === 'normal') {
-                window.location.href = `/facturacion?venta_id=${ventaData.ven_id}&mode=normal`;
-                return;
-            } else if (modoFacturacion === 'cambiaria') {
-                window.location.href = `/facturacion?venta_id=${ventaData.ven_id}&mode=cambiaria`;
+            // Redirección según opción -> AHORA APERTURA DE MODAL
+            if (modoFacturacion === 'normal' || modoFacturacion === 'cambiaria') {
+                try {
+                    Swal.fire({
+                        title: 'Cargando datos...',
+                        text: 'Obteniendo detalles de la venta',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    // 1. Fetch full sale details
+                    const res = await fetch(`/facturacion/buscar-venta?q=${ventaData.ven_id}`);
+                    const data = await res.json();
+
+                    Swal.close();
+
+                    if (data.codigo === 1 && data.data.length > 0) {
+                        const ventaFull = data.data[0];
+
+                        // 2. Open Modal & Select
+                        if (modoFacturacion === 'normal') {
+                            if (window.abrirModal) {
+                                window.abrirModal('modalFactura');
+                                // Ensure items container is ready if needed
+                                const contenedorItems = document.getElementById("contenedorItems");
+                                if (contenedorItems && contenedorItems.querySelectorAll('.item-factura').length === 0) {
+                                    if (window.agregarItem) window.agregarItem();
+                                }
+                            }
+                            if (window.seleccionarVenta) window.seleccionarVenta(ventaFull);
+                        } else {
+                            if (window.resetModalFacturaCambiaria) window.resetModalFacturaCambiaria();
+                            if (window.abrirModal) window.abrirModal('modalFacturaCambiaria');
+                            if (window.seleccionarVentaCambiaria) window.seleccionarVentaCambiaria(ventaFull);
+                        }
+                    } else {
+                        Swal.fire('Error', 'No se pudieron obtener los detalles de la venta para facturar.', 'error');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    Swal.close();
+                    Swal.fire('Error', 'Error al cargar datos de la venta.', 'error');
+                }
                 return;
             }
 

@@ -1633,3 +1633,18 @@ document.addEventListener('click', async (e) => {
         }
     }
 });
+
+// ==========================================
+// EXPORTS PARA USO EN OTROS MÓDULOS (REPORTES)
+// ==========================================
+window.abrirModal = abrirModal;
+window.cerrarModal = cerrarModal;
+window.seleccionarVenta = seleccionarVenta;
+window.seleccionarVentaCambiaria = seleccionarVentaCambiaria;
+window.buscarVenta = buscarVenta;
+window.buscarVentaCambiaria = buscarVentaCambiaria;
+window.resetModalFacturaCambiaria = resetModalFacturaCambiaria;
+window.recalcularTotales = recalcularTotales;
+window.agregarItem = agregarItem;
+// window.agregarItemCambiaria = agregarItemCambiaria; 
+// window.recalcularTotalesCambiaria = recalcularTotalesCambiaria;

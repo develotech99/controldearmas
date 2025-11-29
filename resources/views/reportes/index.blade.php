@@ -849,6 +849,68 @@
     </div>
     
 
-@endsection
+    @include('facturacion.modals.factura_cambiaria')
+    @include('facturacion.modals.nueva_factura')
 
-@vite('resources/js/reportes/index.js')
+    <!-- Template para items (oculto) -->
+    <template id="templateItem">
+        <div class="item-factura bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+
+                <div class="md:col-span-4">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Descripción <span
+                            class="text-red-500">*</span></label>
+                    <input type="text" name="det_fac_producto_desc[]" required
+                        class="w-full rounded-lg border-gray-300 focus:border-emerald-400 focus:ring-emerald-400 text-sm"
+                        placeholder="Producto o servicio">
+                    <input type="hidden" name="det_fac_producto_id[]" class="item-producto-id">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Cantidad <span
+                            class="text-red-500">*</span></label>
+                    <input type="number" name="det_fac_cantidad[]" required min="0.01" step="0.01"
+                        value="1"
+                        class="item-cantidad w-full rounded-lg border-gray-300 focus:border-emerald-400 focus:ring-emerald-400 text-sm"
+                        placeholder="1">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Precio Unit. <span
+                            class="text-red-500">*</span></label>
+                    <input type="number" name="det_fac_precio_unitario[]" required min="0" step="0.01"
+                        value="0"
+                        class="item-precio w-full rounded-lg border-gray-300 focus:border-emerald-400 focus:ring-emerald-400 text-sm"
+                        placeholder="0.00">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Descuento</label>
+                    <input type="number" name="det_fac_descuento[]" min="0" step="0.01" value="0"
+                        class="item-descuento w-full rounded-lg border-gray-300 focus:border-emerald-400 focus:ring-emerald-400 text-sm"
+                        placeholder="0.00">
+                </div>
+
+                <div class="md:col-span-2 flex items-end gap-2">
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Total</label>
+                        <input type="number" name="det_fac_total[]" readonly
+                            class="item-total w-full rounded-lg border-gray-300 bg-gray-50 text-sm font-semibold text-gray-700"
+                            value="0.00">
+                    </div>
+                    <button type="button"
+                        class="btn-eliminar-item p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </template>
+
+    @vite('resources/js/reportes/index.js')
+    @vite('resources/js/facturacion/index.js')
+@endsection
