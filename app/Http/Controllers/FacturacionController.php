@@ -1039,11 +1039,27 @@ public function certificarCambiaria(Request $request)
                 ->select(
                     'd.det_producto_id',
                     'p.producto_nombre',
+                    'p.producto_requiere_serie',
                     'd.det_cantidad',
                     'd.det_precio',
                     'd.det_descuento'
                 )
                 ->get();
+
+            foreach ($detalles as $det) {
+                if ($det->producto_requiere_serie == 1) {
+                    $series = DB::table('pro_movimientos as m')
+                        ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                        ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                        ->where('m.mov_producto_id', $det->det_producto_id)
+                        ->pluck('s.serie_numero_serie')
+                        ->toArray();
+
+                    $det->series = $series;
+                } else {
+                    $det->series = [];
+                }
+            }
 
             $venta->detalles = $detalles;
             return $venta;
