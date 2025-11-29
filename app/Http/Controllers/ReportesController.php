@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\ProPorcentajeVendedor;
 
+
+
 class ReportesController extends Controller
 {
     /**
@@ -575,7 +577,11 @@ public function buscarClientes(Request $request): JsonResponse
             $ventasQuery = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
                 ->where('ven_situacion', 1);
 
+           $ventasQuery = DB::table('pro_ventas')
+    ->where('ven_situacion', 'ACTIVA');
+
             $totalVentas = $ventasQuery->count();
+
             $montoTotal = $ventasQuery->sum('ven_total_vendido') ?? 0;
             $promedioVenta = $totalVentas > 0 ? round($montoTotal / $totalVentas, 2) : 0;
 
@@ -906,37 +912,47 @@ public function buscarClientes(Request $request): JsonResponse
 
             // Obtener ventas del período
             $ventas = DB::table('pro_detalle_ventas as dv')
-                ->join('pro_ventas as v', 'dv.det_ven_id', '=', 'v.ven_id')
-                ->join('pro_productos as p', 'dv.det_producto_id', '=', 'p.producto_id')
-                ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
-                ->leftJoin('pro_series_productos as sp', 'dv.det_producto_id', '=', 'sp.serie_producto_id')
-                ->leftJoin('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
-                ->leftJoin('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
-                ->leftJoin('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
-                ->leftJoin('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
-                ->select([
-                    DB::raw('NULL as pro_tenencia_anterior'),
-                    DB::raw('NULL as pro_tenencia_nueva'),
-                    'p.producto_nombre as tipo',
-                    DB::raw('COALESCE(sp.serie_numero_serie, "SIN SERIE") as serie'),
-                    DB::raw('COALESCE(m.marca_descripcion, "N/A") as marca'),
-                    DB::raw('COALESCE(mo.modelo_descripcion, "N/A") as modelo'),
-                    DB::raw('COALESCE(cal.calibre_nombre, "N/A") as calibre'),
-                    DB::raw('CONCAT(
-                    COALESCE(cl.cliente_nombre1, ""), " ", 
-                    COALESCE(cl.cliente_nombre2, ""), " ",
-                    COALESCE(cl.cliente_apellido1, ""), " ",
-                    COALESCE(cl.cliente_apellido2, "")
-                ) as comprador'),
-                    'v.ven_id as autorizacion',
-                    'v.ven_fecha as fecha',
-                    DB::raw('NULL as factura'),
-                    'dv.det_cantidad'
-                ])
-                ->whereYear('v.ven_fecha', $anio)
-                ->whereMonth('v.ven_fecha', $mes)
-                ->where('v.ven_situacion', 1)
-                ->where('dv.det_situacion', 'ACTIVO')
+    ->join('pro_ventas as v', 'dv.det_ven_id', '=', 'v.ven_id')
+    ->join('pro_productos as p', 'dv.det_producto_id', '=', 'p.producto_id')
+    ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
+    ->join('pro_series_productos as sp', 'dv.det_producto_id', '=', 'sp.serie_producto_id')
+    ->join('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
+    ->join('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
+    ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
+    ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
+    ->join('pro_movimientos as mov', 'sp.serie_id', '=', 'mov.mov_serie_id')
+    ->select([
+          'mov.mov_licencia_anterior AS pro_tenencia_anterior',
+    'mov.mov_licencia_nueva    AS pro_tenencia_nueva',
+        'p.producto_nombre as tipo',
+        DB::raw('COALESCE(sp.serie_numero_serie, "SIN SERIE") as serie'),
+        DB::raw('COALESCE(m.marca_descripcion, "N/A") as marca'),
+        DB::raw('COALESCE(mo.modelo_descripcion, "N/A") as modelo'),
+        DB::raw('COALESCE(cal.calibre_nombre, "N/A") as calibre'),
+        DB::raw('CONCAT(
+            COALESCE(cl.cliente_nombre1, ""), " ", 
+            COALESCE(cl.cliente_nombre2, ""), " ",
+            COALESCE(cl.cliente_apellido1, ""), " ",
+            COALESCE(cl.cliente_apellido2, "")
+        ) as comprador'),
+        'v.ven_id as autorizacion',
+        'v.ven_fecha as fecha',
+        DB::raw('NULL as factura'),
+        'dv.det_cantidad',
+    ])
+    // filtros por fecha si quieres mantenerlos
+    ->whereYear('v.ven_fecha', $anio)
+    ->whereMonth('v.ven_fecha', $mes)
+
+    // 🔹 aquí van exactamente los filtros que mencionas:
+    ->where('v.ven_situacion', 'ACTIVA')
+    ->where('dv.det_situacion', 'ACTIVO')
+    ->where('mov.mov_situacion', 1)
+    ->where('sp.serie_situacion', 1)
+    ->where('mov.mov_tipo', 'venta')
+
+    
+
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%ARMA%')
                         ->orWhere('c.categoria_nombre', 'LIKE', '%PISTOLA%')

@@ -5,10 +5,14 @@ namespace App\Services;
 use App\Models\FelToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class FelService
+
 {
+
+    
     protected bool $verifySsl;
 
     public function __construct()
@@ -172,43 +176,62 @@ class FelService
      * @param string $referencia   Debe ser ÚNICA (p.ej. FACT-<tu-ref>).
      * @return array Respuesta JSON del certificador.
      */
-    public function certificarDte(string $xmlDteBase64, string $referencia): array
-    {
-        $url = (string) config('fel.urls.certificar_dte');
-        if (!$url) {
-            throw new \RuntimeException('FEL: falta URL certificar_dte en config/fel.php');
-        }
+ public function certificarDte(string $xmlDteBase64, string $referencia): array
+{
+    // 1) URL desde config
+    $url = (string) config('fel.urls.certificar_dte');
+    if (!$url) {
+        throw new \RuntimeException('FEL: falta URL certificar_dte en config/fel.php');
+    }
+
+    // 2) Obtener token
+    $token     = $this->getToken();
+    $tokenType = $this->currentTokenType();
+
+    $payload = [
+        'xmlDte'     => $xmlDteBase64,
+        'Referencia' => $referencia,
+    ];
+
+    Log::info('FEL REQUEST CertificarDte', [
+        'url'        => $url,
+        'referencia' => $referencia,
+    ]);
+
+    // 3) Enviar petición
+    $resp = $this->baseRequest()
+        ->withToken($token, $tokenType)
+        ->acceptJson()
+        ->post($url, $payload);
+
+    // 4) Si expira token → renovar
+    if ($resp->status() === 401 || $resp->status() === 403) {
+        FelToken::where('is_active', true)->update(['is_active' => false]);
 
         $token     = $this->getToken();
         $tokenType = $this->currentTokenType();
-
-        $payload = [
-            'xmlDte'     => $xmlDteBase64,
-            'Referencia' => $referencia,
-        ];
 
         $resp = $this->baseRequest()
             ->withToken($token, $tokenType)
             ->acceptJson()
             ->post($url, $payload);
-
-        if ($resp->status() === 401 || $resp->status() === 403) {
-            FelToken::where('is_active', true)->update(['is_active' => false]);
-            $token     = $this->getToken();
-            $tokenType = $this->currentTokenType();
-
-            $resp = $this->baseRequest()
-                ->withToken($token, $tokenType)
-                ->acceptJson()
-                ->post($url, $payload);
-        }
-
-        if ($resp->failed()) {
-            throw new \RuntimeException('Fallo certificar DTE: HTTP ' . $resp->status() . ' ' . $resp->body());
-        }
-
-        return $resp->json() ?? [];
     }
+
+    Log::info('FEL RAW RESPONSE', [
+        'status' => $resp->status(),
+        'body'   => $resp->body(),
+    ]);
+
+    // 5) Errores HTTP
+    if ($resp->failed()) {
+        throw new \RuntimeException(
+            'Fallo certificar DTE: HTTP ' . $resp->status() . ' ' . $resp->body()
+        );
+    }
+
+    return $resp->json() ?? [];
+}
+
 
     /**
      * Anula un DTE enviando el XML de anulación (Base64).

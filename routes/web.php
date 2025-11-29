@@ -367,6 +367,8 @@ Route::middleware('auth')->group(function () {
         ->name('clientes.ver-pdf-licencia');
 
 
+
+
     //FACTURACIÓN
     Route::prefix('facturacion')->group(function () {
         Route::get('/', [FacturacionController::class, 'index'])->name('facturacion.index');
@@ -376,6 +378,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/consultar-dte/{uuid}', [FacturacionController::class, 'consultarDte'])->name('facturacion.consultarDte');
         Route::get('/{id}/vista', [FacturacionController::class, 'vista'])->name('facturacion.vista');
         Route::post('/anular/{id}', [FacturacionController::class, 'anular'])->name('facturacion.anular');
+        Route::post('/buscarCui', [FacturacionController::class, 'buscarCUI'])->name('buscarCui');
+        Route::post('/certificar-cambiaria', [FacturacionController::class, 'certificarCambiaria'])
+    ->name('facturacion.certificar.cambiaria');
+
+Route::get('/{id}/vista-cambiaria', [FacturacionController::class, 'verFacturaCambiaria'])
+    ->name('facturacion.vista.cambiaria');
     });
 });
 
