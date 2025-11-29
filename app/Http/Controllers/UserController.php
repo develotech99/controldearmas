@@ -229,6 +229,44 @@ class UserController extends Controller
     }
 
 
+        public function destroy($id)
+    {
+        try {
+            $user = User::find($id);
+            
+            if (!$user) {
+                return response()->json([
+                    'codigo' => 0,
+                    'mensaje' => 'Usuario no encontrado'
+                ], 404);
+            }
+
+            // Verificar que no se esté eliminando a sí mismo
+            if (auth()->check() && auth()->user()->user_id == $id) {
+                return response()->json([
+                    'codigo' => 0,
+                    'mensaje' => 'No puedes eliminar tu propio usuario'
+                ], 400);
+            }
+
+            // Cambiar situación a 0 (inactivo) en lugar de eliminar físicamente
+            $user->user_situacion = 0;
+            $user->save();
+
+            return response()->json([
+                'codigo' => 1,
+                'mensaje' => 'Usuario eliminado exitosamente'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'codigo' => 0,
+                'mensaje' => 'Error eliminando usuario',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function verificarCorreoAPI(Request $request)
     {
         $token = $request->query('token');
