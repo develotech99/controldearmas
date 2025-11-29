@@ -156,6 +156,20 @@ const resetModalFacturaCambiaria = () => {
         direccionCamInput.readOnly = true;
         direccionCamInput.classList.add('cursor-not-allowed', 'bg-gray-100');
     }
+
+    // Reset venta seleccionada
+    const facVentaIdCam = document.getElementById('fac_venta_id_cambiaria');
+    const infoCam = document.getElementById('ventaSeleccionadaInfoCambiaria');
+    const resCam = document.getElementById('resultadosVentaCambiaria');
+    const busqCam = document.getElementById('busquedaVentaCambiaria');
+
+    if (facVentaIdCam) facVentaIdCam.value = '';
+    if (infoCam) infoCam.classList.add('hidden');
+    if (resCam) {
+        resCam.classList.add('hidden');
+        resCam.innerHTML = '';
+    }
+    if (busqCam) busqCam.value = '';
 };
 
 // ===== MODAL FACTURA CAMBIARIA (abrir / cerrar) =====
@@ -173,6 +187,136 @@ document.querySelectorAll('[data-modal-close="modalFacturaCambiaria"]').forEach(
         cerrarModal("modalFacturaCambiaria");
         resetModalFacturaCambiaria();
     });
+});
+
+// =============================
+// FACTURA CAMBIARIA - BUSCAR VENTA
+// =============================
+const busquedaVentaCambiaria = document.getElementById('busquedaVentaCambiaria');
+const btnBuscarVentaCambiaria = document.getElementById('btnBuscarVentaCambiaria');
+const resultadosVentaCambiaria = document.getElementById('resultadosVentaCambiaria');
+const ventaSeleccionadaInfoCambiaria = document.getElementById('ventaSeleccionadaInfoCambiaria');
+const btnQuitarVentaCambiaria = document.getElementById('btnQuitarVentaCambiaria');
+const facVentaIdCambiaria = document.getElementById('fac_venta_id_cambiaria');
+
+const buscarVentaCambiaria = async () => {
+    const q = busquedaVentaCambiaria.value.trim();
+    if (q.length < 2) return;
+
+    setBtnLoading(btnBuscarVentaCambiaria, true);
+    resultadosVentaCambiaria.innerHTML = '';
+    resultadosVentaCambiaria.classList.remove('hidden');
+
+    try {
+        const res = await fetch(`/facturacion/buscar-venta?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+
+        if (data.codigo === 1 && data.data.length > 0) {
+            data.data.forEach(venta => {
+                const div = document.createElement('div');
+                div.className = 'p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm';
+                div.innerHTML = `
+                    <div class="font-bold text-blue-800">Venta #${venta.ven_id} - ${venta.ven_fecha}</div>
+                    <div class="text-gray-600">${venta.cliente_nombre1} ${venta.cliente_apellido1} (${venta.cliente_nit})</div>
+                    <div class="text-xs text-gray-500">Total: Q ${venta.ven_total_vendido}</div>
+                `;
+                div.addEventListener('click', () => seleccionarVentaCambiaria(venta));
+                resultadosVentaCambiaria.appendChild(div);
+            });
+        } else {
+            resultadosVentaCambiaria.innerHTML = '<div class="p-2 text-gray-500 text-sm">No se encontraron ventas pendientes.</div>';
+        }
+    } catch (err) {
+        console.error(err);
+        resultadosVentaCambiaria.innerHTML = '<div class="p-2 text-red-500 text-sm">Error al buscar ventas.</div>';
+    } finally {
+        setBtnLoading(btnBuscarVentaCambiaria, false);
+    }
+};
+
+const seleccionarVentaCambiaria = (venta) => {
+    // Llenar datos cliente
+    nitCamInput.value = venta.cliente_nit || 'CF';
+    nombreCamInput.value = `${venta.cliente_nombre1} ${venta.cliente_apellido1}`;
+    direccionCamInput.value = venta.cliente_direccion || '';
+
+    // Habilitar campos nombre/direccion por si acaso
+    nombreCamInput.readOnly = false;
+    nombreCamInput.classList.remove('cursor-not-allowed', 'bg-gray-100');
+    direccionCamInput.readOnly = false;
+    direccionCamInput.classList.remove('cursor-not-allowed', 'bg-gray-100');
+
+    // Llenar info venta seleccionada
+    facVentaIdCambiaria.value = venta.ven_id;
+    document.getElementById('lblVentaIdCambiaria').textContent = venta.ven_id;
+    document.getElementById('lblClienteCambiaria').textContent = `${venta.cliente_nombre1} ${venta.cliente_apellido1}`;
+
+    ventaSeleccionadaInfoCambiaria.classList.remove('hidden');
+    resultadosVentaCambiaria.classList.add('hidden');
+    busquedaVentaCambiaria.value = '';
+
+    // Llenar items
+    contenedorItemsCambiaria.innerHTML = '';
+    if (venta.detalles && venta.detalles.length > 0) {
+        venta.detalles.forEach(det => {
+            if (det.series && det.series.length > 0) {
+                // Calcular descuento unitario
+                const descuentoTotal = parseFloat(det.det_descuento || 0);
+                const cantidadTotal = parseFloat(det.det_cantidad || 1);
+                const descuentoUnitario = cantidadTotal > 0 ? (descuentoTotal / cantidadTotal) : 0;
+
+                // Agregar una línea por cada serie
+                det.series.forEach(serie => {
+                    agregarItemCambiaria({
+                        descripcion: `${det.producto_nombre} (Serie: ${serie})`,
+                        cantidad: 1,
+                        precio: det.det_precio,
+                        descuento: descuentoUnitario.toFixed(2),
+                        producto_id: det.det_producto_id
+                    });
+                });
+
+                // Si hay cantidad sobrante sin serie
+                const sobrante = cantidadTotal - det.series.length;
+                if (sobrante > 0) {
+                    agregarItemCambiaria({
+                        descripcion: det.producto_nombre,
+                        cantidad: sobrante,
+                        precio: det.det_precio,
+                        descuento: (descuentoUnitario * sobrante).toFixed(2),
+                        producto_id: det.det_producto_id
+                    });
+                }
+            } else {
+                // Producto normal sin series
+                agregarItemCambiaria({
+                    descripcion: det.producto_nombre,
+                    cantidad: det.det_cantidad,
+                    precio: det.det_precio,
+                    descuento: det.det_descuento,
+                    producto_id: det.det_producto_id
+                });
+            }
+        });
+    }
+    recalcularTotalesCambiaria();
+};
+
+btnBuscarVentaCambiaria?.addEventListener('click', buscarVentaCambiaria);
+busquedaVentaCambiaria?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarVentaCambiaria();
+    }
+});
+
+btnQuitarVentaCambiaria?.addEventListener('click', () => {
+    facVentaIdCambiaria.value = '';
+    ventaSeleccionadaInfoCambiaria.classList.add('hidden');
+    contenedorItemsCambiaria.innerHTML = '';
+    agregarItemCambiaria(); // Agregar uno vacío
+    FormFacturaCambiaria.reset();
+    recalcularTotalesCambiaria();
 });
 
 // =============================
@@ -385,6 +529,9 @@ const agregarItemCambiaria = (prefill = {}) => {
 
     if (prefill.descripcion) {
         q(nodo, 'input[name="det_fac_producto_desc[]"]').value = prefill.descripcion;
+    }
+    if (prefill.producto_id) {
+        q(nodo, 'input[name="det_fac_producto_id[]"]').value = prefill.producto_id;
     }
     if (typeof prefill.cantidad !== 'undefined') q(nodo, '.cam-item-cantidad').value = prefill.cantidad;
     if (typeof prefill.precio !== 'undefined') q(nodo, '.cam-item-precio').value = prefill.precio;

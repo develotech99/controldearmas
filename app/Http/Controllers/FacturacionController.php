@@ -531,6 +531,8 @@ public function certificarCambiaria(Request $request)
             'fac_cam_interes'            => 'nullable|numeric|min:0',
             'det_fac_producto_desc'      => 'required|array|min:1',
             'det_fac_producto_desc.*'    => 'required|string',
+            'det_fac_producto_id'        => 'nullable|array',
+            'det_fac_producto_id.*'      => 'nullable|integer',
             'det_fac_cantidad'           => 'required|array',
             'det_fac_cantidad.*'         => 'required|numeric|min:0.01',
             'det_fac_precio_unitario'    => 'required|array',
@@ -558,6 +560,7 @@ public function certificarCambiaria(Request $request)
 
             $items[] = [
                 'descripcion'     => $validated['det_fac_producto_desc'][$i],
+                'producto_id'     => $validated['det_fac_producto_id'][$i] ?? null,
                 'cantidad'        => $cantidad,
                 'precio_unitario' => $precio,
                 'descuento'       => $descuento,
@@ -650,38 +653,24 @@ public function certificarCambiaria(Request $request)
         $disk->put($xmlEnviadoPath, $xml);
         $disk->put($xmlCertificadoPath, base64_decode($xmlCertKey));
 
-        // Guardar factura
-        $factura = Facturacion::create([
-            'fac_uuid' => $uuidResp,
-            'fac_referencia' => $referencia,
-            'fac_serie' => $serieResp,
-            'fac_numero' => $numeroResp,
-            'fac_estado' => 'CERTIFICADO',
-            'fac_tipo_documento' => 'FCAM',
-            'fac_nit_receptor' => $validated['fac_cam_nit_receptor'],
-            'fac_receptor_nombre' => $validated['fac_cam_receptor_nombre'],
-            'fac_receptor_direccion' => $validated['fac_cam_receptor_direccion'] ?? null,
-            'fac_fecha_emision' => now()->toDateString(),
+        // 4. Actualizar factura con datos FEL y paths de XML
+        $factura->update([
+            'fac_uuid'                => $uuidResp,
+            'fac_serie'               => $serieResp,
+            'fac_numero'              => $numeroResp,
             'fac_fecha_certificacion' => $fechaCert,
-            'fac_subtotal' => $subtotalNeto,
-            'fac_descuento' => $descuentoTotal,
-            'fac_impuestos' => $ivaTotal,
-            'fac_total' => $totalFactura,
-            'fac_moneda' => 'GTQ',
-            'fac_xml_enviado_path' => $xmlEnviadoPath,
-            'fac_xml_certificado_path' => $xmlCertificadoPath,
-            'fac_alertas' => $respuesta['Alertas'] ?? $respuesta['alertas'] ?? [],
-            'fac_operacion' => 'WEB',
-            'fac_vendedor' => auth()->user()->user_primer_nombre ?? 'Sistema',
-            'fac_usuario_id' => auth()->id(),
-            'fac_fecha_operacion' => now(),
+            'fac_estado'              => 'CERTIFICADO',
+            'fac_xml_enviado_path'    => $xmlEnviadoPath,
+            'fac_xml_certificado_path'=> $xmlCertificadoPath,
+            'fac_alertas'             => $respuesta['Alertas'] ?? $respuesta['alertas'] ?? [],
         ]);
 
         // Guardar detalle
-        foreach ($items as $item) {
+        foreach ($items as $index => $item) {
             FacturacionDetalle::create([
                 'det_fac_factura_id' => $factura->fac_id,
                 'det_fac_tipo' => 'B',
+                'det_fac_producto_id' => $item['producto_id'], // Use product_id from prepared items
                 'det_fac_producto_desc' => $item['descripcion'],
                 'det_fac_cantidad' => $item['cantidad'],
                 'det_fac_unidad_medida' => 'UNI',
