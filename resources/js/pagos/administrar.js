@@ -666,261 +666,157 @@ const renderMovimientos = (rows = []) => {
             ? new Date(r.cja_fecha).toLocaleString("es-GT")
             : "—";
 
+    const data = rows.map((r) => {
+        const fecha = r.cja_fecha ? new Date(r.cja_fecha).toLocaleString('es-GT', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : "—";
+        
         const tipo = r.cja_tipo || "—";
         const ref = r.cja_no_referencia || "—";
         const metodo = r.metodo || "—";
-        const descripcion = r.cja_observaciones || "";
+        
         const esIn = ["VENTA", "DEPOSITO", "AJUSTE_POS"].includes(tipo);
+        const monto = `<span class="${esIn ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}">${fmtQ(r.cja_monto)}</span>`;
+        
         const est = r.cja_situacion || "—";
 
-        const ventaId = Number(r.venta_id || 0);
-        const venta = ventaId ? (ventaDetalles.get(ventaId) || null) : null;
-
-        const situacionVenta = (venta?.situacion || venta?.ven_situacion || "").toUpperCase();
-        const ventaActiva = !!venta && (!situacionVenta || situacionVenta === "ACTIVA");
-
-        console.log(
-            `mov cja_id=${r.cja_id} ref=${ref} venta_id=${ventaId} tieneDetalle=${ventaActiva ? "SI" : "NO"}`
-        );
-
-        const cliente = ventaActiva ? (venta?.cliente || {}) : {};
-        const vendedor = ventaActiva ? (venta?.vendedor || {}) : {};
-        const precios = ventaActiva ? (venta?.precios || {}) : {};
-        const pagosRealizados = ventaActiva ? (venta?.pagos_realizados || []) : [];
-        const cuotasPendientes = ventaActiva ? (venta?.cuotas_pendientes || []) : [];
-
-        // ===== Col 1: Fecha / Movimiento
-        const descLimpia = descripcion.trim().toLowerCase();
-        const mostrarDescripcion = descripcion && descLimpia !== "venta registrada";
-
-        let ventaBadge = "";
-        if (ventaActiva && ref && ref.startsWith("VENTA-")) {
-            const num = ref.split("-")[1] || "";
-            if (num) {
-                ventaBadge = `
-                    <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700">
-                        Venta #${num}
-                    </span>
-                `;
-            }
-        }
-
-        // solo mostramos VENTA-XX si la venta es activa
-        let refHtml = "";
-        if (ventaActiva) {
-            refHtml = `<span class="text-gray-400">${ref}</span>`;
-        }
-
-        const col1 = `
-            <div class="space-y-1 text-[12px]">
-                <div class="font-semibold text-gray-800">${fecha}</div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-700 uppercase">
-                        ${tipo}
-                    </span>
-                    ${ventaBadge}
-                    <span class="text-gray-500">${metodo}</span>
-                    ${refHtml}
-                </div>
-                ${mostrarDescripcion
-                    ? `<div class="text-gray-700">${descripcion}</div>`
-                    : ""
-                }
+        // ⭐ NUEVA COLUMNA: Cliente
+        const cliente = r.cliente ? `
+            <div class="text-sm">
+                <div class="font-medium text-gray-900">${r.cliente.nombre || 'N/A'}</div>
+                ${r.cliente.tipo === 3 && r.cliente.empresa ? `
+                    <div class="text-xs text-gray-600 mt-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                            <i class="fas fa-building text-xs mr-1"></i>
+                            ${r.cliente.empresa}
+                        </span>
+                    </div>
+                ` : ''}
+                ${r.cliente.nit && r.cliente.nit !== '—' ? `
+                    <div class="text-xs text-gray-500 mt-0.5">NIT: ${r.cliente.nit}</div>
+                ` : ''}
             </div>
-        `;
+        ` : `<span class="text-xs text-gray-400">—</span>`;
 
-        // ===== Col 2: Cliente / Productos
-        let col2 = `<div class="text-[12px] text-gray-400">—</div>`;
+        // ⭐ NUEVA COLUMNA: Vendedor
+        const vendedor = r.vendedor ? `
+            <div class="text-sm">
+                <div class="text-gray-700">
+                    <i class="fas fa-user-tie text-xs text-gray-500 mr-1"></i>
+                    ${r.vendedor.nombre}
+                </div>
+            </div>
+        ` : `<span class="text-xs text-gray-400">—</span>`;
 
-        if (ventaActiva) {
-            col2 = `
-                <div class="space-y-2 text-[12px]">
-                    <div>
-                        <div class="font-semibold text-blue-700">
-                            ${cliente.nombre || "Sin cliente"}
-                        </div>
-                        <div class="text-gray-500">
-                            ${cliente.empresa && cliente.empresa !== "Sin Empresa" ? cliente.empresa : ""}
-                            ${cliente.nit && cliente.nit !== "—" ? `${cliente.empresa ? " · " : ""}NIT: ${cliente.nit}` : ""}
-                            ${cliente.telefono && cliente.telefono !== "—" ? `${(cliente.empresa || cliente.nit) ? " · " : ""}Tel: ${cliente.telefono}` : ""}
-                        </div>
-                    </div>
+        // ⭐ NUEVA COLUMNA: Productos (si es venta)
+        const productos = r.productos ? `
+            <div class="text-xs">
+                <div class="text-gray-700 max-w-xs truncate font-medium" title="${r.productos.concepto}">
+                    ${r.productos.concepto}
+                </div>
+                <div class="text-gray-500 mt-0.5">${r.productos.items_count} artículo${r.productos.items_count !== 1 ? 's' : ''}</div>
+                ${r.venta_total ? `
+                    <div class="text-green-600 font-semibold mt-1">Total: ${fmtQ(r.venta_total)}</div>
+                ` : ''}
+            </div>
+        ` : tipo === 'VENTA' && r.cja_id_venta ? `
+            <span class="text-xs text-gray-500">Venta #${r.cja_id_venta}</span>
+        ` : `<span class="text-xs text-gray-400">—</span>`;
 
-                    <div>
-                        <div class="font-semibold text-amber-700">
-                            Productos (${venta.items_count || 0})
-                        </div>
-                        <div class="text-gray-800 line-clamp-2">
-                            ${venta.concepto || "Sin productos"}
-                        </div>
-                    </div>
-
-                    ${vendedor && vendedor.nombre
-                        ? `<div class="text-gray-500">
-                                Vendedor: ${vendedor.nombre}
-                           </div>`
-                        : ""
-                    }
+        // ⭐ DESCRIPCIÓN MEJORADA (con observaciones + usuario)
+        let descripcion = `<div class="text-sm">`;
+        
+        // Observaciones principales
+        if (r.cja_observaciones) {
+            descripcion += `<div class="font-medium text-gray-800">${r.cja_observaciones}</div>`;
+        }
+        
+        // Usuario que registró
+        if (r.usuario_registro) {
+            descripcion += `
+                <div class="text-xs text-gray-500 mt-1">
+                    <i class="fas fa-user text-xs mr-1"></i>
+                    Registrado por: <span class="font-medium">${r.usuario_registro.nombre}</span>
                 </div>
             `;
         }
-
-        // ===== Col 3: Precios / Resumen / Cuotas / Historial
-        let col3 = `<div class="text-[12px] text-gray-400">—</div>`;
-
-        if (ventaActiva) {
-            const ultimosPagos = pagosRealizados.slice(-2);
-            const extraPagos = pagosRealizados.length - ultimosPagos.length;
-
-            const cuotasMostrar = cuotasPendientes.slice(0, 2);
-            const extraCuotas = cuotasPendientes.length - cuotasMostrar.length;
-
-            const cuotasHtml = cuotasPendientes.length ? `
-                <div class="mt-1 space-y-1">
-                    <div class="text-[11px] font-semibold text-gray-700">
-                        Cuotas pendientes (${cuotasPendientes.length})
-                    </div>
-                    ${cuotasMostrar.map(c => `
-                        <div class="flex justify-between items-center p-1.5 bg-gray-50 rounded">
-                            <span class="text-[11px]">
-                                #${c.numero}
-                                ${c.en_revision
-                                    ? '<span class="ml-1 px-1.5 py-0.5 text-[10px] rounded bg-amber-100 text-amber-800">En revisión</span>'
-                                    : ''
-                                }
-                            </span>
-                            <span class="text-[11px] font-semibold">${fmtQ(c.monto)}</span>
-                            <span class="text-[10px] text-gray-500">${c.vence}</span>
-                        </div>
-                    `).join("")}
-                    ${extraCuotas > 0
-                        ? `<div class="text-[10px] text-gray-500">+${extraCuotas} cuota(s) más...</div>`
-                        : ""
-                    }
-                </div>
-            ` : "";
-
-            const historialHtml = pagosRealizados.length ? `
-                <div class="mt-1 space-y-1">
-                    <div class="text-[11px] font-semibold text-gray-700">
-                        Historial de pagos (${pagosRealizados.length})
-                    </div>
-                    ${ultimosPagos.map(p => `
-                        <div class="flex justify-between items-center p-1.5 bg-green-50 rounded">
-                            <span class="text-[11px]">${p.fecha}</span>
-                            <span class="text-[11px] font-semibold text-green-700">
-                                ${fmtQ(p.monto)}
-                            </span>
-                            <span class="text-[10px] text-gray-500">
-                                ${p.metodo || ""}
-                            </span>
-                        </div>
-                    `).join("")}
-                    ${extraPagos > 0
-                        ? `<div class="text-[10px] text-gray-500">+${extraPagos} pago(s) más...</div>`
-                        : ""
-                    }
-                </div>
-            ` : "";
-
-            col3 = `
-                <div class="space-y-2 text-[12px]">
-                    <div class="bg-gray-50 rounded-lg p-2 grid grid-cols-2 gap-2">
-                        <div>
-                            <div class="text-[11px] font-semibold text-green-700">
-                                Precios
-                            </div>
-                            <div class="text-[11px]">Individual: ${fmtQ(precios.individual || 0)}</div>
-                            <div class="text-[11px]">Empresa: ${fmtQ(precios.empresa || 0)}</div>
-                            ${precios.aplicado
-                                ? `<div class="mt-1 text-[11px] text-emerald-700 font-semibold">
-                                        Aplicado: ${fmtQ(precios.aplicado)}
-                                   </div>`
-                                : ""
-                            }
-                        </div>
-                        <div>
-                            <div class="text-[11px] font-semibold text-purple-700">
-                                Resumen
-                            </div>
-                            <div class="text-[11px]">
-                                Total: <span class="font-semibold">
-                                    ${fmtQ(venta.monto_total || 0)}
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-emerald-700">
-                                Pagado: <span class="font-semibold">
-                                    ${fmtQ(venta.pagado || 0)}
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-rose-600">
-                                Pendiente: <span class="font-semibold">
-                                    ${fmtQ(venta.pendiente || 0)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    ${cuotasHtml}
-                    ${historialHtml}
-                </div>
-            `;
+        
+        descripcion += `</div>`;
+        
+        if (!r.cja_observaciones && !r.usuario_registro) {
+            descripcion = `<span class="text-xs text-gray-400">—</span>`;
         }
 
-        // ===== Col 4: monto / estado / acciones
-        const montoHtml = `
-            <div class="text-right">
-                <div class="font-semibold ${esIn ? "text-emerald-600" : "text-rose-600"}">
-                    ${fmtQ(r.cja_monto)}
-                </div>
-                <div class="text-[11px] text-gray-500 uppercase tracking-wide">
-                    ${esIn ? "INGRESO" : "EGRESO"}
-                </div>
-            </div>
+        // ⭐ TIPO CON BADGE
+        const tipoBadges = {
+            'VENTA': 'bg-green-100 text-green-800',
+            'DEPOSITO': 'bg-blue-100 text-blue-800',
+            'EGRESO': 'bg-red-100 text-red-800',
+            'IMPORTACION': 'bg-purple-100 text-purple-800',
+            'AJUSTE_POS': 'bg-yellow-100 text-yellow-800'
+        };
+        const tipoBadge = `
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${tipoBadges[tipo] || 'bg-gray-100 text-gray-800'}">
+                ${tipo}
+            </span>
         `;
 
-        const estadoHtml =
-            est === "PENDIENTE"
-                ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700">PENDIENTE</span>`
-                : est === "ACTIVO"
-                    ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">VALIDADO</span>`
-                    : est === "ANULADA"
-                        ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">RECHAZADO</span>`
-                        : `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">${est}</span>`;
+        // ⭐ ESTADO CON BADGE
+        const estadoBadges = {
+            'ACTIVO': 'bg-green-100 text-green-800',
+            'PENDIENTE': 'bg-yellow-100 text-yellow-800',
+            'ANULADA': 'bg-red-100 text-red-800'
+        };
+        const estadoBadge = `
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${estadoBadges[est] || 'bg-gray-100 text-gray-800'}">
+                ${est}
+            </span>
+        `;
 
-        const acciones =
-            est === "PENDIENTE"
-                ? `
-            <div class="flex justify-end gap-1 mt-2">
+        // ⭐ ACCIONES MEJORADAS
+        const acciones = est === "PENDIENTE" ? `
+            <div class="flex justify-center gap-1">
                 <button class="btn-validar-mov bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1 rounded"
-                    data-id="${r.cja_id}"
-                    data-tipo="${tipo}"
-                    data-monto="${r.cja_monto}"
-                    data-ref="${ref}"
-                    data-descripcion="${descripcion}">
-                    Validar
+                    data-id="${r.cja_id}" 
+                    data-tipo="${tipo}" 
+                    data-monto="${r.cja_monto}" 
+                    data-ref="${ref}" 
+                    data-descripcion="${r.cja_observaciones || '—'}">
+                    <i class="fas fa-check mr-1"></i>Validar
                 </button>
                 <button class="btn-rechazar-mov bg-rose-600 hover:bg-rose-700 text-white text-xs px-2 py-1 rounded"
-                    data-id="${r.cja_id}"
-                    data-tipo="${tipo}"
-                    data-monto="${r.cja_monto}"
-                    data-ref="${ref}"
-                    data-descripcion="${descripcion}">
-                    Rechazar
+                    data-id="${r.cja_id}" 
+                    data-tipo="${tipo}" 
+                    data-monto="${r.cja_monto}" 
+                    data-ref="${ref}" 
+                    data-descripcion="${r.cja_observaciones || '—'}">
+                    <i class="fas fa-times mr-1"></i>Rechazar
                 </button>
             </div>
-        `
-                : "";
+        ` : est === "ACTIVO"
+            ? `<span class="text-xs text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Validado</span>`
+            : est === "ANULADA"
+                ? `<span class="text-xs text-rose-600 font-medium"><i class="fas fa-times-circle mr-1"></i>Rechazado</span>`
+                : `<span class="text-xs text-gray-400">${est}</span>`;
 
-        const col4 = `
-            <div class="space-y-2 text-[12px] text-right">
-                ${montoHtml}
-                ${estadoHtml}
-                ${acciones}
-            </div>
-        `;
-
-        return [col1, col2, col3, col4];
+        // ⭐ RETORNAR ARRAY CON TODAS LAS COLUMNAS
+        return [
+            fecha,           // 0
+            tipoBadge,       // 1
+            cliente,         // 2 - NUEVO
+            vendedor,        // 3 - NUEVO
+            productos,       // 4 - NUEVO
+            descripcion,     // 5 - MEJORADO
+            ref,             // 6
+            metodo,          // 7
+            monto,           // 8
+            estadoBadge,     // 9
+            acciones         // 10
+        ];
     });
 
     if (dtMovimientos) {
@@ -937,13 +833,33 @@ const renderMovimientos = (rows = []) => {
         labels: labelsES,
         data: {
             headings: [
-                "Fecha / Movimiento",
-                "Cliente / Productos",
-                "Precios / Resumen",
-                "Monto / Estado / Acciones",
+                "Fecha",
+                "Tipo",
+                "Cliente",           // NUEVO
+                "Vendedor",          // NUEVO
+                "Productos",         // NUEVO
+                "Descripción",
+                "Referencia",
+                "Método",
+                "Monto",
+                "Estado",
+                "Acciones"
             ],
-            data,
+            data: data,
         },
+        columns: [
+            { select: 0, sortable: true },   // Fecha
+            { select: 1, sortable: true },   // Tipo
+            { select: 2, sortable: false },  // Cliente
+            { select: 3, sortable: false },  // Vendedor
+            { select: 4, sortable: false },  // Productos
+            { select: 5, sortable: false },  // Descripción
+            { select: 6, sortable: true },   // Referencia
+            { select: 7, sortable: true },   // Método
+            { select: 8, sortable: false, type: "html" }, // Monto
+            { select: 9, sortable: true },   // Estado
+            { select: 10, sortable: false }, // Acciones
+        ]
     });
 
     console.log("DataTable inicializado con", data.length, "filas");

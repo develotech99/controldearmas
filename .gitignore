@@ -45,3 +45,4 @@ Homestead.yaml
 # ==========================================
 composer.lock
 package-lock.json
+git config core.fileMode false

@@ -570,108 +570,121 @@ class CategoriasManager {
         }
     }
 
-    /**
-     * Eliminar categoría
-     */
-    deleteCategoria(categoriaId) {
-        const categoria = this.categorias.find(c => c.categoria_id === categoriaId);
+/**
+ * Eliminar categoría
+ */
+async deleteCategoria(categoriaId) {
+    const categoria = this.categorias.find(c => c.categoria_id === categoriaId);
+    
+    if (!categoria) {
+        this.showAlert('error', 'Error', 'Categoría no encontrada');
+        return;
+    }
+
+    // Verificar si tiene subcategorías
+    if (categoria.subcategorias_count > 0) {
+        this.showAlert('warning', 'Advertencia', 
+            `No se puede eliminar la categoría "${categoria.categoria_nombre}" porque tiene ${categoria.subcategorias_count} subcategorías asociadas. Elimine primero las subcategorías.`);
+        return;
+    }
+
+    const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: `¿Deseas eliminar la categoría "${categoria.categoria_nombre}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            popup: 'dark:bg-gray-800 dark:text-gray-100',
+            title: 'dark:text-gray-100',
+            content: 'dark:text-gray-300'
+        }
+    });
+
+    if (result.isConfirmed) {
+        await this.executeDelete(`/categorias/${categoriaId}`, 'categoría');
+    }
+}
+
+/**
+ * Eliminar subcategoría
+ */
+async deleteSubcategoria(subcategoriaId) {
+    let subcategoria = null;
+    
+    // Buscar la subcategoría
+    for (const categoria of this.categorias) {
+        if (categoria.subcategorias) {
+            subcategoria = categoria.subcategorias.find(s => s.subcategoria_id === subcategoriaId);
+            if (subcategoria) break;
+        }
+    }
+    
+    if (!subcategoria) {
+        this.showAlert('error', 'Error', 'Subcategoría no encontrada');
+        return;
+    }
+
+    const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: `¿Deseas eliminar la subcategoría "${subcategoria.subcategoria_nombre}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            popup: 'dark:bg-gray-800 dark:text-gray-100',
+            title: 'dark:text-gray-100',
+            content: 'dark:text-gray-300'
+        }
+    });
+
+    if (result.isConfirmed) {
+        await this.executeDelete(`/categorias/subcategorias/${subcategoriaId}`, 'subcategoría');
+    }
+}
+
+/**
+ * Ejecutar eliminación mediante AJAX
+ */
+async executeDelete(url, tipo) {
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
-        if (!categoria) {
-            this.showAlert('error', 'Error', 'Categoría no encontrada');
-            return;
-        }
-
-        // Verificar si tiene subcategorías
-        if (categoria.subcategorias_count > 0) {
-            this.showAlert('warning', 'Advertencia', 
-                `No se puede eliminar la categoría "${categoria.categoria_nombre}" porque tiene ${categoria.subcategorias_count} subcategorías asociadas. Elimine primero las subcategorías.`);
-            return;
-        }
-
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: `¿Deseas eliminar la categoría "${categoria.categoria_nombre}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-            customClass: {
-                popup: 'dark:bg-gray-800 dark:text-gray-100',
-                title: 'dark:text-gray-100',
-                content: 'dark:text-gray-300'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.submitDeleteForm(`/categorias/${categoriaId}`);
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         });
-    }
 
-    /**
-     * Eliminar subcategoría
-     */
-    deleteSubcategoria(subcategoriaId) {
-        let subcategoria = null;
-        
-        // Buscar la subcategoría
-        for (const categoria of this.categorias) {
-            if (categoria.subcategorias) {
-                subcategoria = categoria.subcategorias.find(s => s.subcategoria_id === subcategoriaId);
-                if (subcategoria) break;
-            }
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            this.showAlert('success', 'Éxito', data.message);
+            
+            // Recargar la página después de un breve delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            this.showAlert('error', 'Error', data.message || `Error al eliminar la ${tipo}`);
         }
-        
-        if (!subcategoria) {
-            this.showAlert('error', 'Error', 'Subcategoría no encontrada');
-            return;
-        }
-
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: `¿Deseas eliminar la subcategoría "${subcategoria.subcategoria_nombre}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-            customClass: {
-                popup: 'dark:bg-gray-800 dark:text-gray-100',
-                title: 'dark:text-gray-100',
-                content: 'dark:text-gray-300'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.submitDeleteForm(`/categorias/subcategorias/${subcategoriaId}`);
-            }
-        });
+    } catch (error) {
+        console.error('Error:', error);
+        this.showAlert('error', 'Error', 'Error de conexión al eliminar');
     }
+}
 
-    /**
-     * Enviar formulario de eliminación
-     */
-    submitDeleteForm(url) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url;
-        
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-        
-        form.appendChild(csrfToken);
-        form.appendChild(methodField);
-        document.body.appendChild(form);
-        form.submit();
-    }
+  
 
     /**
      * Validar formulario de categoría

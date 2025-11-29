@@ -467,7 +467,7 @@ async function buscarProductos() {
 
     try {
         const response = await fetch(
-            `/api/ventas/buscar-productos?${params.toString()}`
+            `/ventas/search?${params.toString()}`
         );
         const productos = await response.json();
         console.log(productos);

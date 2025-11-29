@@ -228,6 +228,155 @@ class UserController extends Controller
         }
     }
 
+    public function search(Request $request)
+    {
+        $categoria_id = trim($request->query('categoria_id', ''));
+        $subcategoria_id = trim($request->query('subcategoria_id', ''));
+        $marca_id = trim($request->query('marca_id', ''));
+        $modelo_id = trim($request->query('modelo_id', ''));
+        $calibre_id = trim($request->query('calibre_id', ''));
+        $busqueda = trim($request->query('busqueda', ''));
+    
+        $productos = DB::table('pro_productos')
+            ->leftJoin('pro_precios', 'producto_id', '=', 'precio_producto_id')
+            ->Join('pro_categorias', 'producto_categoria_id', '=', 'categoria_id')
+            ->Join('pro_subcategorias', 'producto_subcategoria_id', '=', 'subcategoria_id')
+            ->leftJoin('pro_marcas', 'producto_marca_id', '=', 'marca_id')
+            ->leftJoin('pro_modelo', 'producto_modelo_id', '=', 'modelo_id')
+            ->leftJoin('pro_calibres', 'producto_calibre_id', '=', 'calibre_id')
+            ->leftJoin('pro_paises', 'producto_madein', '=', 'pais_id')
+            ->leftJoin('pro_stock_actual', 'stock_producto_id', '=', 'producto_id')
+            ->leftJoin('pro_productos_fotos', function ($join) {
+                $join->on('producto_id', '=', 'foto_producto_id')
+                    ->where('foto_principal', 1);
+            })
+            ->where('producto_situacion', 1)
+            ->when($categoria_id, fn($q) => $q->where('categoria_id', $categoria_id))
+            ->when($subcategoria_id, fn($q) => $q->where('subcategoria_id', $subcategoria_id))
+            ->when($marca_id, fn($q) => $q->where('marca_id', $marca_id))
+            ->when($modelo_id, fn($q) => $q->where('modelo_id', $modelo_id))
+            ->when($calibre_id, fn($q) => $q->where('calibre_id', $calibre_id))
+            ->when($busqueda, function ($q) use ($busqueda) {
+                $q->where(function ($query) use ($busqueda) {
+                    $query->where('producto_nombre', 'like', "%{$busqueda}%")
+                        ->orWhere('marca_descripcion', 'like', "%{$busqueda}%")
+                        ->orWhere('modelo_descripcion', 'like', "%{$busqueda}%")
+                        ->orWhere('calibre_nombre', 'like', "%{$busqueda}%");
+                });
+            })
+            ->select(
+                'producto_id',
+                'producto_nombre',
+                'producto_descripcion',
+                'producto_categoria_id',
+                'categoria_nombre',
+                'producto_subcategoria_id',
+                'subcategoria_nombre',
+                'producto_marca_id',
+                'marca_descripcion',
+                'producto_modelo_id',
+                'modelo_descripcion',
+                'producto_calibre_id',
+                'calibre_nombre',
+                'pais_descripcion',
+                'producto_situacion',
+                'producto_requiere_serie',
+                'precio_venta',
+                'precio_venta_empresa',
+                'foto_url',
+                'stock_cantidad_total',
+                'stock_cantidad_reservada',
+                'stock_cantidad_reservada2',
+                'producto_requiere_stock'
+            )
+            ->orderBy('producto_nombre')
+            ->get();
+    
+        // Procesar series y lotes
+        $productos = $productos->map(function ($producto) {
+            $productoArray = (array) $producto;
+    
+            // Calcular stock real
+            $stockTotal = $producto->stock_cantidad_total ?? 0;
+            $stockReservado = $producto->stock_cantidad_reservada ?? 0;
+            $stockReservado2 = $producto->stock_cantidad_reservada2 ?? 0;
+    
+            $productoArray['stock_cantidad_total'] = max(0, $stockTotal - $stockReservado - $stockReservado2);
+    
+            // SERIES
+            if ($producto->producto_requiere_serie == 1) {
+                $seriesDisponibles = DB::table('pro_series_productos')
+                    ->where('serie_producto_id', $producto->producto_id)
+                    ->where('serie_estado', 'disponible')
+                    ->select('serie_producto_id', 'serie_numero_serie', 'serie_situacion')
+                    ->orderBy('serie_numero_serie')
+                    ->get();
+    
+                $productoArray['series_disponibles'] = $seriesDisponibles;
+                $productoArray['cantidad_series'] = $seriesDisponibles->count();
+            } else {
+                $productoArray['series_disponibles'] = [];
+                $productoArray['cantidad_series'] = 0;
+            }
+    
+            // LOTES
+            $lotes = DB::table('pro_lotes')
+                ->where('lote_producto_id', $producto->producto_id)
+                ->select(
+                    'lote_id',
+                    'lote_producto_id',
+                    'lote_codigo',
+                    'lote_cantidad_total'
+                )
+                ->orderBy('lote_id')
+                ->get();
+    
+            $productoArray['lotes'] = $lotes;
+            $productoArray['cantidad_lotes'] = $lotes->count();
+            $productoArray['lotes_cantidad_total'] = $lotes->sum('lote_cantidad_total');
+    
+            return (object) $productoArray;
+        });
+    
+        return response()->json($productos);
+    }
+        public function destroy($id)
+    {
+        try {
+            $user = User::find($id);
+            
+            if (!$user) {
+                return response()->json([
+                    'codigo' => 0,
+                    'mensaje' => 'Usuario no encontrado'
+                ], 404);
+            }
+
+            // Verificar que no se esté eliminando a sí mismo
+            if (auth()->check() && auth()->user()->user_id == $id) {
+                return response()->json([
+                    'codigo' => 0,
+                    'mensaje' => 'No puedes eliminar tu propio usuario'
+                ], 400);
+            }
+
+            // Cambiar situación a 0 (inactivo) en lugar de eliminar físicamente
+            $user->user_situacion = 0;
+            $user->save();
+
+            return response()->json([
+                'codigo' => 1,
+                'mensaje' => 'Usuario eliminado exitosamente'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'codigo' => 0,
+                'mensaje' => 'Error eliminando usuario',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function verificarCorreoAPI(Request $request)
     {

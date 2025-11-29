@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/api/usuarios/{id}', [UserController::class, 'update']);
     Route::post('/api/usuarios', [UserController::class, 'registroAPI'])->name('usuarios.store.api');
+    Route::delete('/usuarios/{id}', [UserController::class, 'destroy']);
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
