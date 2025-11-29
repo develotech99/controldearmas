@@ -261,8 +261,43 @@ const mostrarDatosUsuario = (usuario) => {
     }
 };
 
+// Agregar esta función al inicio de tu archivo JS, después de las otras funciones auxiliares
+const mostrarAlerta = (mensaje, tipo = 'info') => {
+    const iconos = {
+        success: 'success',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+    
+    Swal.fire({
+        title: tipo === 'success' ? 'Éxito' : tipo === 'error' ? 'Error' : 'Aviso',
+        text: mensaje,
+        icon: iconos[tipo] || 'info',
+        confirmButtonText: 'Aceptar'
+    });
+};
+
 const eliminarUsuario = async (userId) => {
     try {
+        // Confirmar antes de eliminar
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Esta acción desactivará el usuario",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        swalLoadingOpen('Eliminando usuario...');
+
         const config = {
             method: 'DELETE',
             headers: {
@@ -271,18 +306,21 @@ const eliminarUsuario = async (userId) => {
             }
         };
 
-        const respuesta = await fetch(`/api/usuarios/${userId}`, config);
+        const respuesta = await fetch(`/usuarios/${userId}`, config);  
         const data = await respuesta.json();
 
-        if (respuesta.ok) {
-            mostrarAlerta('Usuario eliminado exitosamente', 'success');
+        swalLoadingClose();
+
+        if (data.codigo === 1) {
+            await Swal.fire('Éxito', data.mensaje || 'Usuario eliminado exitosamente', 'success');
             buscarUsuarios(); // Recargar datos
         } else {
-            mostrarAlerta(data.message || 'Error al eliminar usuario', 'error');
+            Swal.fire('Error', data.mensaje || 'Error al eliminar usuario', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        mostrarAlerta('Error de conexión', 'error');
+        swalLoadingClose();
+        Swal.fire('Error', 'Error de conexión', 'error');
     }
 };
 
@@ -336,12 +374,11 @@ document.addEventListener('click', (e) => {
     }
 
     // Eliminar usuario
+ // Este código ya lo tienes, pero verifica que esté así:
     if (e.target.matches('.btn-eliminar') || e.target.closest('.btn-eliminar')) {
         const btn = e.target.closest('.btn-eliminar');
         const userId = btn.dataset.id;
-        if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
-            eliminarUsuario(userId);
-        }
+        eliminarUsuario(userId); // Ya no necesita el confirm() porque lo hace dentro
     }
 
     // Limpiar filtros
