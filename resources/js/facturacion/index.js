@@ -16,11 +16,47 @@ const ventaSeleccionadaInfo = document.getElementById("ventaSeleccionadaInfo");
 const btnQuitarVenta = document.getElementById("btnQuitarVenta");
 const facVentaId = document.getElementById("fac_venta_id");
 
+// CUI y dirección factura normal
+const cuiInput = document.getElementById('fac_cui_receptor');
+const direccionInput = document.getElementById('fac_receptor_direccion');
+const btnBuscarCui = document.getElementById('btnBuscarCui');
+
 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 
-// --- helpers ---
+// --- helpers factura normal ---
 const nombreInput = document.getElementById('fac_receptor_nombre');
 const nitInput = document.getElementById('fac_nit_receptor');
+
+// ====== ELEMENTOS FACTURA CAMBIARIA ======
+const FormFacturaCambiaria = document.getElementById('formFacturaCambiaria');
+const btnGuardarFacturaCambiaria = document.getElementById('btnGuardarFacturaCambiaria');
+const btnAgregarItemCambiaria = document.getElementById('btnAgregarItemCambiaria');
+const contenedorItemsCambiaria = document.getElementById('contenedorItemsCambiaria');
+const templateItemCambiaria = document.getElementById('templateItemCambiaria');
+
+const nitCamInput = document.getElementById('fac_cam_nit_receptor');
+const cuiCamInput = document.getElementById('fac_cam_cui_receptor');
+const nombreCamInput = document.getElementById('fac_cam_receptor_nombre');
+const direccionCamInput = document.getElementById('fac_cam_receptor_direccion');
+
+const btnBuscarNitCambiaria = document.getElementById('btnBuscarNitCambiaria');
+const btnBuscarCuiCambiaria = document.getElementById('btnBuscarCuiCambiaria');
+
+const subtotalFacturaCambiariaEl = document.getElementById('subtotalFacturaCambiaria');
+const descuentoFacturaCambiariaEl = document.getElementById('descuentoFacturaCambiaria');
+const ivaFacturaCambiariaEl = document.getElementById('ivaFacturaCambiaria');
+const totalFacturaCambiariaEl = document.getElementById('totalFacturaCambiaria');
+
+// =============================
+// HELPERS GENERALES
+// =============================
+const toNumber = (v) => {
+    if (v === null || v === undefined) return 0;
+    const n = parseFloat(String(v).replace(/,/g, ''));
+    return isNaN(n) ? 0 : n;
+};
+
+const q = (root, sel) => root.querySelector(sel);
 
 const setBtnLoading = (btn, loading) => {
     if (!btn) return;
@@ -53,11 +89,492 @@ const isNitFormatoValido = (nit) => {
     return /^[0-9-]{3,20}$/.test(nit);
 };
 
+const isCuiFormatoValido = (cui) => {
+    if (!cui) return false;
+    return /^[0-9]{4,20}$/.test(cui);
+};
 
+// =============================
+// MODALES (abrir/cerrar)
+// =============================
+const abrirModal = (modalId) => {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+};
+
+const cerrarModal = (modalId) => {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+// ===== MODAL FACTURA NORMAL =====
+document.getElementById("btnAbrirModalFactura")?.addEventListener("click", () => {
+    abrirModal("modalFactura");
+
+    if (contenedorItems.querySelectorAll('.item-factura').length === 0) {
+        agregarItem();
+    }
+    recalcularTotales();
+});
+
+document.querySelectorAll('[data-modal-close="modalFactura"]').forEach(btn => {
+    btn.addEventListener("click", () => {
+        cerrarModal("modalFactura");
+    });
+});
+
+// =============================
+// FACTURA CAMBIARIA - RESET MODAL
+// =============================
+const resetModalFacturaCambiaria = () => {
+    if (!FormFacturaCambiaria) return;
+
+    FormFacturaCambiaria.reset();
+
+    if (contenedorItemsCambiaria) {
+        contenedorItemsCambiaria.innerHTML = '';
+    }
+
+    subtotalFacturaCambiariaEl.textContent = 'Q 0.00';
+    descuentoFacturaCambiariaEl.textContent = 'Q 0.00';
+    ivaFacturaCambiariaEl.textContent = 'Q 0.00';
+    totalFacturaCambiariaEl.textContent = 'Q 0.00';
+
+    if (nombreCamInput) {
+        nombreCamInput.value = '';
+        nombreCamInput.readOnly = true;
+        nombreCamInput.classList.add('cursor-not-allowed', 'bg-gray-100');
+    }
+    if (direccionCamInput) {
+        direccionCamInput.value = '';
+        direccionCamInput.readOnly = true;
+        direccionCamInput.classList.add('cursor-not-allowed', 'bg-gray-100');
+    }
+};
+
+// ===== MODAL FACTURA CAMBIARIA (abrir / cerrar) =====
+const btnAbrirModalFacturaCambiaria = document.getElementById("btnAbrirModalFacturaCambiaria");
+
+btnAbrirModalFacturaCambiaria?.addEventListener("click", () => {
+    resetModalFacturaCambiaria();
+    abrirModal("modalFacturaCambiaria");
+    agregarItemCambiaria();       // <-- SOLO agrega 1 item
+    recalcularTotalesCambiaria();
+});
+
+document.querySelectorAll('[data-modal-close="modalFacturaCambiaria"]').forEach(btn => {
+    btn.addEventListener("click", () => {
+        cerrarModal("modalFacturaCambiaria");
+        resetModalFacturaCambiaria();
+    });
+});
+
+// =============================
+// FACTURA CAMBIARIA - NIT / CUI
+// =============================
+const BuscarNITCambiaria = async () => {
+    const nit = nitCamInput?.value?.trim() ?? '';
+    if (!nit) return;
+
+    if (!token) {
+        Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
+        return;
+    }
+
+    if (!isNitFormatoValido(nit)) {
+        nitCamInput?.classList.remove('border-emerald-400');
+        nitCamInput?.classList.add('border-red-400');
+        Swal.fire({ icon: 'warning', title: 'NIT inválido', text: 'Escribe un NIT válido o CF.' });
+        return;
+    } else {
+        nitCamInput?.classList.remove('border-red-400');
+        nitCamInput?.classList.add('border-emerald-400');
+    }
+
+    if (/^cf$/i.test(nit)) {
+        nombreCamInput.value = 'CONSUMIDOR FINAL';
+        return;
+    }
+
+    setBtnLoading(btnBuscarNitCambiaria, true);
+    nombreCamInput.value = 'Consultando...';
+
+    const body = new FormData();
+    body.append('nit', nit);
+
+    try {
+        const res = await fetch('/facturacion/buscarNit', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json',
+            },
+            body
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data?.codigo !== 1) {
+            nombreCamInput.value = '';
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo consultar NIT',
+                text: data?.mensaje || 'Intente nuevamente.',
+            });
+            return;
+        }
+
+        nombreCamInput.value = data?.nombre || 'No encontrado';
+    } catch (err) {
+        console.error(err);
+        nombreCamInput.value = '';
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.message || 'Ocurrió un error inesperado al consultar NIT',
+        });
+    } finally {
+        setBtnLoading(btnBuscarNitCambiaria, false);
+    }
+};
+
+btnBuscarNitCambiaria?.addEventListener('click', (e) => {
+    e.preventDefault();
+    BuscarNITCambiaria();
+});
+
+nitCamInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        BuscarNITCambiaria();
+    }
+});
+
+const BuscarCUICambiaria = async () => {
+    const cui = cuiCamInput?.value?.trim() ?? '';
+    if (!cui) return;
+
+    if (!token) {
+        Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
+        return;
+    }
+
+    if (!isCuiFormatoValido(cui)) {
+        cuiCamInput?.classList.remove('border-emerald-400');
+        cuiCamInput?.classList.add('border-red-400');
+        Swal.fire({ icon: 'warning', title: 'CUI inválido', text: 'Debe ser un CUI de 13 dígitos.' });
+        return;
+    } else {
+        cuiCamInput?.classList.remove('border-red-400');
+        cuiCamInput?.classList.add('border-emerald-400');
+    }
+
+    setBtnLoading(btnBuscarCuiCambiaria, true);
+    nombreCamInput.value = 'Consultando...';
+
+    const body = new FormData();
+    body.append('cui', cui);
+
+    try {
+        const res = await fetch('/facturacion/buscarCui', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json',
+            },
+            body
+        });
+
+        const data = await res.json();
+
+        if (data?.codigo === 1) {
+            nombreCamInput.value = data?.nombre || '';
+            if (data?.requiereManual) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Nombre manual',
+                    text: 'El sistema FEL indica que debes ingresar el nombre manualmente.'
+                });
+                nombreCamInput.removeAttribute('readonly');
+                nombreCamInput.classList.remove('cursor-not-allowed', 'bg-gray-100');
+            }
+        } else if (data?.Resultado === true) {
+            const nombreFEL = data?.Nombre || '';
+            if (nombreFEL && nombreFEL !== 'Ingrese nombre manualmente') {
+                nombreCamInput.value = nombreFEL;
+            } else {
+                nombreCamInput.value = '';
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Nombre manual',
+                    text: 'El sistema FEL indica que debes ingresar el nombre manualmente.'
+                });
+                nombreCamInput.removeAttribute('readonly');
+                nombreCamInput.classList.remove('cursor-not-allowed', 'bg-gray-100');
+            }
+        } else {
+            nombreCamInput.value = '';
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo consultar CUI',
+                text: data?.mensaje || 'Intente nuevamente.',
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        nombreCamInput.value = '';
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.message || 'Ocurrió un error inesperado al consultar CUI',
+        });
+    } finally {
+        setBtnLoading(btnBuscarCuiCambiaria, false);
+    }
+};
+
+btnBuscarCuiCambiaria?.addEventListener('click', (e) => {
+    e.preventDefault();
+    BuscarCUICambiaria();
+});
+
+cuiCamInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        BuscarCUICambiaria();
+    }
+});
+
+// =============================
+// FACTURA CAMBIARIA - ITEMS
+// =============================
+const bindItemEventsCambiaria = (itemEl) => {
+    const $cant = q(itemEl, '.cam-item-cantidad');
+    const $prec = q(itemEl, '.cam-item-precio');
+    const $desc = q(itemEl, '.cam-item-descuento');
+    const $del = q(itemEl, '.btn-eliminar-item-cam');
+
+    if (!$cant || !$prec || !$desc || !$del) {
+        console.warn('Faltan elementos dentro del item cambiaria', { $cant, $prec, $desc, $del });
+        return;
+    }
+
+    const onKey = () => calcularItemCambiaria(itemEl);
+
+    $cant.addEventListener('input', onKey);
+    $prec.addEventListener('input', onKey);
+    $desc.addEventListener('input', onKey);
+
+    $del.addEventListener('click', () => {
+        itemEl.remove();
+        recalcularTotalesCambiaria();
+    });
+};
+
+const agregarItemCambiaria = (prefill = {}) => {
+    if (!templateItemCambiaria || !contenedorItemsCambiaria) return;
+
+    const tpl = templateItemCambiaria.content.firstElementChild;
+    const nodo = tpl.cloneNode(true);
+
+    if (prefill.descripcion) {
+        q(nodo, 'input[name="det_fac_producto_desc[]"]').value = prefill.descripcion;
+    }
+    if (typeof prefill.cantidad !== 'undefined') q(nodo, '.cam-item-cantidad').value = prefill.cantidad;
+    if (typeof prefill.precio !== 'undefined') q(nodo, '.cam-item-precio').value = prefill.precio;
+    if (typeof prefill.descuento !== 'undefined') q(nodo, '.cam-item-descuento').value = prefill.descuento;
+
+    contenedorItemsCambiaria.appendChild(nodo);
+    bindItemEventsCambiaria(nodo);
+    calcularItemCambiaria(nodo);
+};
+
+
+
+btnAgregarItemCambiaria?.addEventListener('click', () => agregarItemCambiaria());
+
+const calcularItemCambiaria = (itemEl) => {
+    const $cant = itemEl.querySelector('.cam-item-cantidad');
+    const $prec = itemEl.querySelector('.cam-item-precio');
+    const $desc = itemEl.querySelector('.cam-item-descuento');
+    const $total = itemEl.querySelector('.cam-item-total');
+
+    if (!$cant || !$prec || !$desc || !$total) {
+        console.warn('Faltan inputs en item cambiaria (calcularItemCambiaria)');
+        return;
+    }
+
+    const cantidad = Math.max(0, toNumber($cant.value));
+    const precio = Math.max(0, toNumber($prec.value));
+    const descuento = Math.max(0, toNumber($desc.value));
+
+    let importeBruto = (cantidad * precio) - descuento;
+    if (importeBruto < 0) importeBruto = 0;
+
+    $total.value = importeBruto.toFixed(2);
+
+    recalcularTotalesCambiaria();
+};
+
+const recalcularTotalesCambiaria = () => {
+    const items = contenedorItemsCambiaria?.querySelectorAll('.item-factura-cambiaria') || [];
+
+    let subtotalNeto = 0;
+    let ivaAcum = 0;
+    let descuentoAcum = 0;
+
+    items.forEach((item) => {
+        const $cant = item.querySelector('.cam-item-cantidad');
+        const $prec = item.querySelector('.cam-item-precio');
+        const $desc = item.querySelector('.cam-item-descuento');
+
+        if (!$cant || !$prec || !$desc) return;
+
+        const cant = Math.max(0, toNumber($cant.value));
+        const prec = Math.max(0, toNumber($prec.value));
+        const desc = Math.max(0, toNumber($desc.value));
+
+        const bruto = Math.max(0, (cant * prec) - desc);
+        const base = bruto / 1.12;
+        const iva = bruto - base;
+
+        subtotalNeto += base;
+        ivaAcum += iva;
+        descuentoAcum += desc;
+    });
+
+    const totalVenta = subtotalNeto + ivaAcum;
+
+    subtotalFacturaCambiariaEl.textContent = `Q ${subtotalNeto.toFixed(2)}`;
+    descuentoFacturaCambiariaEl.textContent = `Q ${descuentoAcum.toFixed(2)}`;
+    ivaFacturaCambiariaEl.textContent = `Q ${ivaAcum.toFixed(2)}`;
+    totalFacturaCambiariaEl.textContent = `Q ${totalVenta.toFixed(2)}`;
+};
+
+// ====== SUBMIT FACTURA CAMBIARIA ======
+FormFacturaCambiaria?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!token) {
+        Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
+        return;
+    }
+
+    const items = contenedorItemsCambiaria?.querySelectorAll('.item-factura-cambiaria') || [];
+    if (items.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'Sin items', text: 'Agrega al menos un producto/servicio.' });
+        return;
+    }
+
+    let totalFactura = 0;
+    items.forEach((item) => {
+        const $total = item.querySelector('.cam-item-total');
+        if ($total) totalFactura += toNumber($total.value);
+    });
+
+    if (totalFactura <= 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Importes inválidos',
+            text: 'Verifica cantidades, precios y descuentos.'
+        });
+        return;
+    }
+
+    // ✅ NUEVA validación de "abono": usamos la fecha de vencimiento
+    const fechaVencInput = FormFacturaCambiaria.querySelector('input[name="fac_cam_fecha_vencimiento"]');
+    const fechaVenc = fechaVencInput?.value || '';
+
+    if (!fechaVenc) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sin fecha de vencimiento',
+            text: 'Debes ingresar la fecha de vencimiento del crédito.'
+        });
+        fechaVencInput?.focus();
+        return;
+    }
+
+    setBtnLoading(btnGuardarFacturaCambiaria, true);
+
+    try {
+        const formData = new FormData(FormFacturaCambiaria);
+
+        const res = await fetch('/facturacion/certificar-cambiaria', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json',
+            },
+            body: formData
+        });
+
+        // 👇 NUEVO: ver la respuesta original ANTES de parsearla
+        console.log('RAW RESPONSE:', res);
+        console.log('RAW TEXT:', await res.clone().text());
+
+        const data = await res.json();
+
+
+        if (!res.ok || data?.codigo !== 1) {
+            throw new Error(data?.detalle || data?.mensaje || `Error ${res.status}`);
+        }
+
+        const result = await Swal.fire({
+            icon: 'success',
+            title: '¡Factura cambiaria certificada!',
+            html: `
+                <div style="text-align:left">
+                    <p><b>UUID:</b> ${data.data.uuid}</p>
+                    <p><b>Serie:</b> ${data.data.serie}</p>
+                    <p><b>Número:</b> ${data.data.numero}</p>
+                    <p><b>Total:</b> Q ${Number(data.data.total).toFixed(2)}</p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '📄 Ver Factura Cambiaria',
+            cancelButtonText: 'Cerrar',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed && data.data.fac_id) {
+            window.open(`/facturacion/${data.data.fac_id}/vista-cambiaria`, '_blank');
+        }
+
+        cerrarModal('modalFacturaCambiaria');
+        FormFacturaCambiaria.reset();
+        contenedorItemsCambiaria.innerHTML = '';
+        document.getElementById('subtotalFacturaCambiaria').textContent = 'Q 0.00';
+        document.getElementById('descuentoFacturaCambiaria').textContent = 'Q 0.00';
+        document.getElementById('ivaFacturaCambiaria').textContent = 'Q 0.00';
+        document.getElementById('totalFacturaCambiaria').textContent = 'Q 0.00';
+
+    } catch (err) {
+        console.error(err);
+        Swal.fire({
+            icon: 'error',
+            title: 'No se pudo certificar',
+            text: err.message || 'Error desconocido'
+        });
+    } finally {
+        setBtnLoading(btnGuardarFacturaCambiaria, false);
+    }
+});
+
+
+// =============================
+// FACTURA NORMAL - NIT / CUI
+// =============================
 let isSearching = false;
+let isSearchingCui = false;
 
 const BuscarNIT = async (ev) => {
-
     if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
 
     const nit = nitInput?.value?.trim() ?? '';
@@ -134,6 +651,89 @@ const BuscarNIT = async (ev) => {
     }
 };
 
+const BuscarCUI = async (ev) => {
+    if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+
+    const cui = cuiInput?.value?.trim() ?? '';
+    if (!cui) return;
+
+    if (!token) {
+        Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
+        return;
+    }
+
+    if (!isCuiFormatoValido(cui)) {
+        cuiInput?.classList.remove('border-emerald-400');
+        cuiInput?.classList.add('border-red-400');
+        Swal.fire({ icon: 'warning', title: 'CUI inválido', text: 'Escribe un CUI válido.' });
+        return;
+    } else {
+        cuiInput?.classList.remove('border-red-400');
+        cuiInput?.classList.add('border-emerald-400');
+    }
+
+    if (isSearchingCui) return;
+    isSearchingCui = true;
+    setBtnLoading(btnBuscarCui, true);
+
+    if (nombreInput) nombreInput.value = 'Consultando...';
+    if (direccionInput) direccionInput.value = '';
+
+    const body = new FormData();
+    body.append('cui', cui);
+
+    const url = '/facturacion/buscarCui';
+    const config = {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Accept': 'application/json',
+        },
+        body
+    };
+
+    try {
+        const peticion = await fetch(url, config);
+        if (!peticion.ok) {
+            const txt = await peticion.text();
+            throw new Error(`Error ${peticion.status}: ${txt}`);
+        }
+
+        const respuesta = await peticion.json();
+
+        if (respuesta?.codigo === 1) {
+            if (nombreInput) {
+                nombreInput.value = respuesta?.nombre || 'No encontrado';
+            }
+            if (direccionInput) {
+                direccionInput.value = respuesta?.direccion || '';
+            }
+        } else {
+            if (nombreInput) nombreInput.value = '';
+            if (direccionInput) direccionInput.value = '';
+
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo consultar',
+                text: respuesta?.mensaje || 'Intente nuevamente.',
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        if (nombreInput) nombreInput.value = '';
+        if (direccionInput) direccionInput.value = '';
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Ocurrió un error inesperado',
+        });
+    } finally {
+        setBtnLoading(btnBuscarCui, false);
+        isSearchingCui = false;
+    }
+};
+
 btnBuscarNit?.addEventListener('click', BuscarNIT);
 
 nitInput?.addEventListener('keydown', (e) => {
@@ -143,6 +743,29 @@ nitInput?.addEventListener('keydown', (e) => {
     }
 });
 
+btnBuscarCui?.addEventListener('click', BuscarCUI);
+
+cuiInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        BuscarCUI(e);
+    }
+});
+
+cuiInput?.addEventListener('input', debounce(() => {
+    const cui = cuiInput.value.trim();
+    if (!cui) {
+        cuiInput.classList.remove('border-emerald-400', 'border-red-400');
+        return;
+    }
+    if (isCuiFormatoValido(cui)) {
+        cuiInput.classList.remove('border-red-400');
+        cuiInput.classList.add('border-emerald-400');
+    } else {
+        cuiInput.classList.remove('border-emerald-400');
+        cuiInput.classList.add('border-red-400');
+    }
+}, 300));
 
 nitInput?.addEventListener('input', debounce(() => {
     const nit = nitInput.value.trim();
@@ -160,48 +783,9 @@ nitInput?.addEventListener('input', debounce(() => {
     }
 }, 300));
 
-// ABRIR Y CERRAR MODAL
-const abrirModal = (modalId) => {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-};
-
-const cerrarModal = (modalId) => {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-};
-
-document.getElementById("btnAbrirModalFactura")?.addEventListener("click", () => {
-    abrirModal("modalFactura");
-});
-
-document.querySelectorAll('[data-modal-close="modalFactura"]').forEach(btn => {
-    btn.addEventListener("click", () => {
-        cerrarModal("modalFactura");
-    });
-});
-
-
 // =============================
-// ITEMS DE FACTURA (agregar/quitar/calcular)
+// FACTURA NORMAL - ITEMS
 // =============================
-
-
-const toNumber = (v) => {
-    if (v === null || v === undefined) return 0;
-    const n = parseFloat(String(v).replace(/,/g, ''));
-    return isNaN(n) ? 0 : n;
-};
-
-const q = (root, sel) => root.querySelector(sel);
-
-
 const calcularItem = (itemEl) => {
     const $cant = q(itemEl, '.item-cantidad');
     const $prec = q(itemEl, '.item-precio');
@@ -219,7 +803,6 @@ const calcularItem = (itemEl) => {
 
     recalcularTotales();
 };
-
 
 const recalcularTotales = () => {
     const items = contenedorItems.querySelectorAll('.item-factura');
@@ -250,7 +833,6 @@ const recalcularTotales = () => {
     document.getElementById('totalFactura').textContent = `Q ${totalVenta.toFixed(2)}`;
 };
 
-
 const bindItemEvents = (itemEl) => {
     const onKey = () => calcularItem(itemEl);
 
@@ -258,7 +840,6 @@ const bindItemEvents = (itemEl) => {
     q(itemEl, '.item-precio').addEventListener('input', onKey);
     q(itemEl, '.item-descuento').addEventListener('input', onKey);
 
-    // Quitar item
     q(itemEl, '.btn-eliminar-item').addEventListener('click', () => {
         itemEl.remove();
         recalcularTotales();
@@ -272,7 +853,6 @@ const agregarItem = (prefill = {}) => {
     const nodo = tpl.cloneNode(true);
 
     if (prefill.descripcion) q(nodo, 'input[name="det_fac_producto_desc[]"]').value = prefill.descripcion;
-    if (prefill.producto_id) q(nodo, '.item-producto-id').value = prefill.producto_id;
     if (typeof prefill.cantidad !== 'undefined') q(nodo, '.item-cantidad').value = prefill.cantidad;
     if (typeof prefill.precio !== 'undefined') q(nodo, '.item-precio').value = prefill.precio;
     if (typeof prefill.descuento !== 'undefined') q(nodo, '.item-descuento').value = prefill.descuento;
@@ -282,7 +862,6 @@ const agregarItem = (prefill = {}) => {
     bindItemEvents(nodo);
     calcularItem(nodo);
 };
-
 
 btnAgregarItem?.addEventListener('click', () => agregarItem());
 
@@ -296,93 +875,8 @@ document.getElementById("btnAbrirModalFactura")?.addEventListener("click", () =>
     recalcularTotales();
 });
 
-// =============================
-// BUSQUEDA DE VENTAS
-// =============================
-const buscarVenta = async () => {
-    const q = busquedaVenta.value.trim();
-    if (q.length < 2) return;
-
-    setBtnLoading(btnBuscarVenta, true);
-    resultadosVenta.innerHTML = '';
-    resultadosVenta.classList.remove('hidden');
-
-    try {
-        const res = await fetch(`/facturacion/buscar-venta?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
-
-        if (data.codigo === 1 && data.data.length > 0) {
-            data.data.forEach(venta => {
-                const div = document.createElement('div');
-                div.className = 'p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm';
-                div.innerHTML = `
-                    <div class="font-bold text-blue-800">Venta #${venta.ven_id} - ${venta.ven_fecha}</div>
-                    <div class="text-gray-600">${venta.cliente_nombre1} ${venta.cliente_apellido1} (${venta.cliente_nit})</div>
-                    <div class="text-xs text-gray-500">Total: Q ${venta.ven_total_vendido}</div>
-                `;
-                div.addEventListener('click', () => seleccionarVenta(venta));
-                resultadosVenta.appendChild(div);
-            });
-        } else {
-            resultadosVenta.innerHTML = '<div class="p-2 text-gray-500 text-sm">No se encontraron ventas pendientes.</div>';
-        }
-    } catch (err) {
-        console.error(err);
-        resultadosVenta.innerHTML = '<div class="p-2 text-red-500 text-sm">Error al buscar ventas.</div>';
-    } finally {
-        setBtnLoading(btnBuscarVenta, false);
-    }
-};
-
-const seleccionarVenta = (venta) => {
-    // Llenar datos cliente
-    nitInput.value = venta.cliente_nit || 'CF';
-    nombreInput.value = `${venta.cliente_nombre1} ${venta.cliente_apellido1}`;
-    document.getElementById('fac_receptor_direccion').value = venta.cliente_direccion || '';
-    
-    // Llenar info venta seleccionada
-    facVentaId.value = venta.ven_id;
-    document.getElementById('lblVentaId').textContent = venta.ven_id;
-    document.getElementById('lblCliente').textContent = `${venta.cliente_nombre1} ${venta.cliente_apellido1}`;
-    
-    ventaSeleccionadaInfo.classList.remove('hidden');
-    resultadosVenta.classList.add('hidden');
-    busquedaVenta.value = '';
-
-    // Llenar items
-    contenedorItems.innerHTML = '';
-    if (venta.detalles && venta.detalles.length > 0) {
-        venta.detalles.forEach(det => {
-            agregarItem({
-                descripcion: det.producto_nombre,
-                cantidad: det.det_cantidad,
-                precio: det.det_precio,
-                descuento: det.det_descuento,
-                producto_id: det.det_producto_id
-            });
-        });
-    }
-};
-
-btnBuscarVenta?.addEventListener('click', buscarVenta);
-busquedaVenta?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        buscarVenta();
-    }
-});
-
-btnQuitarVenta?.addEventListener('click', () => {
-    facVentaId.value = '';
-    ventaSeleccionadaInfo.classList.add('hidden');
-    contenedorItems.innerHTML = '';
-    agregarItem(); // Agregar uno vacío
-    FormFactura.reset();
-});
-
 // ===== SUBMIT: CERTIFICAR FACTURA =====
 FormFactura?.addEventListener('submit', async (e) => {
-    // Validaciones rápidas que ya tienes:
     const items = contenedorItems.querySelectorAll('.item-factura');
     if (items.length === 0) {
         e.preventDefault();
@@ -397,7 +891,7 @@ FormFactura?.addEventListener('submit', async (e) => {
         return;
     }
 
-    e.preventDefault(); // <- ahora sí prevenimos submit normal
+    e.preventDefault();
 
     if (!token) {
         Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
@@ -445,8 +939,6 @@ FormFactura?.addEventListener('submit', async (e) => {
             window.open(`/facturacion/${data.data.fac_id}/vista`, '_blank');
         }
 
-
-        // Cierra modal y limpia form
         cerrarModal('modalFactura');
         FormFactura.reset();
         contenedorItems.innerHTML = '';
@@ -455,7 +947,6 @@ FormFactura?.addEventListener('submit', async (e) => {
         document.getElementById('ivaFactura').textContent = 'Q 0.00';
         document.getElementById('totalFactura').textContent = 'Q 0.00';
 
-        // Recarga la tabla
         if (window.tablaFacturas) {
             window.tablaFacturas.ajax.reload(null, false);
         }
@@ -468,7 +959,9 @@ FormFactura?.addEventListener('submit', async (e) => {
     }
 });
 
-// ====== DATATABLE FACTURAS CON SCROLL HORIZONTAL ======
+// =============================
+// DATATABLE FACTURAS
+// =============================
 const elTabla = document.getElementById('tablaFacturas');
 const fmtQ = (n) => `Q ${Number(n || 0).toFixed(2)}`;
 const fmtFecha = (s) => {
@@ -505,79 +998,63 @@ if (elTabla) {
             }
         },
         columns: [
-            {
-                title: 'UUID',
-                data: 'fac_uuid',
-                className: 'text-xs font-mono'
-            },
+            { title: 'UUID', data: 'fac_uuid', className: 'text-xs font-mono' },
             {
                 title: 'Documento',
                 data: null,
                 render: (d, t, row) => `${row.fac_serie || ''}-${row.fac_numero || ''}`,
                 className: 'font-semibold'
             },
-            {
-                title: 'Cliente',
-                data: 'fac_receptor_nombre',
-                className: 'max-w-xs truncate'
-            },
-            {
-                title: 'Estado',
-                data: 'fac_estado',
-                render: (d) => estadoBadge(d),
-                className: 'text-center'
-            },
-            {
-                title: 'Total',
-                data: 'fac_total',
-                render: (d) => fmtQ(d),
-                className: 'text-right font-semibold'
-            },
-            {
-                title: 'Moneda',
-                data: 'fac_moneda',
-                className: 'text-center'
-            },
-            {
-                title: 'Fecha Emisión',
-                data: 'fac_fecha_emision',
-                render: (d) => fmtFecha(d),
-                className: 'text-sm'
-            },
-            {
-                title: 'Certificado',
-                data: 'fac_fecha_certificacion',
-                render: (d) => fmtFecha(d),
-                className: 'text-sm'
-            },
+            { title: 'Cliente', data: 'fac_receptor_nombre', className: 'max-w-xs truncate' },
+            { title: 'Estado', data: 'fac_estado', render: (d) => estadoBadge(d), className: 'text-center' },
+            { title: 'Total', data: 'fac_total', render: (d) => fmtQ(d), className: 'text-right font-semibold' },
+            { title: 'Moneda', data: 'fac_moneda', className: 'text-center' },
+            { title: 'Fecha Emisión', data: 'fac_fecha_emision', render: (d) => fmtFecha(d), className: 'text-sm' },
+            { title: 'Certificado', data: 'fac_fecha_certificacion', render: (d) => fmtFecha(d), className: 'text-sm' },
             {
                 title: 'Acciones',
                 data: null,
                 orderable: false,
                 searchable: false,
                 render: (d, t, row) => {
+
                     const puedeAnular = row.fac_estado === 'CERTIFICADO';
+
+                    // Elegir ruta correcta según tipo de factura
+                    const urlVista =
+                        row.fac_tipo_documento === 'FCAM'
+                            ? `/facturacion/${row.fac_id}/vista-cambiaria`
+                            : `/facturacion/${row.fac_id}/vista`;
+
                     return `
-                        <div class="flex flex-nowrap gap-2">
-                            <a href="/facturacion/${row.fac_id}/vista" target="_blank"
-                               class="px-3 py-1 rounded bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium transition inline-flex items-center gap-1 whitespace-nowrap"
-                               title="Imprimir">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                </svg>
-                            </a>
-                            ${puedeAnular ? `
-                            <button type="button" class="btn-anular px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition inline-flex items-center gap-1 whitespace-nowrap"
-                                    data-anular="${row.fac_uuid}" data-id="${row.fac_id}"
-                                    title="Anular">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                            ` : ''}
-                        </div>
-                    `;
+        <div class="flex flex-nowrap gap-2">
+
+            <!-- Botón imprimir -->
+            <a href="${urlVista}" target="_blank"
+                class="px-3 py-1 rounded bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium transition inline-flex items-center gap-1 whitespace-nowrap"
+                title="Imprimir">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+            </a>
+
+            ${puedeAnular ? `
+            <button type="button"
+                class="btn-anular px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition inline-flex items-center gap-1 whitespace-nowrap"
+                data-anular="${row.fac_uuid}" data-id="${row.fac_id}"
+                title="Anular">
+
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </button>
+            ` : ''}
+        </div>
+    `;
                 }
+
             }
         ],
         pageLength: 10,
@@ -589,7 +1066,7 @@ if (elTabla) {
         language: ES_LANG
     });
 }
-// Botón Filtrar
+
 btnFiltrarFacturas?.addEventListener('click', () => {
     if (window.tablaFacturas) {
         Swal.fire({
@@ -613,7 +1090,6 @@ const btnConsultarDte = document.getElementById('btnConsultarDte');
 const uuidConsulta = document.getElementById('uuid_consulta');
 const resultadoConsultaDte = document.getElementById('resultadoConsultaDte');
 
-// Template para resultados (agrega esto si no lo tienes)
 const templateResultadoDte = document.getElementById('templateResultadoDte') || (() => {
     const temp = document.createElement('template');
     temp.innerHTML = `
@@ -725,18 +1201,15 @@ const consultarDte = async (uuid, contenedorResultado) => {
     }
 };
 
-
 const mostrarResultadoDte = (datos, contenedor) => {
     const template = templateResultadoDte.content.cloneNode(true);
 
-    // Llenar datos
     template.querySelector('[data-uuid]').textContent = datos.UUID || datos.uuid;
     template.querySelector('[data-documento]').textContent = `${datos.Serie || datos.serie}-${datos.Numero || datos.numero}`;
     template.querySelector('[data-fecha-certificacion]').textContent = datos.FechaHoraCertificacion || datos.fechaHoraCertificacion;
 
     const estado = datos.estado_local || 'Desconocido';
     template.querySelector('[data-estado]').textContent = estado;
-
 
     const badge = template.querySelector('[data-estado-badge]');
     badge.textContent = estado;
@@ -766,7 +1239,6 @@ const mostrarResultadoDte = (datos, contenedor) => {
         template.querySelector('.grid').appendChild(infoAnulacion);
     }
 
-
     const btnLimpiar = template.querySelector('[data-limpiar-consulta]');
     btnLimpiar?.addEventListener('click', () => {
         contenedor.innerHTML = '';
@@ -779,12 +1251,10 @@ const mostrarResultadoDte = (datos, contenedor) => {
     contenedor.classList.remove('hidden');
 };
 
-// Event Listeners
 btnConsultarDte?.addEventListener('click', () => {
     consultarDte(uuidConsulta.value, resultadoConsultaDte);
 });
 
-// Consulta rápida con Enter
 uuidConsulta?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         consultarDte(uuidConsulta.value, resultadoConsultaDte);
@@ -830,7 +1300,6 @@ document.addEventListener('click', async (e) => {
                         text: 'La factura ha sido anulada exitosamente'
                     });
 
-                    // Recargar la tabla
                     if (window.tablaFacturas) {
                         window.tablaFacturas.ajax.reload(null, false);
                     }

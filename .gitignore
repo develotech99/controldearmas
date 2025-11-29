@@ -40,6 +40,7 @@ Thumbs.db
 Homestead.json
 Homestead.yaml
 
+/public/storage_backup.tar.gz
 # ==========================================
 # 📦 Archivos de bloqueo de dependencias
 # ==========================================

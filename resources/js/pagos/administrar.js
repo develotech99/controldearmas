@@ -3,6 +3,93 @@ import Swal from "sweetalert2";
 import DataTable from "vanilla-datatables";
 import "vanilla-datatables/src/vanilla-dataTables.css";
 
+
+
+
+
+// Mapa global: venta_id => info completa de la venta
+let ventaDetalles = new Map();
+
+const CargarMisPagos = async () => {
+    try {
+        const baseUrl = window.URL_MIS_PAGOS || '/obtener/mispagos';
+        const url = `${baseUrl}?all=1`;
+
+        const resp = await fetch(url, { method: 'GET' });
+
+        if (!resp.ok) {
+            console.warn('MisFacturasPendientes no respondió OK. Status:', resp.status);
+            return;
+        }
+
+        const ct = resp.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            console.error('Respuesta NO es JSON (probablemente HTML de error/login).');
+            return;
+        }
+
+        const { codigo, data } = await resp.json();
+
+        if (codigo !== 1 || !data) {
+            console.warn('MisFacturasPendientes sin data usable', { codigo, data });
+            return;
+        }
+
+        ventaDetalles.clear();
+
+        const agregar = (lista) => {
+            if (!Array.isArray(lista)) return;
+
+            lista.forEach(v => {
+                if (!v || v.venta_id == null) return;
+
+                const ventaId = Number(v.venta_id);
+                if (!ventaId) return;
+
+                const normalizado = {
+                    venta_id: ventaId,
+                    fecha: v.fecha,
+                    concepto: v.concepto,
+                    items_count: v.items_count ?? 0,
+                    monto_total: v.monto_total ?? v.total ?? 0,
+                    pagado: v.pagado ?? 0,
+                    pendiente: v.pendiente ?? 0,
+                    estado_pago: v.estado_pago ?? v.estado ?? 'PENDIENTE',
+                    observaciones: v.observaciones ?? '',
+
+                    cliente: v.cliente || {},
+                    vendedor: v.vendedor || {},
+                    precios: v.precios || {},
+
+                    pago_master: v.pago_master || {},
+                    pagos_realizados: v.pagos_realizados || [],
+                    cuotas_pendientes: v.cuotas_pendientes || [],
+                    cuotas_disponibles: v.cuotas_disponibles ?? 0,
+                    cuotas_en_revision: v.cuotas_en_revision || [],
+                    marcar_como: v.marcar_como || null,
+                    fecha_ultimo_pago: v.fecha_ultimo_pago || null,
+                };
+
+                // siempre usar la llave numérica
+                ventaDetalles.set(ventaId, normalizado);
+            });
+        };
+
+        agregar(data.pendientes);
+        agregar(data.pagadas_ult4m);
+        agregar(data.facturas_pendientes_all);
+
+        console.log('ventaDetalles cargado con', ventaDetalles.size, 'ventas');
+    } catch (e) {
+        console.error('Error cargando MisFacturasPendientes:', e);
+    }
+};
+
+
+
+
+
+
 /* =========================
  *  Helpers generales
  * ========================= */
@@ -48,6 +135,7 @@ const setTxt = (id, txt) => {
 
 const abrirModal = (id) => document.getElementById(id)?.classList.remove("hidden");
 const cerrarModal = (id) => document.getElementById(id)?.classList.add("hidden");
+
 
 /* =========================
  *  Estado simple
@@ -462,13 +550,121 @@ const rangoMes = () => {
     };
 };
 
-/* =========================
- *  Movimientos
- *  Espera: { codigo:1, data:{ data:[...], total } } o { codigo:1, data:[...] }
- * ========================= */
 
+
+
+
+// ======================= CARGAR MOVIMIENTOS =======================
+const CargarMovimientos = async () => {
+    try {
+        swalLoadingOpen("Cargando movimientos...");
+
+        const metodoId = document.getElementById("filtroMetodo")?.value || "";
+        const { from, to } = rangoMes();
+
+        const url = new URL(`${API}/movimientos`, window.location.origin);
+        url.searchParams.set("from", from);
+        url.searchParams.set("to", to);
+        if (metodoId) url.searchParams.set("metodo_id", metodoId);
+
+        const resp = await fetch(url, { method: "GET" });
+        const { codigo, mensaje, data } = await resp.json();
+
+        swalLoadingClose();
+
+        if (codigo !== 1) {
+            console.error(mensaje);
+            renderMovimientos([]);
+            setTxt("totalMovimientosMes", fmtQ(0));
+            return;
+        }
+
+        const rows = Array.isArray(data?.movimientos)
+            ? data.movimientos
+            : Array.isArray(data)
+                ? data
+                : [];
+
+        const total = Number(data?.total ?? 0);
+
+        // ==== construir mapa de ventas (solo ACTIVAS) ====
+        ventaDetalles = new Map();
+
+        const ventas = Array.isArray(data?.ventas) ? data.ventas : [];
+        ventas.forEach(v => {
+            const id = Number(v.ven_id || v.id || v.venta_id || 0);
+            if (!id) return;
+
+            // si el backend manda el estado de la venta, filtramos aquí
+            const situacion = (v.ven_situacion || v.situacion || v.estado || "").toUpperCase();
+            if (situacion && situacion !== "ACTIVA") return; // ❗ solo guardamos activas
+
+            // normalizamos estructura para usar en renderMovimientos
+            ventaDetalles.set(id, {
+                id,
+                situacion,
+                cliente: {
+                    nombre: v.cliente_nombre,
+                    empresa: v.cliente_empresa,
+                    nit: v.cliente_nit,
+                    telefono: v.cliente_telefono,
+                },
+                vendedor: {
+                    nombre: v.vendedor_nombre,
+                },
+                precios: {
+                    individual: v.precio_individual,
+                    empresa: v.precio_empresa,
+                    aplicado: v.precio_aplicado,
+                },
+                concepto: v.concepto,
+                items_count: v.items_count,
+                monto_total: v.pago_monto_total ?? v.monto_total,
+                pagado: v.pago_monto_pagado ?? v.pagado,
+                pendiente: v.pago_monto_pendiente ?? v.pendiente,
+                pagos_realizados: v.pagos_realizados || [],
+                cuotas_pendientes: v.cuotas_pendientes || [],
+            });
+        });
+
+        console.log("ventaDetalles cargado con", ventaDetalles.size, "ventas ACTIVAS");
+
+        renderMovimientos(rows);
+        setTxt("totalMovimientosMes", fmtQ(total));
+    } catch (e) {
+        swalLoadingClose();
+        console.error("Error movs:", e);
+        renderMovimientos([]);
+        setTxt("totalMovimientosMes", fmtQ(0));
+    }
+};
 const renderMovimientos = (rows = []) => {
-    console.log("Renderizando movimientos:", rows);
+    // 1) Filtrar: quitar ventas cuyo detalle NO está activo / no existe en ventaDetalles
+    const rowsFiltradas = rows.filter((r) => {
+        const tipo = r.cja_tipo || "";
+
+        // Para todo lo que no sea VENTA (DEPÓSITO, EGRESO, AJUSTE, etc.) se muestra siempre
+        if (tipo !== "VENTA") return true;
+
+        const ventaId = Number(r.venta_id || 0);
+        if (!ventaId) return true; // por si hay movimientos VENTA sin referencia
+
+        const venta = ventaDetalles.get(ventaId) || null;
+        if (!venta) {
+            // No hay detalle en ventaDetalles => venta no activa o no encontrada => NO mostrar fila
+            return false;
+        }
+
+        const situacionVenta = (venta.situacion || venta.ven_situacion || "").toUpperCase();
+        // Solo mostramos filas cuyo detalle tenga venta ACTIVA (o sin campo de situación)
+        return !situacionVenta || situacionVenta === "ACTIVA";
+    });
+
+    // 2) Construir las columnas solo para las filas que pasaron el filtro
+    const data = rowsFiltradas.map((r) => {
+        const fecha = r.cja_fecha
+            ? new Date(r.cja_fecha).toLocaleString("es-GT")
+            : "—";
 
     const data = rows.map((r) => {
         const fecha = r.cja_fecha ? new Date(r.cja_fecha).toLocaleString('es-GT', {
@@ -624,11 +820,7 @@ const renderMovimientos = (rows = []) => {
     });
 
     if (dtMovimientos) {
-        try {
-            dtMovimientos.destroy();
-        } catch (e) {
-            console.warn("Error al destruir DataTable:", e);
-        }
+        try { dtMovimientos.destroy(); } catch (e) { console.warn("Error al destruir DataTable:", e); }
         dtMovimientos = null;
     }
 
@@ -672,6 +864,20 @@ const renderMovimientos = (rows = []) => {
 
     console.log("DataTable inicializado con", data.length, "filas");
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /* =========================
@@ -768,39 +974,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
-const CargarMovimientos = async () => {
-    try {
-        swalLoadingOpen("Cargando movimientos...");
-        const metodoId = document.getElementById("filtroMetodo")?.value || "";
-        const { from, to } = rangoMes();
-        const url = new URL(`${API}/movimientos`, window.location.origin);
-        url.searchParams.set("from", from);
-        url.searchParams.set("to", to);
-        if (metodoId) url.searchParams.set("metodo_id", metodoId);
 
-        const resp = await fetch(url, { method: "GET" });
-        const { codigo, mensaje, data } = await resp.json();
-        swalLoadingClose();
-
-        if (codigo === 1) {
-            const rows = Array.isArray(data?.movimientos) ? data.movimientos
-                : Array.isArray(data) ? data
-                    : [];
-            const total = Number(data?.total ?? 0);
-            renderMovimientos(rows);
-            setTxt("totalMovimientosMes", fmtQ(total));
-        } else {
-            console.error(mensaje);
-            renderMovimientos([]);
-            setTxt("totalMovimientosMes", fmtQ(0));
-        }
-    } catch (e) {
-        swalLoadingClose();
-        console.error("Error movs:", e);
-        renderMovimientos([]);
-        setTxt("totalMovimientosMes", fmtQ(0));
-    }
-};
 
 document.getElementById("btnFiltrarMovs")?.addEventListener("click", CargarMovimientos);
 
@@ -1333,6 +1507,12 @@ const Init = async () => {
     initTablaPreview();
     await CargarStats();
     await BuscarPendientes();
+
+    // 🔹 Primero cargar detalle de ventas
+    await CargarMisPagos();
+
+    // 🔹 Luego movimientos, que ya usarán ventaDetalles
     await CargarMovimientos();
 };
+
 document.addEventListener("DOMContentLoaded", Init);

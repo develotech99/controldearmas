@@ -78,6 +78,138 @@ class FacturacionController extends Controller
         }
     }
 
+
+// public function buscarCUI(Request $request)
+// {
+//     $data = $request->validate([
+//         'cui' => ['required', 'string', 'max:20'],
+//     ], [
+//         'cui.required' => 'Debe ingresar un CUI válido',
+//     ]);
+
+//     $cui = trim($data['cui']);
+
+//     try {
+//         $json = $this->felService->consultarCui($cui);
+
+//         // Si la API devuelve mensaje de error tipo autorización
+//         if (isset($json['Message']) && !isset($json['Resultado'])) {
+//             return response()->json([
+//                 'codigo'  => 0,
+//                 'mensaje' => $json['Message'],
+//                 'fel_raw' => $json,
+//             ]);
+//         }
+
+//         // Si no viene Resultado o viene en false
+//         if (!isset($json['Resultado']) || $json['Resultado'] !== true) {
+//             return response()->json([
+//                 'codigo'  => 0,
+//                 'mensaje' => 'CUI no encontrado',
+//                 'fel_raw' => $json,
+//             ]);
+//         }
+
+//         $nombreApi = $json['Nombre'] ?? null;
+
+//         // Caso especial: FEL dice "Ingrese nombre manualmente"
+//         $requiereManual = false;
+//         $nombre = $nombreApi;
+
+//         if (!$nombreApi || trim($nombreApi) === '' || strcasecmp($nombreApi, 'Ingrese nombre manualmente') === 0) {
+//             $nombre = '';
+//             $requiereManual = true;
+//         }
+
+//         return response()->json([
+//             'codigo'         => 1,
+//             'cui'            => $json['Cui'] ?? $cui,
+//             'nombre'         => $nombre,
+//             'fallecido'      => $json['Fallecido'] ?? false,
+//             'direccion'      => null,      // este endpoint no trae dirección
+//             'requiereManual' => $requiereManual,
+//             'fel_raw'        => $json,     // útil para debug
+//         ]);
+//     } catch (\Throwable $e) {
+//         return response()->json([
+//             'codigo'  => 0,
+//             'mensaje' => 'Error al consultar CUI',
+//             'detalle' => $e->getMessage(),
+//         ], 200);
+//     }
+// }
+
+
+public function buscarCUI(Request $request)
+{
+    $cui = trim($request->input('cui'));
+
+    try {
+        $json = $this->felService->consultarCui($cui);
+
+        \Log::info("FEL consultar CUI", $json);
+
+        if (!isset($json['Resultado']) || $json['Resultado'] != true) {
+            return response()->json([
+                'codigo'  => 0,
+                'mensaje' => 'CUI no encontrado',
+                'detalle' => $json['Errores'] ?? 'Sin detalle'
+            ], 200);
+        }
+
+        return response()->json([
+            'codigo'    => 1,
+            'nombre'    => $json['Nombre'] ?? '',
+            'direccion' => $json['Direccion'] ?? '',
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'codigo'  => 0,
+            'mensaje' => 'Error al consultar CUI',
+            'detalle' => $e->getMessage(),
+        ], 200);
+    }
+}
+
+
+
+public function verFacturaCambiaria($id)
+{
+    // Cargar factura
+    $factura = Facturacion::with('detalle')->findOrFail($id);
+
+    // Datos del emisor (los usas en la otra plantilla)
+    $emisor = [
+        'nombre'     => config('fel.emisor.nombre'),
+        'comercial'  => config('fel.emisor.nombre_comercial'),
+        'nit'        => config('fel.emisor.nit'),
+        'direccion'  => config('fel.emisor.direccion'),
+    ];
+
+    // Cargar abonos (AJUSTAR según tu modelo real)
+    $abonos = \DB::table('factura_abonos')
+        ->where('factura_id', $id)
+        ->orderBy('numero')
+        ->get()
+        ->map(function($a){
+            return [
+                'numero' => $a->numero,
+                'fecha'  => $a->fecha_vencimiento,
+                'monto'  => $a->monto
+            ];
+        });
+
+    return view('facturacion.factura_cambiaria', [
+        'factura' => $factura,
+        'emisor'  => $emisor,
+        'abonos'  => $abonos
+    ]);
+}
+
+
+
     public function certificar(Request $request)
     {
         try {
@@ -385,6 +517,229 @@ class FacturacionController extends Controller
         ]);
     }
 
+
+public function certificarCambiaria(Request $request)
+{
+    try {
+        $validated = $request->validate([
+            'fac_cam_nit_receptor'       => 'required|string',
+            'fac_cam_cui_receptor'       => 'nullable|string|max:20',
+            'fac_cam_receptor_nombre'    => 'required|string',
+            'fac_cam_receptor_direccion' => 'nullable|string',
+            'fac_cam_plazo_dias'         => 'required|integer|min:1',
+            'fac_cam_fecha_vencimiento'  => 'required|date',
+            'fac_cam_interes'            => 'nullable|numeric|min:0',
+            'det_fac_producto_desc'      => 'required|array|min:1',
+            'det_fac_producto_desc.*'    => 'required|string',
+            'det_fac_cantidad'           => 'required|array',
+            'det_fac_cantidad.*'         => 'required|numeric|min:0.01',
+            'det_fac_precio_unitario'    => 'required|array',
+            'det_fac_precio_unitario.*'  => 'required|numeric|min:0',
+            'det_fac_descuento'          => 'nullable|array',
+            'det_fac_descuento.*'        => 'nullable|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        // Preparar items
+        $items = [];
+        $subtotalNeto = 0;
+        $ivaTotal = 0;
+        $descuentoTotal = 0;
+
+        for ($i = 0; $i < count($validated['det_fac_producto_desc']); $i++) {
+            $cantidad  = (float) $validated['det_fac_cantidad'][$i];
+            $precio    = (float) $validated['det_fac_precio_unitario'][$i];
+            $descuento = (float) ($validated['det_fac_descuento'][$i] ?? 0);
+
+            $totalItem     = ($cantidad * $precio) - $descuento;
+            $montoGravable = $totalItem / 1.12;
+            $ivaItem       = $totalItem - $montoGravable;
+
+            $items[] = [
+                'descripcion'     => $validated['det_fac_producto_desc'][$i],
+                'cantidad'        => $cantidad,
+                'precio_unitario' => $precio,
+                'descuento'       => $descuento,
+                'monto_gravable'  => $montoGravable,
+                'iva'             => $ivaItem,
+                'total'           => $totalItem,
+            ];
+
+            $subtotalNeto   += $montoGravable;
+            $ivaTotal       += $ivaItem;
+            $descuentoTotal += $descuento;
+        }
+
+        $totalFactura = $subtotalNeto + $ivaTotal;
+
+        // Abonos
+        $abonos = [[
+            'numero' => 1,
+            'fecha'  => $validated['fac_cam_fecha_vencimiento'],
+            'monto'  => $totalFactura,
+        ]];
+
+        $referencia = 'FCAM-' . now()->format('YmdHis') . '-' . Str::random(4);
+
+        // Datos para el XML
+        $datosXml = [
+            'tipo' => 'FCAM',
+            'receptor' => [
+                'nit'       => $validated['fac_cam_nit_receptor'],
+                'nombre'    => $validated['fac_cam_receptor_nombre'],
+                'direccion' => $validated['fac_cam_receptor_direccion'] ?? '',
+                'cui'       => $validated['fac_cam_cui_receptor'] ?? '',
+            ],
+            'items'   => $items,
+            'totales' => [
+                'subtotal' => $subtotalNeto,
+                'iva'      => $ivaTotal,
+                'total'    => $totalFactura,
+            ],
+            'abonos'  => $abonos,
+        ];
+
+        // ✅ GENERAR XML CORRECTAMENTE
+        $xml = $this->xmlBuilder->generarXmlFacturaCambiaria($datosXml);
+        
+        // 🔍 Debug: guardar XML para revisar
+        Storage::disk('local')->put('debug_xml_cambiaria.xml', $xml);
+        Log::info('XML Factura Cambiaria generado', [
+            'referencia' => $referencia,
+            'total' => $totalFactura
+        ]);
+
+        $xmlBase64 = base64_encode($xml);
+
+        // Certificar con FEL
+        $respuesta = $this->felService->certificarDte($xmlBase64, $referencia);
+
+        if (!($respuesta['Resultado'] ?? false)) {
+            throw new Exception('Error en certificación: ' . json_encode($respuesta['Errores'] ?? $respuesta));
+        }
+
+        $xmlCertKey = $respuesta['XmlDteCertificado']
+            ?? $respuesta['XMLDTECertificado']
+            ?? $respuesta['xmlDteCertificado']
+            ?? null;
+
+        if (!$xmlCertKey) {
+            throw new Exception('Sin XML certificado en respuesta: ' . json_encode($respuesta));
+        }
+
+        $uuidResp   = $respuesta['UUID'] ?? $respuesta['uuid'] ?? null;
+        $serieResp  = $respuesta['Serie'] ?? $respuesta['serie'] ?? null;
+        $numeroResp = $respuesta['Numero'] ?? $respuesta['numero'] ?? null;
+        $fechaCert  = $respuesta['FechaHoraCertificacion']
+            ?? $respuesta['fechaHoraCertificacion']
+            ?? now()->toDateTimeString();
+
+        // Guardar XMLs
+        $storagePath = 'fel/xmls';
+        $fechaPath = now()->format('Y/m');
+        $dir = "{$storagePath}/{$fechaPath}";
+        $xmlEnviadoPath = "{$dir}/enviado_{$referencia}.xml";
+        $xmlCertificadoPath = "{$dir}/certificado_{$referencia}.xml";
+
+        $disk = Storage::disk('public');
+        if (!$disk->exists($dir)) {
+            $disk->makeDirectory($dir);
+        }
+
+        $disk->put($xmlEnviadoPath, $xml);
+        $disk->put($xmlCertificadoPath, base64_decode($xmlCertKey));
+
+        // Guardar factura
+        $factura = Facturacion::create([
+            'fac_uuid' => $uuidResp,
+            'fac_referencia' => $referencia,
+            'fac_serie' => $serieResp,
+            'fac_numero' => $numeroResp,
+            'fac_estado' => 'CERTIFICADO',
+            'fac_tipo_documento' => 'FCAM',
+            'fac_nit_receptor' => $validated['fac_cam_nit_receptor'],
+            'fac_receptor_nombre' => $validated['fac_cam_receptor_nombre'],
+            'fac_receptor_direccion' => $validated['fac_cam_receptor_direccion'] ?? null,
+            'fac_fecha_emision' => now()->toDateString(),
+            'fac_fecha_certificacion' => $fechaCert,
+            'fac_subtotal' => $subtotalNeto,
+            'fac_descuento' => $descuentoTotal,
+            'fac_impuestos' => $ivaTotal,
+            'fac_total' => $totalFactura,
+            'fac_moneda' => 'GTQ',
+            'fac_xml_enviado_path' => $xmlEnviadoPath,
+            'fac_xml_certificado_path' => $xmlCertificadoPath,
+            'fac_alertas' => $respuesta['Alertas'] ?? $respuesta['alertas'] ?? [],
+            'fac_operacion' => 'WEB',
+            'fac_vendedor' => auth()->user()->user_primer_nombre ?? 'Sistema',
+            'fac_usuario_id' => auth()->id(),
+            'fac_fecha_operacion' => now(),
+        ]);
+
+        // Guardar detalle
+        foreach ($items as $item) {
+            FacturacionDetalle::create([
+                'det_fac_factura_id' => $factura->fac_id,
+                'det_fac_tipo' => 'B',
+                'det_fac_producto_desc' => $item['descripcion'],
+                'det_fac_cantidad' => $item['cantidad'],
+                'det_fac_unidad_medida' => 'UNI',
+                'det_fac_precio_unitario' => $item['precio_unitario'],
+                'det_fac_descuento' => $item['descuento'],
+                'det_fac_monto_gravable' => $item['monto_gravable'],
+                'det_fac_tipo_impuesto' => 'IVA',
+                'det_fac_impuesto' => $item['iva'],
+                'det_fac_total' => $item['total'],
+            ]);
+        }
+
+        // Guardar abonos
+        foreach ($abonos as $ab) {
+            DB::table('factura_abonos')->insert([
+                'factura_id' => $factura->fac_id,
+                'numero' => $ab['numero'],
+                'fecha_vencimiento' => $ab['fecha'],
+                'monto' => $ab['monto'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'codigo'  => 1,
+            'mensaje' => 'Factura cambiaria certificada exitosamente',
+            'data'    => [
+                'fac_id' => $factura->fac_id,
+                'uuid'   => $uuidResp,
+                'serie'  => $serieResp,
+                'numero' => $numeroResp,
+                'fecha'  => $fechaCert,
+                'total'  => $totalFactura,
+            ],
+        ]);
+
+    } catch (Exception $e) {
+        DB::rollBack();
+        
+        Log::error('Error certificando factura cambiaria', [
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'codigo'  => 0,
+            'mensaje' => 'Error al certificar factura cambiaria',
+            'detalle' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
     public function vista($id)
     {
         $factura = Facturacion::with('detalle')->findOrFail($id);
@@ -453,6 +808,7 @@ class FacturacionController extends Controller
             ], 500);
         }
     }
+
 
     public function anular($id)
     {
