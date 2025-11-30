@@ -8,8 +8,24 @@ async function cargarReservas() {
     const grid = document.getElementById('grid-reservas');
     const tbody = document.getElementById('tbody-reservas');
 
+    // Get filter values
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const fechaFin = document.getElementById('fecha_fin').value;
+    const search = document.getElementById('search').value;
+
+    // Build query string
+    const params = new URLSearchParams();
+    if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+    if (fechaFin) params.append('fecha_fin', fechaFin);
+    if (search) params.append('search', search);
+
     try {
-        const response = await fetch('/api/reservas/activas');
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+        grid.classList.add('hidden');
+        tbody.innerHTML = '';
+
+        const response = await fetch(`/api/reservas/activas?${params.toString()}`);
         const data = await response.json();
 
         loading.classList.add('hidden');

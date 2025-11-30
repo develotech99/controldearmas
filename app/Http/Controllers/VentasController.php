@@ -948,8 +948,42 @@ public function actualizarLicencias(Request $request): JsonResponse
         return view('ventas.reservadas');
     }
 
-    public function getReservasActivas(): JsonResponse
+    public function getReservasActivas(Request $request): JsonResponse
     {
+        $fechaInicio = $request->input('fecha_inicio');
+        $fechaFin = $request->input('fecha_fin');
+        $search = $request->input('search');
+
+        $params = [];
+        $whereClause = "d.det_situacion = 'PENDIENTE' AND v.ven_situacion = 'RESERVADA'";
+
+        if ($fechaInicio) {
+            $whereClause .= " AND DATE(v.ven_fecha) >= ?";
+            $params[] = $fechaInicio;
+        }
+
+        if ($fechaFin) {
+            $whereClause .= " AND DATE(v.ven_fecha) <= ?";
+            $params[] = $fechaFin;
+        }
+
+        if ($search) {
+            $term = "%{$search}%";
+            $whereClause .= " AND (
+                c.cliente_nombre1 LIKE ? OR 
+                c.cliente_nombre2 LIKE ? OR 
+                c.cliente_apellido1 LIKE ? OR 
+                c.cliente_apellido2 LIKE ? OR 
+                c.cliente_nom_empresa LIKE ? OR 
+                c.cliente_nit LIKE ? OR
+                CONCAT('RESERVA-', v.ven_id) LIKE ?
+            )";
+            // Add params for each LIKE
+            for ($i = 0; $i < 7; $i++) {
+                $params[] = $term;
+            }
+        }
+
         $resultados = DB::select("
          SELECT 
             v.ven_id,
@@ -1005,8 +1039,7 @@ public function actualizarLicencias(Request $request): JsonResponse
             AND mov.mov_situacion = 2
             AND mov.mov_documento_referencia = CONCAT('RESERVA-', v.ven_id)
         LEFT JOIN pro_series_productos serie ON serie.serie_id = mov.mov_serie_id
-        WHERE d.det_situacion = 'PENDIENTE'
-          AND v.ven_situacion = 'RESERVADA'
+        WHERE {$whereClause}
         GROUP BY 
             v.ven_id, v.ven_fecha, v.ven_user, v.ven_total_vendido, v.ven_situacion,
             d.det_producto_id, d.det_ven_id, d.det_cantidad, d.det_precio,
@@ -1014,13 +1047,13 @@ public function actualizarLicencias(Request $request): JsonResponse
             u.user_primer_nombre, u.user_segundo_nombre, u.user_primer_apellido, u.user_segundo_apellido,
             p.producto_nombre, p.producto_requiere_serie, p.producto_requiere_stock,serie.serie_estado
         ORDER BY v.ven_fecha DESC
-    ");
+    ", $params);
 
         if (empty($resultados)) {
             return response()->json([
                 'success' => true,
                 'reservas' => [],
-                'message' => 'No hay reservas vigentes.'
+                'message' => 'No hay reservas vigentes con los filtros aplicados.'
             ]);
         }
 
