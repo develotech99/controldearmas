@@ -1,6 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
-    cargarReservas();
-});
+
 
 async function cargarReservas() {
     const loading = document.getElementById('loading-reservas');
@@ -159,3 +157,6 @@ window.eliminarReserva = async function (id, numero) {
 
 // Expose to window for HTML onclick events
 window.cargarReservas = cargarReservas;
+
+// Initial load
+cargarReservas();
