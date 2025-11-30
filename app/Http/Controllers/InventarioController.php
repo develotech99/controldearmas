@@ -150,7 +150,8 @@ public function obtenerStock(Request $request): JsonResponse
                 'marca_nombre' => $producto->marca_nombre,
                 'modelo_nombre' => $producto->modelo_nombre,
                 'stock_cantidad_total' => $producto->stock_cantidad_total,
-                'stock_cantidad_disponible' => $producto->stock_cantidad_disponible,
+                // FIX: Calcular disponible real (Total - Reservado) para visualización correcta
+                'stock_cantidad_disponible' => max(0, $producto->stock_cantidad_total - $producto->stock_cantidad_reservada),
                 'stock_cantidad_reservada' => $producto->stock_cantidad_reservada,
                 'foto_principal' => $fotoPrincipal ? $fotoPrincipal->url_completa : null
             ];
@@ -425,9 +426,12 @@ public function getStockPorLotes($id): JsonResponse
                 ->get();
 
             // 2. Calcular stock sin lote
-            $stockTotal = DB::table('pro_stock_actual')
+            // 2. Calcular stock sin lote (FIX: Calcular disponible real)
+            $stockData = DB::table('pro_stock_actual')
                 ->where('stock_producto_id', $id)
-                ->value('stock_cantidad_disponible') ?? 0;
+                ->first();
+            
+            $stockTotal = $stockData ? max(0, $stockData->stock_cantidad_total - $stockData->stock_cantidad_reservada) : 0;
 
             $stockEnLotes = $lotes->sum('lote_cantidad_disponible');
             $stockSinLote = max(0, $stockTotal - $stockEnLotes);
