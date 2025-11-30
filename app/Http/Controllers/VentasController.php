@@ -943,6 +943,158 @@ public function actualizarLicencias(Request $request): JsonResponse
         ]);
     }
 
+    public function reservadas()
+    {
+        return view('ventas.reservadas');
+    }
+
+    public function getReservasActivas(): JsonResponse
+    {
+        $resultados = DB::select("
+         SELECT 
+            v.ven_id,
+            v.ven_user,
+            d.det_producto_id,
+            d.det_ven_id,
+            d.det_cantidad,
+            d.det_precio,
+            v.ven_fecha,
+            v.ven_total_vendido,
+            v.ven_situacion,
+            TRIM(
+                CONCAT_WS(' ',
+                    TRIM(c.cliente_nombre1),
+                    TRIM(c.cliente_nombre2),
+                    TRIM(c.cliente_apellido1),
+                    TRIM(c.cliente_apellido2)
+                )
+            ) AS cliente,
+            CASE 
+                WHEN c.cliente_nom_empresa IS NULL OR c.cliente_nom_empresa = ''
+                    THEN 'Cliente Individual'
+                ELSE c.cliente_nom_empresa
+            END AS empresa,
+            TRIM(
+                CONCAT_WS(' ',
+                    TRIM(u.user_primer_nombre),
+                    TRIM(u.user_segundo_nombre),
+                    TRIM(u.user_primer_apellido),
+                    TRIM(u.user_segundo_apellido)
+                )
+            ) AS vendedor,
+            p.producto_nombre,
+            IFNULL(p.producto_requiere_serie, 0) AS producto_requiere_serie,
+            IFNULL(p.producto_requiere_stock, 1) AS producto_requiere_stock,
+            GROUP_CONCAT(DISTINCT serie.serie_numero_serie ORDER BY serie.serie_numero_serie SEPARATOR ',') AS series_ids,
+            GROUP_CONCAT(DISTINCT mov.mov_lote_id ORDER BY mov.mov_lote_id SEPARATOR ',') AS lotes_ids,
+            GROUP_CONCAT(
+                DISTINCT CONCAT(mov.mov_lote_id, ' (', mov.mov_cantidad, ')')
+                ORDER BY mov.mov_lote_id SEPARATOR ', '
+            ) AS lotes_display,
+            GROUP_CONCAT(
+                DISTINCT CONCAT(mov.mov_serie_id, ' (', mov.mov_cantidad, ')')
+                ORDER BY mov.mov_serie_id SEPARATOR ', '
+            ) AS series_display,
+            serie.serie_estado
+        FROM pro_detalle_ventas d
+        INNER JOIN pro_ventas v   ON v.ven_id = d.det_ven_id
+        INNER JOIN users u        ON u.user_id = v.ven_user
+        INNER JOIN pro_clientes c ON c.cliente_id = v.ven_cliente
+        INNER JOIN pro_productos p ON d.det_producto_id = p.producto_id
+        LEFT JOIN pro_movimientos mov ON mov.mov_producto_id = d.det_producto_id
+            AND mov.mov_situacion = 2
+            AND mov.mov_documento_referencia = CONCAT('RESERVA-', v.ven_id)
+        LEFT JOIN pro_series_productos serie ON serie.serie_id = mov.mov_serie_id
+        WHERE d.det_situacion = 'PENDIENTE'
+          AND v.ven_situacion = 'RESERVADA'
+        GROUP BY 
+            v.ven_id, v.ven_fecha, v.ven_user, v.ven_total_vendido, v.ven_situacion,
+            d.det_producto_id, d.det_ven_id, d.det_cantidad, d.det_precio,
+            c.cliente_nombre1, c.cliente_nombre2, c.cliente_apellido1, c.cliente_apellido2, c.cliente_nom_empresa,
+            u.user_primer_nombre, u.user_segundo_nombre, u.user_primer_apellido, u.user_segundo_apellido,
+            p.producto_nombre, p.producto_requiere_serie, p.producto_requiere_stock,serie.serie_estado
+        ORDER BY v.ven_fecha DESC
+    ");
+
+        if (empty($resultados)) {
+            return response()->json([
+                'success' => true,
+                'reservas' => [],
+                'message' => 'No hay reservas vigentes.'
+            ]);
+        }
+
+        // Helpers para parsear series y lotes
+        $parseSeries = function ($r) {
+            if (empty($r->series_ids))
+                return [];
+            return array_values(array_filter(array_map('trim', explode(',', $r->series_ids))));
+        };
+
+        $parseLotes = function ($r) {
+            if (empty($r->lotes_ids))
+                return [];
+            $cantPorLote = [];
+            if (!empty($r->lotes_display)) {
+                foreach (explode(',', $r->lotes_display) as $par) {
+                    if (preg_match('/(\d+)\s*\((\d+)\)/', $par, $m)) {
+                        $cantPorLote[(int) $m[1]] = (int) $m[2];
+                    }
+                }
+            }
+            $out = [];
+            foreach (array_unique(array_filter(array_map('trim', explode(',', $r->lotes_ids)))) as $lid) {
+                $lidNum = (int) $lid;
+                if ($lidNum > 0) {
+                    $out[] = [
+                        'lote_id' => $lidNum,
+                        'cantidad' => $cantPorLote[$lidNum] ?? 0,
+                    ];
+                }
+            }
+            return $out;
+        };
+
+        // AGRUPAR por ven_id (cada grupo = una reserva)
+        $grupos = collect($resultados)->groupBy('ven_id');
+
+        $reservasFinal = $grupos->map(function ($items, $venId) use ($parseSeries, $parseLotes) {
+            $first = $items->first();
+
+            $productos = $items->map(function ($item) use ($parseSeries, $parseLotes) {
+                return [
+                    'producto_id' => $item->det_producto_id,
+                    'nombre' => $item->producto_nombre,
+                    'cantidad' => $item->det_cantidad,
+                    'precio' => $item->det_precio,
+                    'requiere_serie' => $item->producto_requiere_serie,
+                    'requiere_stock' => $item->producto_requiere_stock,
+                    'seriesSeleccionadas' => $parseSeries($item),
+                    'lotesSeleccionados' => $parseLotes($item),
+                ];
+            })->values();
+
+            return [
+                'id' => $venId, // ID real
+                'ven_id' => $venId, // ID real
+                'numero' => "RESERVA-{$venId}",
+                'fecha' => $first->ven_fecha,
+                'total' => $first->ven_total_vendido,
+                'situacion' => $first->ven_situacion,
+                'cliente' => $first->cliente,
+                'empresa' => $first->empresa,
+                'vendedor' => $first->vendedor,
+                'items' => $productos
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'count' => $grupos->count(),
+            'reservas' => $reservasFinal
+        ]);
+    }
+
 public function marcarSeriesDisponibles(Request $request)
 {
     try {
