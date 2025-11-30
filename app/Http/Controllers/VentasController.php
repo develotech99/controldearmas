@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Ventas;
 use Illuminate\Http\Request;
 use App\Models\MetodoPago;
-use App\Models\Clientes;
 
 use App\Models\Producto;
 use App\Models\SerieProducto;
@@ -32,7 +30,7 @@ class VentasController extends Controller
 
     public function index()
     {
-        // // Datos necesarios para los selects y filtros
+        // Datos necesarios para los selects y filtros
         $categorias = DB::table('pro_categorias')->where('categoria_situacion', 1)->orderBy('categoria_nombre')->get();
         $clientes = DB::table('users')->where('user_rol', 2)->get();
         $metodopago = MetodoPago::orderBy('metpago_descripcion')->paginate(15);
@@ -47,8 +45,7 @@ class VentasController extends Controller
 
     public function buscarClientes(Request $request)
     {
-        // echo json_encode($_GET);
-        // exit;
+
         $nit = trim($request->query('nit', ''));
         $dpi = trim($request->query('dpi', ''));
 

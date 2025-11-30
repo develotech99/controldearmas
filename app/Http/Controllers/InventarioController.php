@@ -6,12 +6,9 @@ use App\Models\Producto;
 use App\Models\ProductoFoto;
 use App\Models\SerieProducto;
 use App\Models\Lote;
-use App\Models\Marcas;
 use App\Models\Movimiento;
 use App\Models\LicenciaAsignacionProducto;
-use App\Models\Precio;
 use App\Models\StockActual;
-use App\Models\Alerta;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -26,10 +23,7 @@ use Illuminate\Support\Str;
  */
 class InventarioController extends Controller
 {
-    // public function __construct()
-    // {
-    //     $this->middleware('auth');
-    // }
+
 
     /**
      * Vista principal del módulo de inventario
@@ -46,7 +40,7 @@ class InventarioController extends Controller
     /**
      * Obtener productos con información de stock
      */
-    // Reemplazar el método getProductosStock en InventarioController
+
 
 /**
  * Obtener stock de múltiples productos
@@ -1113,8 +1107,14 @@ private function procesarPreciosIngreso(Request $request, $productoId, $movimien
             // Para productos sin serie, calcular desde movimientos
             $resumen = Movimiento::resumenPorProducto($productoId);
             $total = $resumen['stock_calculado'];
-            $disponibles = max(0, $total - $stock->stock_cantidad_reservada);
-            $reservadas = $stock->stock_cantidad_reservada;
+            
+            // ✅ FIX: Calcular reservados dinámicamente desde movimientos activos
+            $reservadas = Movimiento::where('mov_producto_id', $productoId)
+                ->where('mov_tipo', 'venta')
+                ->where('mov_situacion', 3) // 3 = Reservado
+                ->sum('mov_cantidad');
+
+            $disponibles = max(0, $total - $reservadas);
         }
 
         $stock->update([
@@ -1282,8 +1282,7 @@ private function procesarPreciosIngreso(Request $request, $productoId, $movimien
                 ->orderBy('subcategoria_nombre')
                 ->get();
 
-                // echo json_encode($subcategorias);
-                // exit;
+
 
             return response()->json([
                 'success' => true,

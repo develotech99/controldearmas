@@ -575,7 +575,7 @@ public function buscarClientes(Request $request): JsonResponse
     {
         try {
             $ventasQuery = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('ven_situacion', 1);
+                ->where('ven_situacion', 'ACTIVA');
 
            $ventasQuery = DB::table('pro_ventas')
     ->where('ven_situacion', 'ACTIVA');
@@ -587,7 +587,7 @@ public function buscarClientes(Request $request): JsonResponse
 
             $productosVendidos = ProDetalleVenta::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
                 $q->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                    ->where('ven_situacion', 1);
+                    ->where('ven_situacion', 'ACTIVA');
             })->where('det_situacion', 'ACTIVO')
                 ->sum('det_cantidad') ?? 0;
 
