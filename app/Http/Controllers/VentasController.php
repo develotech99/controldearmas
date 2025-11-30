@@ -3100,7 +3100,7 @@ public function procesarVenta(Request $request): JsonResponse
 
         } catch (\Exception $e) {
             Log::error('Error al listar reservas: ' . $e->getMessage());
-            return response()->json(['error' => 'Error al cargar reservas'], 500);
+            return response()->json(['error' => 'Error al cargar reservas: ' . $e->getMessage()], 500);
         }
     }
 
