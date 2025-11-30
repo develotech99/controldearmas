@@ -1,5 +1,5 @@
 import DataTable from 'datatables.net-dt';
-import 'datatables.net-responsive-dt';
+import 'datatables.net-responsive';
 import Swal from 'sweetalert2';
 
 document.addEventListener('DOMContentLoaded', function () {
