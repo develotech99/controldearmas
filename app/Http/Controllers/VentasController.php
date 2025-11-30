@@ -3027,8 +3027,6 @@ public function procesarVenta(Request $request): JsonResponse
                     'v.ven_id',
                     'v.ven_fecha',
                     'v.ven_total_vendido',
-                    'v.ven_subtotal',
-                    'v.ven_iva',
                     'v.ven_descuento',
                     'v.ven_situacion',
                     'v.ven_no_reserva',
