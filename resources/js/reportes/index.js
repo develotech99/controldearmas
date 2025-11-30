@@ -1132,9 +1132,45 @@ class ReportesManager {
         }
     }
 
+    // /**
+    //  * Renderizar tabla de armas DIGECAM
+    //  */
+    // renderTablaDigecamArmas(armas) {
+    //     const tbody = document.getElementById('tbody-digecam-armas');
+    //     if (!tbody) return;
+
+    //     if (armas.length === 0) {
+    //         tbody.innerHTML = `
+    //         <tr>
+    //             <td colspan="12" class="px-6 py-4 text-center text-gray-500">
+    //                 No se encontraron ventas de armas en este período
+    //             </td>
+    //         </tr>
+    //     `;
+    //         return;
+    //     }
+
+    //     tbody.innerHTML = armas.map((arma, index) => `
+    //     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+    //         <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${arma.pro_tenencia_anterior || ''}</td>
+    //         <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.pro_tenencia_nueva || ''}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${arma.tipo}</td>
+    //         <td class="px-2 py-2 text-center text-xs bg-yellow-100 font-semibold">${arma.serie}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${arma.marca || 'N/A'}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${arma.modelo || 'N/A'}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${arma.calibre || 'N/A'}</td>
+    //         <td class="px-2 py-2 text-xs">${arma.comprador.toUpperCase()}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${arma.autorizacion}</td>
+    //         <td class="px-2 py-2 text-center text-xs">${this.formatearFechaDisplay(arma.fecha)}</td>
+    //         <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.factura || ''}</td>
+    //     </tr>
+    // `).join('');
+    // }
+
     /**
-     * Renderizar tabla de armas DIGECAM
-     */
+    * Renderizar tabla de armas DIGECAM
+    */
     renderTablaDigecamArmas(armas) {
         const tbody = document.getElementById('tbody-digecam-armas');
         if (!tbody) return;
@@ -1153,8 +1189,6 @@ class ReportesManager {
         tbody.innerHTML = armas.map((arma, index) => `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
-            // <td class="px-2 py-2 text-center text-xs">${arma.pro_tenencia_anterior || ''}</td>
-            // <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.pro_tenencia_nueva || ''}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.tipo}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100 font-semibold">${arma.serie}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.marca || 'N/A'}</td>
