@@ -4373,7 +4373,8 @@ class InventarioManager {
     mostrarModalSeries(producto, series) {
         // Contar series por estado
         const disponibles = series.filter(s => s.serie_estado === 'disponible').length;
-        const reservadas = series.filter(s => s.serie_estado === 'reservado').length;
+        const reservadas = series.filter(s => s.serie_estado === 'reservado' || s.serie_estado === 'reserva').length;
+        const pendientes = series.filter(s => s.serie_estado === 'pendiente').length;
         const vendidas = series.filter(s => s.serie_estado === 'vendido').length;
 
         const contenidoHTML = `
@@ -4389,10 +4390,14 @@ class InventarioManager {
             </div>
             
             <!-- Resumen de estados -->
-            <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="grid grid-cols-4 gap-2 mb-4">
                 <div class="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold text-green-600 dark:text-green-400">${disponibles}</div>
                     <div class="text-xs text-green-700 dark:text-green-300">Disponibles</div>
+                </div>
+                <div class="bg-orange-50 dark:bg-orange-900 border border-orange-200 dark:border-orange-700 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">${pendientes}</div>
+                    <div class="text-xs text-orange-700 dark:text-orange-300">Pendientes</div>
                 </div>
                 <div class="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${reservadas}</div>
@@ -5593,8 +5598,8 @@ class InventarioManager {
     /**
      * Mostrar datos en la tabla Excel
      *//**
-  * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
-  */
+ * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
+ */
     mostrarDatosExcel() {
         const tbody = document.getElementById('excel-tbody');
 
@@ -5646,8 +5651,8 @@ class InventarioManager {
     /**
      * Buscar en vista Excel
      *//**
-  * Aplicar filtros en vista Excel
-  */
+ * Aplicar filtros en vista Excel
+ */
     aplicarFiltrosExcel() {
         // Obtener valores de todos los filtros
         const searchTerm = document.getElementById('excel-search')?.value.toLowerCase().trim() || '';
