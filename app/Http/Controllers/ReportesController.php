@@ -927,13 +927,20 @@ public function buscarClientes(Request $request): JsonResponse
     ->join('pro_ventas as v', 'dv.det_ven_id', '=', 'v.ven_id')
     ->join('pro_productos as p', 'dv.det_producto_id', '=', 'p.producto_id')
     ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
-    ->join('pro_series_productos as sp', 'dv.det_producto_id', '=', 'sp.serie_producto_id')
+    // ✅ FIX: Join directo a movimientos por referencia de venta para evitar producto cartesiano
+    ->join('pro_movimientos as mov', function($join) {
+        $join->on('mov.mov_producto_id', '=', 'dv.det_producto_id')
+             ->where('mov.mov_tipo', '=', 'venta')
+             ->where('mov.mov_situacion', '=', 1)
+             ->whereRaw("mov.mov_documento_referencia = CONCAT('VENTA-', v.ven_id)");
+    })
+    // ✅ FIX: Join a series desde el movimiento específico
+    ->join('pro_series_productos as sp', 'mov.mov_serie_id', '=', 'sp.serie_id')
     ->join('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
     ->join('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
     ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
     ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
-    ->join('pro_movimientos as mov', 'sp.serie_id', '=', 'mov.mov_serie_id')
-    ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ JOIN FACTURACION
+    ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') 
     ->select([
           'mov.mov_licencia_anterior AS pro_tenencia_anterior',
     'mov.mov_licencia_nueva    AS pro_tenencia_nueva',
@@ -950,7 +957,7 @@ public function buscarClientes(Request $request): JsonResponse
         ) as comprador'),
         'v.ven_id as autorizacion',
         'v.ven_fecha as fecha',
-        DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura'), // ✅ MOSTRAR FACTURA REAL
+        DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura'), 
         'dv.det_cantidad',
     ])
     // filtros por fecha si quieres mantenerlos
@@ -960,12 +967,10 @@ public function buscarClientes(Request $request): JsonResponse
     // 🔹 aquí van exactamente los filtros que mencionas:
     ->where('v.ven_situacion', 'ACTIVA')
     ->where('dv.det_situacion', 'ACTIVO')
-    ->where('mov.mov_situacion', 1)
-    ->where('sp.serie_situacion', 1)
-    ->where('mov.mov_situacion', 1)
-    ->where('sp.serie_situacion', 1)
-    ->where('mov.mov_tipo', 'venta')
-    ->where('mov.mov_documento_referencia', DB::raw("CONCAT('VENTA-', v.ven_id)")) // ✅ FIX: EVITAR DUPLICADOS
+    // ->where('mov.mov_situacion', 1) // Ya está en el join
+    // ->where('sp.serie_situacion', 1) // Ya está implicito por el movimiento activo
+    // ->where('mov.mov_tipo', 'venta') // Ya está en el join
+    // ->where('mov.mov_documento_referencia', DB::raw("CONCAT('VENTA-', v.ven_id)")) // Ya está en el join
 
     
 

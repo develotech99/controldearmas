@@ -1783,6 +1783,11 @@ class ReportesManager {
         // Categorías y marcas
         this.populateSelect('filtro-categoria-productos', data.categorias, 'categoria_id', 'categoria_nombre');
         this.populateSelect('filtro-marca-productos', data.marcas, 'marca_id', 'marca_descripcion');
+
+        // ✅ FIX: Poblar filtro de métodos de pago
+        if (data.metodos_pago) {
+            this.populateSelect('filtro-tipo-pagos', data.metodos_pago, 'metpago_descripcion', 'metpago_descripcion');
+        }
     }
 
     populateSelect(selectId, options, valueField, textField) {
