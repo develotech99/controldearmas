@@ -921,6 +921,7 @@ public function buscarClientes(Request $request): JsonResponse
     ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
     ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
     ->join('pro_movimientos as mov', 'sp.serie_id', '=', 'mov.mov_serie_id')
+    ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ JOIN FACTURACION
     ->select([
           'mov.mov_licencia_anterior AS pro_tenencia_anterior',
     'mov.mov_licencia_nueva    AS pro_tenencia_nueva',
@@ -937,7 +938,7 @@ public function buscarClientes(Request $request): JsonResponse
         ) as comprador'),
         'v.ven_id as autorizacion',
         'v.ven_fecha as fecha',
-        DB::raw('NULL as factura'),
+        DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura'), // ✅ MOSTRAR FACTURA REAL
         'dv.det_cantidad',
     ])
     // filtros por fecha si quieres mantenerlos
@@ -1034,6 +1035,7 @@ public function buscarClientes(Request $request): JsonResponse
                 ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
                 ->leftJoin('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
+                ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ JOIN FACTURACION
                 ->select([
                     'v.ven_id as autorizacion',
                     DB::raw('CASE 
@@ -1046,7 +1048,7 @@ public function buscarClientes(Request $request): JsonResponse
                     COALESCE(cl.cliente_apellido1, ""), " ",
                     COALESCE(cl.cliente_apellido2, "")
                 ) as nombre'),
-                    DB::raw('NULL as factura'),
+                    DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura'), // ✅ MOSTRAR FACTURA REAL
                     'v.ven_fecha as fecha',
                     DB::raw('"N/A" as serie_arma'),
                     DB::raw('"PISTOLA" as clase_arma'),
@@ -1055,7 +1057,7 @@ public function buscarClientes(Request $request): JsonResponse
                     'dv.det_cantidad as cantidad'
                 ])
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->where('v.ven_situacion', 'ACTIVA') // ✅ FIX: USAR STRING STATUS
                 ->where('dv.det_situacion', 'ACTIVO')
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%MUNICION%')
