@@ -880,11 +880,124 @@ function agregarAlCarrito(producto_id) {
     const producto = productosGlobales.find(
         (p) => String(p.producto_id) === id
     );
-    if (producto) agregarProductoAlCarrito(producto);
-    else console.error("Producto no encontrado:", producto_id);
+
+    if (!producto) {
+        console.error("Producto no encontrado:", producto_id);
+        return;
+    }
+
+    // 👇 Lógica "Vender por caja" para Munición
+    const categoria = (producto.categoria_nombre || "").toLowerCase();
+    // Normalizar para detectar munición con o sin tilde
+    const esMunicion = categoria.includes("municion") || categoria.includes("munición");
+
+    if (esMunicion) {
+        Swal.fire({
+            title: '<strong>¿Es munición?</strong>',
+            html: `
+                <div class="text-left">
+                    <label class="flex items-center space-x-3 mb-4 cursor-pointer p-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-all">
+                        <input type="checkbox" id="swal-check-caja" class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500">
+                        <span class="text-gray-700 font-medium">¿Desea vender por caja?</span>
+                    </label>
+
+                    <div id="swal-box-options" class="hidden space-y-4 pl-2 border-l-2 border-blue-100 ml-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Presentación (unidades por caja)</label>
+                            <select id="swal-select-presentacion" class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                                <option value="5">Caja de 5</option>
+                                <option value="10">Caja de 10</option>
+                                <option value="20">Caja de 20</option>
+                                <option value="25">Caja de 25</option>
+                                <option value="50">Caja de 50</option>
+                                <option value="100">Caja de 100</option>
+                                <option value="200">Caja de 200</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Número de cajas</label>
+                            <input type="number" id="swal-input-cajas" value="1" min="1" class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        </div>
+
+                        <div class="bg-blue-50 p-3 rounded-md border border-blue-100">
+                            <p class="text-sm text-blue-800 flex justify-between items-center">
+                                <span>Total unidades a descontar:</span>
+                                <strong id="swal-total-units" class="text-lg text-blue-700">0</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-cart-plus mr-2"></i>Agregar al Carrito',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#2563EB', // blue-600
+            didOpen: () => {
+                const check = document.getElementById('swal-check-caja');
+                const options = document.getElementById('swal-box-options');
+                const select = document.getElementById('swal-select-presentacion');
+                const input = document.getElementById('swal-input-cajas');
+                const totalDisplay = document.getElementById('swal-total-units');
+
+                const updateTotal = () => {
+                    const pres = parseInt(select.value) || 0;
+                    const cajas = parseInt(input.value) || 0;
+                    totalDisplay.textContent = pres * cajas;
+                };
+
+                check.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        options.classList.remove('hidden');
+                        updateTotal();
+                    } else {
+                        options.classList.add('hidden');
+                    }
+                });
+
+                select.addEventListener('change', updateTotal);
+                input.addEventListener('input', updateTotal);
+
+                // Inicializar cálculo si ya está visible (no debería, pero por seguridad)
+                if (check.checked) updateTotal();
+            },
+            preConfirm: () => {
+                const check = document.getElementById('swal-check-caja');
+                if (check && check.checked) {
+                    const pres = parseInt(document.getElementById('swal-select-presentacion').value);
+                    const cajas = parseInt(document.getElementById('swal-input-cajas').value);
+                    const total = pres * cajas;
+
+                    if (isNaN(total) || total <= 0) {
+                        Swal.showValidationMessage('La cantidad total debe ser mayor a 0');
+                        return false;
+                    }
+
+                    // Validar stock
+                    const stock = Number(producto.stock_cantidad_total ?? 0);
+                    const necesitaStock = Number(producto.producto_requiere_stock ?? 1) === 1;
+
+                    if (necesitaStock && total > stock) {
+                        Swal.showValidationMessage(`No hay suficiente stock. Disponible: ${stock}, Solicitado: ${total}`);
+                        return false;
+                    }
+
+                    return { cantidad: total };
+                }
+                return { cantidad: 1 };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                agregarProductoAlCarrito(producto, result.value.cantidad);
+            }
+        });
+    } else {
+        // Flujo normal para otros productos
+        agregarProductoAlCarrito(producto);
+    }
 }
 
-function agregarProductoAlCarrito(producto) {
+function agregarProductoAlCarrito(producto, cantidadSolicitada = 1) {
     // ('🔵 Producto entrante:', producto);
     const id = String(producto.producto_id);
     const existente = carritoProductos.find(
@@ -922,7 +1035,7 @@ function agregarProductoAlCarrito(producto) {
                 stockProducto ??
                 0
             );
-            if (existente.cantidad >= stockItem) {
+            if ((existente.cantidad + cantidadSolicitada) > stockItem) {
                 mostrarNotificacion?.(
                     `Stock máximo disponible: ${stockItem}`,
                     "warning"
@@ -936,7 +1049,7 @@ function agregarProductoAlCarrito(producto) {
             const maxSeries = Array.isArray(existente.series_disponibles)
                 ? existente.series_disponibles.length
                 : seriesDisp.length;
-            if (existente.cantidad + 1 > maxSeries) {
+            if ((existente.cantidad + cantidadSolicitada) > maxSeries) {
                 mostrarNotificacion?.(
                     `Solo hay ${maxSeries} serie(s) disponibles para este producto.`,
                     "warning"
@@ -956,10 +1069,10 @@ function agregarProductoAlCarrito(producto) {
             existente.lotesSeleccionados = existente.lotesSeleccionados ?? [];
         }
 
-        existente.cantidad += 1;
+        existente.cantidad += cantidadSolicitada;
     } else {
         // Solo validar stock si el producto lo necesita
-        if (necesitaStock && stockProducto <= 0) {
+        if (necesitaStock && stockProducto < cantidadSolicitada) {
             mostrarNotificacion?.(
                 "Sin stock disponible para este producto.",
                 "warning"
@@ -1000,7 +1113,7 @@ function agregarProductoAlCarrito(producto) {
             precio_activo: precioActivo,                   // 'normal' o 'empresa'
 
             // Cantidad y stock
-            cantidad: 1,
+            cantidad: cantidadSolicitada,
             stock: stockProducto,
             stock_cantidad_total: stockProducto,
             producto_requiere_stock: producto.producto_requiere_stock ?? 1,
