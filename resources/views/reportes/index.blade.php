@@ -713,10 +713,10 @@
                         <thead class="bg-gray-800 dark:bg-gray-900">
                             <tr>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">No.</th>
-                                {{-- <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">
+                                <!-- {{-- <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">
                                     Tenencia<br>Anterior</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Tenencia<br>Nueva
-                                </th> --}}
+                                </th> --}} -->
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Tipo</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Serie</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Marca</th>
