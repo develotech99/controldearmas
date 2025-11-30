@@ -3020,6 +3020,7 @@ public function procesarVenta(Request $request): JsonResponse
 
             $query = DB::table('pro_ventas as v')
                 ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->join('users as u', 'v.ven_user', '=', 'u.user_id')
                 ->where('v.ven_situacion', 'RESERVADA')
                 ->select(
                     'v.ven_id',
