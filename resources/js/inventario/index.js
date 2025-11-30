@@ -3821,10 +3821,11 @@ class InventarioManager {
         const stockActual = producto.stock_actual || {};
 
         // Stock
-        document.getElementById('detalle_stock_total').textContent = stockActual.stock_cantidad_total || 0;
-        document.getElementById('detalle_stock_disponible').textContent = stockActual.stock_cantidad_disponible || 0;
-        document.getElementById('detalle_stock_venta_pendiente').textContent = stockActual.stock_cantidad_reservada || 0;
-        document.getElementById('detalle_stock_reservado').textContent = stockActual.stock_cantidad_reservada2 || 0; // ✅ Ahora sí funcionará
+        // FIX: Usar valores calculados del controlador (producto.*) en lugar de los raw de la BD (stockActual.*)
+        document.getElementById('detalle_stock_total').textContent = producto.stock_cantidad_total || 0;
+        document.getElementById('detalle_stock_disponible').textContent = producto.stock_cantidad_disponible || 0;
+        document.getElementById('detalle_stock_venta_pendiente').textContent = producto.stock_cantidad_reservada || 0;
+        document.getElementById('detalle_stock_reservado').textContent = producto.stock_cantidad_reservada2 || 0;
         document.getElementById('detalle_stock_minimo').textContent = producto.producto_stock_minimo || 0;
 
         // Foto principal
@@ -5561,8 +5562,8 @@ class InventarioManager {
     /**
      * Mostrar datos en la tabla Excel
      *//**
-    * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
-    */
+   * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
+   */
     mostrarDatosExcel() {
         const tbody = document.getElementById('excel-tbody');
 
@@ -5614,8 +5615,8 @@ class InventarioManager {
     /**
      * Buscar en vista Excel
      *//**
-    * Aplicar filtros en vista Excel
-    */
+   * Aplicar filtros en vista Excel
+   */
     aplicarFiltrosExcel() {
         // Obtener valores de todos los filtros
         const searchTerm = document.getElementById('excel-search')?.value.toLowerCase().trim() || '';
