@@ -96,7 +96,7 @@
     </div>
 </div>
 
-@push('scripts')
+@section('scripts')
     @vite(['resources/js/ventas/reservadas.js'])
-@endpush
+@endsection
 @endsection
