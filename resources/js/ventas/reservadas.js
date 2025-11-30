@@ -1,162 +1,205 @@
+import DataTable from 'datatables.net-dt';
+import 'datatables.net-responsive-dt';
+import Swal from 'sweetalert2';
 
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('Ventas Reservadas JS loaded');
 
-async function cargarReservas() {
-    const loading = document.getElementById('loading-reservas');
-    const empty = document.getElementById('empty-reservas');
-    const grid = document.getElementById('grid-reservas');
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const fechaFinInput = document.getElementById('fecha_fin');
+    const inputBuscar = document.getElementById('search'); // ID from blade: search
+    const btnFiltrar = document.querySelector('button[onclick="cargarReservas()"]'); // Selector based on blade
+    const loadingDiv = document.getElementById('loading-reservas');
+    const emptyDiv = document.getElementById('empty-reservas');
+    const gridDiv = document.getElementById('grid-reservas');
     const tbody = document.getElementById('tbody-reservas');
 
-    // Get filter values
-    const fechaInicio = document.getElementById('fecha_inicio')?.value || '';
-    const fechaFin = document.getElementById('fecha_fin')?.value || '';
-    const search = document.getElementById('search')?.value || '';
+    let dataTable = null;
 
-    // Build query string
-    const params = new URLSearchParams();
-    if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-    if (fechaFin) params.append('fecha_fin', fechaFin);
-    if (search) params.append('search', search);
+    // Override the onclick from HTML to use our JS function
+    if (btnFiltrar) {
+        btnFiltrar.onclick = function (e) {
+            e.preventDefault();
+            cargarReservas();
+        };
+    }
 
-    try {
-        if (loading) loading.classList.remove('hidden');
-        if (empty) empty.classList.add('hidden');
-        if (grid) grid.classList.add('hidden');
-        if (tbody) tbody.innerHTML = '';
+    // Initial load
+    cargarReservas();
 
-        const response = await fetch(`/ventas/reservadas?${params.toString()}`);
-        const data = await response.json();
+    window.cargarReservas = async function () {
+        console.log('Cargando reservas...');
 
-        if (loading) loading.classList.add('hidden');
+        // Show loading, hide others
+        loadingDiv.classList.remove('hidden');
+        emptyDiv.classList.add('hidden');
+        gridDiv.classList.add('hidden');
 
-        if (!data.success || !data.reservas || data.reservas.length === 0) {
-            if (empty) empty.classList.remove('hidden');
-            if (grid) grid.classList.add('hidden');
+        const params = new URLSearchParams();
+        if (fechaInicioInput && fechaInicioInput.value) params.append('fecha_inicio', fechaInicioInput.value);
+        if (fechaFinInput && fechaFinInput.value) params.append('fecha_fin', fechaFinInput.value);
+        if (inputBuscar && inputBuscar.value) params.append('busqueda', inputBuscar.value);
+
+        try {
+            const response = await fetch(`/api/ventas/reservas/listar?${params.toString()}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const reservas = await response.json();
+            console.log('Reservas cargadas:', reservas);
+
+            renderTable(reservas);
+
+        } catch (error) {
+            console.error('Error cargando reservas:', error);
+            loadingDiv.classList.add('hidden');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudieron cargar las reservas. Por favor intente de nuevo.'
+            });
+        }
+    };
+
+    function renderTable(reservas) {
+        loadingDiv.classList.add('hidden');
+
+        if (reservas.length === 0) {
+            emptyDiv.classList.remove('hidden');
+            gridDiv.classList.add('hidden');
             return;
         }
 
-        if (empty) empty.classList.add('hidden');
-        if (grid) grid.classList.remove('hidden');
-        renderReservas(data.reservas);
+        emptyDiv.classList.add('hidden');
+        gridDiv.classList.remove('hidden');
 
-    } catch (error) {
-        console.error('Error cargando reservas:', error);
-        if (loading) loading.innerHTML = `<p class="text-red-500">Error al cargar las reservas. Por favor recargue la página.</p>`;
-    }
-}
-
-function renderReservas(reservas) {
-    const tbody = document.getElementById('tbody-reservas');
-
-    tbody.innerHTML = reservas.map(reserva => {
-        const itemsSummary = reserva.items.map(item =>
-            `<div class="text-sm text-gray-500 dark:text-gray-400">
-                ${item.cantidad}x ${item.nombre}
-             </div>`
-        ).join('');
-
-        return `
-            <tr>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${reserva.numero}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">${new Date(reserva.fecha).toLocaleDateString()}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900 dark:text-gray-100">${reserva.cliente}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">${reserva.empresa || ''}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900 dark:text-gray-100">${reserva.vendedor || 'N/A'}</div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="max-h-20 overflow-y-auto custom-scrollbar">
-                        ${itemsSummary}
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-bold text-gray-900 dark:text-gray-100">Q${parseFloat(reserva.total).toFixed(2)}</div>
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        ${reserva.situacion}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onclick="eliminarReserva(${reserva.id}, '${reserva.numero}')" 
-                            class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-bold">
-                        Eliminar
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-window.eliminarReserva = async function (id, numero) {
-    const result = await Swal.fire({
-        title: '¿Eliminar Reserva?',
-        html: `
-            <p class="mb-2">Estás a punto de eliminar la reserva <strong>${numero}</strong>.</p>
-            <p class="text-sm text-gray-500">Esta acción liberará el stock reservado y no se puede deshacer.</p>
-        `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    });
-
-    if (!result.isConfirmed) return;
-
-    // Loading
-    Swal.fire({
-        title: 'Procesando...',
-        text: 'Liberando stock y cancelando reserva',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-    });
-
-    try {
-        const response = await fetch('/ventas/cancelarReserva', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                reserva_id: id,
-                motivo: 'Eliminación manual desde vista de reservas'
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Error al cancelar la reserva');
+        // Destroy existing DataTable if it exists
+        if (dataTable) {
+            dataTable.destroy();
         }
 
-        await Swal.fire({
-            icon: 'success',
-            title: 'Reserva Eliminada',
-            text: 'La reserva ha sido cancelada y el stock liberado.',
-            timer: 2000,
-            showConfirmButton: false
-        });
+        tbody.innerHTML = reservas.map(reserva => {
+            const productosHtml = reserva.detalles.map(d =>
+                `<div>${d.det_cantidad} x ${d.producto_nombre}</div>`
+            ).join('');
 
-        // Recargar lista
-        cargarReservas();
+            return `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                            ${reserva.ven_no_reserva || 'N/A'}
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            ${new Date(reserva.ven_fecha).toLocaleDateString()}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                            ${reserva.cliente_nom_empresa ? reserva.cliente_nom_empresa + ' - ' : ''}
+                            ${reserva.cliente_nombre1} ${reserva.cliente_apellido1}
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            NIT: ${reserva.cliente_nit || 'CF'}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900 dark:text-white">
+                            ${reserva.user_primer_nombre} ${reserva.user_primer_apellido}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            ${productosHtml}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-gray-900 dark:text-white">
+                            Q${parseFloat(reserva.ven_total_vendido).toFixed(2)}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            ${reserva.metpago_descripcion || 'N/A'}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="cancelarReserva(${reserva.ven_id})" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-bold">
+                            Cancelar Reserva
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
-    } catch (error) {
-        console.error(error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: error.message || 'No se pudo cancelar la reserva'
+        // Initialize DataTable
+        dataTable = new DataTable('#grid-reservas table', {
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+            },
+            order: [[0, 'desc']] // Order by first column (Reserva/Fecha) descending
         });
     }
-};
 
-// Expose to window for HTML onclick events
-window.cargarReservas = cargarReservas;
+    window.cancelarReserva = async function (id) {
+        const result = await Swal.fire({
+            title: '¿Cancelar Reserva?',
+            text: "Esta acción liberará el stock y las series reservadas. ¿Estás seguro?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, cancelar',
+            cancelButtonText: 'No, mantener'
+        });
 
-// Initial load
-cargarReservas();
+        if (result.isConfirmed) {
+            try {
+                Swal.fire({
+                    title: 'Cancelando...',
+                    text: 'Por favor espere',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                const response = await fetch('/api/ventas/reservas/cancelar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ id: id, motivo: 'Cancelación manual desde módulo Reservas' })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await Swal.fire(
+                        '¡Cancelada!',
+                        'La reserva ha sido cancelada correctamente.',
+                        'success'
+                    );
+                    cargarReservas(); // Refresh table
+                } else {
+                    throw new Error(data.message || 'Error desconocido');
+                }
+
+            } catch (error) {
+                console.error('Error cancelando reserva:', error);
+                Swal.fire(
+                    'Error',
+                    'No se pudo cancelar la reserva: ' + error.message,
+                    'error'
+                );
+            }
+        }
+    };
+});

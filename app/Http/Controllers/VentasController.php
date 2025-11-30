@@ -1476,135 +1476,7 @@ public function procesarReserva(Request $request): JsonResponse
 }
 
 
-public function cancelarReserva(Request $request): JsonResponse
-{
-$reservaId = (int) $request->input('reserva_id'); 
-    $motivoCancelacion = $request->input('motivo', 'Cancelación de reserva');
-    $ref = 'RESERVA-' . $reservaId;
-    $ahora = now();
-    
-    
-    // --- LÍNEA DE DEPURACIÓN TEMPORAL ---
-    if ($reservaId === 0) {
-        // Log para ver si el ID no llegó o llegó nulo
-        \Log::error('INTENTO DE CANCELACIÓN FALLIDO: reserva_id no fue proporcionado o es cero. Request data: ' . json_encode($request->all()));
-    }
-    // ------------------------------------
 
-    $motivoCancelacion = $request->input('motivo', 'Cancelación de reserva');
-
-    try {
-        DB::transaction(function () use ($reservaId, $motivoCancelacion) {
-            $ahora = now();
-            $ref = 'RESERVA-' . $reservaId;
-
-            // 1. Verificar que la reserva existe y está en estado 'RESERVADA'
-            $reserva = DB::table('pro_ventas')
-                ->where('ven_id', $reservaId)
-                ->where('ven_situacion', 'RESERVADA')
-                ->first();
-
-            if (!$reserva) {
-                throw new \RuntimeException('Reserva no encontrada o no está en estado RESERVADA.');
-            }
-            
-            // 2. Obtener movimientos de reserva (mov_tipo = 'reserva') asociados a esta reserva
-            // Se asume que 2 es la situación de movimientos de reserva pendientes/activos
-            $movimientos = DB::table('pro_movimientos')
-                ->where('mov_documento_referencia', $ref)
-                ->where('mov_tipo', 'reserva')
-                ->where('mov_situacion', 2) // Situación activa de reserva
-                ->get();
-            
-            // Si no hay movimientos de stock (posible si el producto no maneja stock), se sigue el proceso.
-            if ($movimientos->isEmpty()) {
-                // Log o manejo de caso sin movimientos (stock-less products)
-            }
-
-            // --- REVERSIÓN DE STOCK ---
-
-            // 3. Reversión de Series
-            $movimientosSeries = $movimientos->filter(fn($mov) => !empty($mov->mov_serie_id));
-
-            if ($movimientosSeries->isNotEmpty()) {
-                $seriesIds = $movimientosSeries->pluck('mov_serie_id')->unique();
-
-                // 3a. Revertir estado de las series a 'disponible'
-                DB::table('pro_series_productos')
-                    ->whereIn('serie_id', $seriesIds)
-                    ->update([
-                        'serie_estado' => 'disponible',
-                        'serie_situacion' => 1,
-                        'serie_tiene_tenencia' => 0,
-                        'serie_monto_tenencia' => 0.00,
-                        'updated_at' => $ahora
-                    ]);
-
-                // 3b. Decrementar stock reservado 2 (usado para series/reservas)
-                foreach ($movimientosSeries->groupBy('mov_producto_id') as $productoId => $movs) {
-                    $cantidad = $movs->sum('mov_cantidad');
-                    
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                        ->where('stock_cantidad_reservada2', '>=', $cantidad) // Validación de seguridad
-                        ->decrement('stock_cantidad_reservada2', $cantidad);
-                }
-            }
-
-            // 4. Reversión de Lotes y Stock General (sin series)
-            $movimientosSinSeries = $movimientos->filter(fn($mov) => empty($mov->mov_serie_id));
-
-            if ($movimientosSinSeries->isNotEmpty()) {
-                
-                // 4a. Revertir stock reservado (stock_cantidad_reservada2)
-                foreach ($movimientosSinSeries->groupBy('mov_producto_id') as $productoId => $movs) {
-                    $cantidad = $movs->sum('mov_cantidad');
-
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                        ->where('stock_cantidad_reservada2', '>=', $cantidad) // Validación de seguridad
-                        ->decrement('stock_cantidad_reservada2', $cantidad);
-                }
-            }
-            
-            // 5. Anular todos los movimientos de reserva
-            DB::table('pro_movimientos')
-                ->where('mov_documento_referencia', $ref)
-                ->where('mov_tipo', 'reserva')
-                ->where('mov_situacion', 2)
-                ->update(['mov_situacion' => 0, 'updated_at' => $ahora]); // 0 = Anulado
-
-            // 6. Actualizar Detalle de Venta
-            DB::table('pro_detalle_ventas')
-                ->where('det_ven_id', $reservaId)
-                ->update(['det_situacion' => 'ANULADO']);
-
-            // 7. Actualizar la Reserva principal a 'CANCELADA'
-            DB::table('pro_ventas')
-                ->where('ven_id', $reservaId)
-                ->update([
-                    'ven_situacion' => 'ANULADA',
-                    'ven_observaciones' => $reserva->ven_observaciones . " - ANULADA: " . $motivoCancelacion,
-                    'updated_at' => $ahora
-                ]);
-
-        }, 3); // Intentos de reintentar la transacción
-
-      return response()->json([
-            'success' => true,
-            'message' => 'Reserva cancelada y stock liberado exitosamente.',
-            'reserva_id' => $reservaId 
-        ], 200);
-
-    } catch (\Throwable $e) {
-        // Registra el error para diagnóstico
-        report($e);
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al intentar cancelar la reserva: ' . $e->getMessage()
-        ], 500);
-    }
-}
 
     ///////// termino morales batz no estaba bien implementado cooregido bmar
 
@@ -3137,5 +3009,190 @@ public function procesarVenta(Request $request): JsonResponse
     public function destroy(Ventas $ventas)
     {
         //
+    }
+
+    public function listarReservas(Request $request)
+    {
+        try {
+            $fechaInicio = $request->query('fecha_inicio');
+            $fechaFin = $request->query('fecha_fin');
+            $busqueda = $request->query('busqueda');
+
+            $query = DB::table('pro_ventas as v')
+                ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->join('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->leftJoin('pro_metodo_pago as mp', 'v.ven_metodo_pago', '=', 'mp.metpago_id')
+                ->where('v.ven_situacion', 'RESERVA')
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_total_vendido',
+                    'v.ven_subtotal',
+                    'v.ven_iva',
+                    'v.ven_descuento',
+                    'v.ven_situacion',
+                    'v.ven_no_reserva',
+                    'c.cliente_nombre1',
+                    'c.cliente_nombre2',
+                    'c.cliente_apellido1',
+                    'c.cliente_apellido2',
+                    'c.cliente_nit',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre',
+                    'u.user_primer_apellido',
+                    'mp.metpago_descripcion'
+                );
+
+            if ($fechaInicio) {
+                $query->whereDate('v.ven_fecha', '>=', $fechaInicio);
+            }
+
+            if ($fechaFin) {
+                $query->whereDate('v.ven_fecha', '<=', $fechaFin);
+            }
+
+            if ($busqueda) {
+                $query->where(function ($q) use ($busqueda) {
+                    $q->where('c.cliente_nombre1', 'like', "%{$busqueda}%")
+                        ->orWhere('c.cliente_apellido1', 'like', "%{$busqueda}%")
+                        ->orWhere('c.cliente_nit', 'like', "%{$busqueda}%")
+                        ->orWhere('c.cliente_nom_empresa', 'like', "%{$busqueda}%")
+                        ->orWhere('v.ven_no_reserva', 'like', "%{$busqueda}%");
+                });
+            }
+
+            $reservas = $query->orderBy('v.ven_fecha', 'desc')->get();
+
+            // Cargar detalles para cada reserva
+            foreach ($reservas as $reserva) {
+                $detalles = DB::table('pro_detalle_ventas as d')
+                    ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                    ->where('d.det_ven_id', $reserva->ven_id)
+                    ->select(
+                        'd.det_id',
+                        'd.det_producto_id',
+                        'p.producto_nombre',
+                        'd.det_cantidad',
+                        'd.det_precio',
+                        'd.det_subtotal'
+                    )
+                    ->get();
+
+                // Cargar series reservadas para cada detalle
+                foreach ($detalles as $detalle) {
+                    $series = DB::table('pro_movimientos as m')
+                        ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                        ->where('m.mov_documento_referencia', 'VENTA-' . $reserva->ven_id)
+                        ->where('m.mov_producto_id', $detalle->det_producto_id)
+                        ->where('m.mov_situacion', 3) // Reservado
+                        ->select('s.serie_numero_serie')
+                        ->get()
+                        ->pluck('serie_numero_serie');
+                    
+                    $detalle->series = $series;
+                }
+
+                $reserva->detalles = $detalles;
+                $reserva->cantidad_productos = $detalles->sum('det_cantidad');
+            }
+
+            return response()->json($reservas);
+
+        } catch (\Exception $e) {
+            Log::error('Error al listar reservas: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al cargar reservas'], 500);
+        }
+    }
+
+    public function cancelarReserva(Request $request)
+    {
+        $venId = $request->input('id');
+
+        try {
+            DB::transaction(function () use ($venId) {
+                // 1. Verificar estado actual
+                $venta = DB::table('pro_ventas')->where('ven_id', $venId)->first();
+                
+                if (!$venta) {
+                    throw new \Exception('Venta no encontrada');
+                }
+
+                if ($venta->ven_situacion !== 'RESERVA') {
+                    throw new \Exception('La venta no está en estado RESERVA');
+                }
+
+                // 2. Cambiar estado de venta a CANCELADA
+                DB::table('pro_ventas')
+                    ->where('ven_id', $venId)
+                    ->update(['ven_situacion' => 'CANCELADA']);
+
+                // 3. Liberar series y lotes (movimientos)
+                // Buscar movimientos reservados (situacion 3) asociados a esta venta
+                $movimientos = DB::table('pro_movimientos')
+                    ->where('mov_documento_referencia', 'VENTA-' . $venId)
+                    ->where('mov_situacion', 3)
+                    ->get();
+
+                foreach ($movimientos as $mov) {
+                    // Si tiene serie, liberar la serie en pro_series_productos
+                    if ($mov->mov_serie_id) {
+                        DB::table('pro_series_productos')
+                            ->where('serie_id', $mov->mov_serie_id)
+                            ->update([
+                                'serie_estado' => 'disponible',
+                                'serie_situacion' => 1
+                            ]);
+                    }
+
+                    // Eliminar o anular el movimiento de reserva?
+                    // Generalmente se cambia a anulado (0) o se elimina. 
+                    // Si usamos lógica de "liberar", podríamos borrarlos o marcar mov_situacion = 0 (Anulado)
+                    // Para mantener historial, mejor marcar como anulado.
+                    DB::table('pro_movimientos')
+                        ->where('mov_id', $mov->mov_id)
+                        ->update(['mov_situacion' => 0]); // 0 = Anulado/Cancelado
+                }
+
+                // 4. Devolver stock reservado a disponible
+                // Necesitamos saber qué productos y qué cantidades se reservaron
+                // Podemos usar los detalles de la venta o los movimientos.
+                // Usaremos los detalles para ser más precisos con lo que se pidió.
+                
+                $detalles = DB::table('pro_detalle_ventas')
+                    ->where('det_ven_id', $venId)
+                    ->get();
+
+                foreach ($detalles as $det) {
+                    // Decrementar stock reservado
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $det->det_producto_id)
+                        ->decrement('stock_cantidad_reservada', $det->det_cantidad);
+                    
+                    // Incrementar stock disponible (porque al reservar se descontó de disponible?)
+                    // Revisando lógica de reserva (no mostrada pero inferida):
+                    // Al reservar: disponible -= cant, reservado += cant.
+                    // Al cancelar: reservado -= cant, disponible += cant.
+                    
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $det->det_producto_id)
+                        ->increment('stock_cantidad_disponible', $det->det_cantidad);
+                        
+                    // El stock total no debería cambiar, ya que la mercadería nunca salió físicamente,
+                    // solo cambió de estado.
+                }
+                
+                // Actualizar estado de detalles
+                DB::table('pro_detalle_ventas')
+                    ->where('det_ven_id', $venId)
+                    ->update(['det_situacion' => 'CANCELADA']);
+
+            });
+
+            return response()->json(['success' => true, 'message' => 'Reserva cancelada correctamente']);
+
+        } catch (\Exception $e) {
+            Log::error('Error al cancelar reserva: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }
