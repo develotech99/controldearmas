@@ -223,7 +223,7 @@ Route::middleware('auth')->group(function () {
     //ventas batz
     Route::get('/ventas/pendientes', [VentasController::class, 'obtenerVentasPendientes'])->name('ventas.pendientes');
     Route::get('/ventas/reservadas', [VentasController::class, 'reservadas'])->name('ventas.reservadas');
-    Route::get('/api/reservas/activas', [VentasController::class, 'getReservasActivas'])->name('ventas.api.reservas.activas');
+    Route::get('/reservas/activas', [VentasController::class, 'getReservasActivas'])->name('ventas.reservas.activas');
     ///
 
     // APIs de ventas
