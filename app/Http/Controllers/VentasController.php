@@ -3029,7 +3029,6 @@ public function procesarVenta(Request $request): JsonResponse
                     'v.ven_total_vendido',
                     'v.ven_descuento',
                     'v.ven_situacion',
-                    'v.ven_no_reserva',
                     'c.cliente_nombre1',
                     'c.cliente_nombre2',
                     'c.cliente_apellido1',
@@ -3054,8 +3053,7 @@ public function procesarVenta(Request $request): JsonResponse
                     $q->where('c.cliente_nombre1', 'like', "%{$busqueda}%")
                         ->orWhere('c.cliente_apellido1', 'like', "%{$busqueda}%")
                         ->orWhere('c.cliente_nit', 'like', "%{$busqueda}%")
-                        ->orWhere('c.cliente_nom_empresa', 'like', "%{$busqueda}%")
-                        ->orWhere('v.ven_no_reserva', 'like', "%{$busqueda}%");
+                        ->orWhere('c.cliente_nom_empresa', 'like', "%{$busqueda}%");
                 });
             }
 
