@@ -43,7 +43,7 @@ class InventarioManager {
      * Inicializar el gestor
      */
     init() {
-        console.log('🚀 InventarioManager inicializado');
+        ('🚀 InventarioManager inicializado');
         this.setupEventListeners();
         this.setupExcelFilters();
         this.setupFotosHandling();
@@ -2448,7 +2448,7 @@ class InventarioManager {
                 // Configurar campos según tipo de producto
                 if (this.productoSeleccionado.producto_requiere_serie) {
                     // PRODUCTO CON SERIE
-                    console.log('Producto requiere serie - configurando campos');
+                    ('Producto requiere serie - configurando campos');
 
                     // Mostrar sección de series, ocultar cantidad
                     if (seriesSection) seriesSection.classList.remove('hidden');
@@ -2465,7 +2465,7 @@ class InventarioManager {
 
                 } else {
                     // PRODUCTO SIN SERIE
-                    console.log('Producto NO requiere serie - configurando campos');
+                    ('Producto NO requiere serie - configurando campos');
 
                     // Mostrar sección de cantidad, ocultar series
                     if (cantidadSection) cantidadSection.classList.remove('hidden');
@@ -2487,10 +2487,10 @@ class InventarioManager {
                 if (importadoSection) {
                     if (this.productoSeleccionado.producto_es_importado) {
                         importadoSection.classList.remove('hidden');
-                        console.log('Producto importado - mostrando sección de importación');
+                        ('Producto importado - mostrando sección de importación');
                     } else {
                         importadoSection.classList.add('hidden');
-                        console.log('Producto NO importado - ocultando sección de importación');
+                        ('Producto NO importado - ocultando sección de importación');
                     }
                 }
 
@@ -2890,7 +2890,7 @@ class InventarioManager {
                 // **CRÍTICO: Gestión correcta de atributos required y visibilidad**
                 if (this.productoSeleccionado.producto_requiere_serie) {
                     // PRODUCTO CON SERIE
-                    console.log('Producto requiere serie - configurando campos');
+                    ('Producto requiere serie - configurando campos');
 
                     // Mostrar sección de series, ocultar cantidad y lotes
                     if (seriesSection) seriesSection.classList.remove('hidden');
@@ -2901,16 +2901,16 @@ class InventarioManager {
                     if (movCantidadInput) {
                         movCantidadInput.removeAttribute('required');
                         movCantidadInput.value = '';
-                        console.log('Removed required from mov_cantidad');
+                        ('Removed required from mov_cantidad');
                     }
                     if (numerosSeriesTextarea) {
                         numerosSeriesTextarea.setAttribute('required', 'required');
-                        console.log('Added required to numeros_series');
+                        ('Added required to numeros_series');
                     }
 
                 } else {
                     // PRODUCTO SIN SERIE
-                    console.log('Producto NO requiere serie - configurando campos');
+                    ('Producto NO requiere serie - configurando campos');
 
                     // Mostrar sección de cantidad y lotes, ocultar series
                     if (cantidadSection) cantidadSection.classList.remove('hidden');
@@ -2921,12 +2921,12 @@ class InventarioManager {
                     if (movCantidadInput) {
                         movCantidadInput.setAttribute('required', 'required');
                         movCantidadInput.value = '1';
-                        console.log('Added required to mov_cantidad');
+                        ('Added required to mov_cantidad');
                     }
                     if (numerosSeriesTextarea) {
                         numerosSeriesTextarea.removeAttribute('required');
                         numerosSeriesTextarea.value = '';
-                        console.log('Removed required from numeros_series');
+                        ('Removed required from numeros_series');
                     }
 
                     // Generar preview del lote
@@ -3691,7 +3691,7 @@ class InventarioManager {
         this.licenciaSeleccionadaRegistro = null;
         this.lotePreview = '';
 
-        console.log('Formulario de ingreso reseteado correctamente');
+        ('Formulario de ingreso reseteado correctamente');
     }
 
 
@@ -4016,7 +4016,7 @@ class InventarioManager {
                 const data = await response.json();
                 const movimientos = data.data || [];
 
-                console.log(`Total de movimientos sin filtrar: ${movimientos.length}`); // DEBUG
+                (`Total de movimientos sin filtrar: ${movimientos.length}`); // DEBUG
 
                 // Obtener información del producto
                 const productoResponse = await fetch(`/inventario/productos/${productoId}`);
@@ -4580,7 +4580,7 @@ class InventarioManager {
             if (response.ok) {
                 const data = await response.json();
                 this.populateSelect('editar_producto_modelo', data.data || [], 'modelo_id', 'modelo_descripcion');
-                console.log('Modelos cargados para marca', marcaId, ':', data.data?.length || 0);
+                ('Modelos cargados para marca', marcaId, ':', data.data?.length || 0);
             } else {
                 console.error('Error cargando modelos para marca', marcaId);
             }
@@ -4595,49 +4595,49 @@ class InventarioManager {
      * Método poblarSelectsEdicion con debug - TEMPORAL
      */
     async poblarSelectsEdicion() {
-        console.log('=== DEBUG POBLAR SELECTS EDICIÓN ===');
-        console.log('this.categorias:', this.categorias?.length);
-        console.log('this.marcas:', this.marcas?.length);
-        console.log('this.calibres:', this.calibres?.length);
-        console.log('this.paises antes:', this.paises?.length);
+        ('=== DEBUG POBLAR SELECTS EDICIÓN ===');
+        ('this.categorias:', this.categorias?.length);
+        ('this.marcas:', this.marcas?.length);
+        ('this.calibres:', this.calibres?.length);
+        ('this.paises antes:', this.paises?.length);
 
         // Usar los datos ya cargados
         if (this.categorias && this.categorias.length > 0) {
             this.populateSelect('editar_producto_categoria', this.categorias, 'categoria_id', 'categoria_nombre');
-            console.log('✅ Categorías pobladas');
+            ('✅ Categorías pobladas');
         } else {
-            console.log('❌ No hay categorías');
+            ('❌ No hay categorías');
         }
 
         if (this.marcas && this.marcas.length > 0) {
             this.populateSelect('editar_producto_marca', this.marcas, 'marca_id', 'marca_descripcion');
-            console.log('✅ Marcas pobladas');
+            ('✅ Marcas pobladas');
         } else {
-            console.log('❌ No hay marcas');
+            ('❌ No hay marcas');
         }
 
         if (this.calibres && this.calibres.length > 0) {
             this.populateSelect('editar_producto_calibre', this.calibres, 'calibre_id', 'calibre_nombre');
-            console.log('✅ Calibres poblados');
+            ('✅ Calibres poblados');
         } else {
-            console.log('❌ No hay calibres');
+            ('❌ No hay calibres');
         }
 
         // Cargar países si no están cargados
         if (!this.paises || this.paises.length === 0) {
-            console.log('Cargando países...');
+            ('Cargando países...');
             await this.loadPaises();
-            console.log('this.paises después:', this.paises?.length);
+            ('this.paises después:', this.paises?.length);
         }
 
         if (this.paises && this.paises.length > 0) {
             this.populateSelect('editar_producto_madein', this.paises, 'pais_id', 'pais_descripcion');
-            console.log('✅ Países poblados');
+            ('✅ Países poblados');
         } else {
-            console.log('❌ No hay países');
+            ('❌ No hay países');
         }
 
-        console.log('=== FIN DEBUG ===');
+        ('=== FIN DEBUG ===');
     }
 
     /**

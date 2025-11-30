@@ -15,7 +15,7 @@ async function clientesParticulares() {
 
     const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
     const data = await res.json();
-    //console.log('venttas desde el buscar',data);
+    //('venttas desde el buscar',data);
 
     // Siempre limpiamos el select
     select.innerHTML = "";
@@ -271,11 +271,11 @@ async function guardarCliente() {
         formData.delete('cliente_user_id');
     }
 
-    console.log('====== DATOS A ENVIAR ======');
+    ('====== DATOS A ENVIAR ======');
     for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}: "${value}"`);
+        (`  ${key}: "${value}"`);
     }
-    console.log('============================');
+    ('============================');
 
     estado.textContent = "Guardando cliente...";
 
@@ -291,7 +291,7 @@ async function guardarCliente() {
 
         // 👇 Obtener el texto de la respuesta primero
         const responseText = await response.text();
-        console.log('Respuesta del servidor:', responseText);
+        ('Respuesta del servidor:', responseText);
 
         if (!response.ok) {
             let errorData;
@@ -315,7 +315,7 @@ async function guardarCliente() {
         }
 
         const resultado = JSON.parse(responseText);
-        console.log('✅ Cliente guardado:', resultado);
+        ('✅ Cliente guardado:', resultado);
 
         await Swal.fire({
             title: "¡Éxito!",
@@ -369,7 +369,7 @@ async function obtenerSubcategorias(categoriaId) {
             `/api/ventas/subcategorias/${categoriaId}`
         );
         const data = await response.json();
-        console.log(data);
+        (data);
 
         subcategoriaSelect.innerHTML =
             '<option value="">Seleccionar subcategoría...</option>';
@@ -469,7 +469,7 @@ async function buscarProductos() {
             `/ventas/search?${params.toString()}`
         );
         const productos = await response.json();
-        console.log(productos);
+        (productos);
 
         mostrarProductos(productos);
     } catch (error) {
@@ -856,7 +856,7 @@ function abrirCarrito() {
     const panel = document.getElementById("panelCarrito");
     const v = validarCliente();
     const clienteId = v.clienteId;
-    //console.log('cliente desde abrir carrito',clienteId);
+    //('cliente desde abrir carrito',clienteId);
     cargarReservaCliente(clienteId);
 
     modal.classList.remove("hidden");
@@ -885,13 +885,13 @@ function agregarAlCarrito(producto_id) {
 }
 
 function agregarProductoAlCarrito(producto) {
-    // console.log('🔵 Producto entrante:', producto);
+    // ('🔵 Producto entrante:', producto);
     const id = String(producto.producto_id);
     const existente = carritoProductos.find(
         (p) => String(p.producto_id) === id
     );
 
-    // console.log('productos  para ver todo ',producto)
+    // ('productos  para ver todo ',producto)
     // Normaliza datos del producto entrante
     const stockProducto = Number(producto.stock_cantidad_total ?? 0);
     const necesitaStock = Number(producto.producto_requiere_stock ?? 1) === 1;
@@ -1096,7 +1096,7 @@ async function procesarReserva() {
         return; // corta aquí
     }
     const clienteId = v.clienteId;
-    console.log('clienteId detectado ->', clienteId);
+    ('clienteId detectado ->', clienteId);
 
     try {
         btn && (btn.disabled = true);
@@ -1245,7 +1245,7 @@ async function cargarReservaCliente(clienteId) {
             return;
         }
 
-        // console.log('datos de la(s) reserva(s) por cliente', data);
+        // ('datos de la(s) reserva(s) por cliente', data);
 
         // ✅ La API nueva devuelve: { success, count, reservas: [...] }
         if (data.success && Array.isArray(data.reservas) && data.reservas.length > 0) {
@@ -1786,7 +1786,7 @@ async function aplicarCargaReservaSeleccion(seleccion) {
         });
 
         const stockData = await response.json();
-        console.log('📦 Stocks actualizados:', stockData);
+        ('📦 Stocks actualizados:', stockData);
 
         // Crear un mapa de stock actualizado
         const stockMap = {};
@@ -1937,7 +1937,7 @@ async function aplicarCargaReservaSeleccion(seleccion) {
 
         // 🆕 Enviar las series al backend para marcar serie_estado = 'disponible'
         const seriesSeleccionadas = Array.from(seriesSeleccionadasSet);
-        console.log('series seleccionadas', seriesSeleccionadas)
+        ('series seleccionadas', seriesSeleccionadas)
         if (seriesSeleccionadas.length > 0) {
             //       try {
             //       const resp = await fetch('/ventas/marcar-disponibles', {
@@ -1952,7 +1952,7 @@ async function aplicarCargaReservaSeleccion(seleccion) {
             // // Leer texto porque si hay error HTML o JSON malformado, igual lo vemos
             // const data = await resp.text();
 
-            // console.log("📡 RESPUESTA DESDE AGREGAR AL CARRITO:", resp.status, data);
+            // ("📡 RESPUESTA DESDE AGREGAR AL CARRITO:", resp.status, data);
 
             //       } catch (e) {
             //         console.error('⚠️ Error al actualizar estado de series:', e);
@@ -2073,7 +2073,7 @@ async function aplicarCargaReservaSeleccion(seleccion) {
 // FUNCIÓN DE DEPURACIÓN OPCIONAL
 // ========================================
 function verificarEstructuraCarrito() {
-    console.log('🔍 Verificando estructura del carrito:');
+    ('🔍 Verificando estructura del carrito:');
 
     carritoProductos.forEach((p, index) => {
         const errores = [];
@@ -2103,10 +2103,10 @@ function verificarEstructuraCarrito() {
         }
 
         if (errores.length > 0) {
-            console.log(`\n📦 Producto ${index + 1}: ${p.nombre}`);
-            errores.forEach(e => console.log(e));
+            (`\n📦 Producto ${index + 1}: ${p.nombre}`);
+            errores.forEach(e => (e));
         } else {
-            console.log(`\n✅ Producto ${index + 1}: ${p.nombre} - Estructura correcta`);
+            (`\n✅ Producto ${index + 1}: ${p.nombre} - Estructura correcta`);
         }
     });
 
@@ -2116,7 +2116,7 @@ function verificarEstructuraCarrito() {
 // ===== NUEVA versión de cargarReservaEnCarrito(items): respeta tu listener =====
 async function cargarReservaEnCarrito(items) {
 
-    console.log('intentar abrir modal')
+    ('intentar abrir modal')
     if (!Array.isArray(items) || items.length === 0) {
         Swal?.fire?.('Reserva vacía', 'No hay productos para cargar.', 'info');
         return;
@@ -2147,13 +2147,13 @@ function actualizarVistaCarrito() {
     const carritoVacio = document.getElementById("carritoVacio");
     const v = validarCliente();
     const clienteId = v.clienteId;
-    console.log('cliente desde el actualizar', clienteId);
+    ('cliente desde el actualizar', clienteId);
 
 
     if (!container) return;
 
     if (!Array.isArray(carritoProductos)) carritoProductos = [];
-    console.log(carritoProductos);
+    (carritoProductos);
 
     // 🔧 Normalizar carrito en caliente
     carritoProductos = carritoProductos.map((p) => {
@@ -3726,7 +3726,7 @@ async function procesarVentaFinal() {
 
         // Calcular totales
         const subtotal = carritoProductos.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
-        // console.log('carritosproducotos',carritoProductos)
+        // ('carritosproducotos',carritoProductos)
 
 
         // ✅ NUEVO: Calcular tenencia
@@ -3842,7 +3842,7 @@ async function procesarVentaFinal() {
 
         }
 
-        console.log('Datos de venta a enviar:', datosVenta);
+        ('Datos de venta a enviar:', datosVenta);
 
         // 4. ENVIAR AL CONTROLADOR
         const response = await fetch('/api/ventas/procesar-venta', {
@@ -3855,7 +3855,7 @@ async function procesarVentaFinal() {
         });
 
         const resultado = await response.json();
-        console.log('resultado proceso de venta: ', resultado);
+        ('resultado proceso de venta: ', resultado);
 
 
         if (response.ok && resultado.success) {
@@ -3997,7 +3997,7 @@ function agregarDocumentoVenta() {
     }
 
     // Aquí puedes enviar a un array, backend o agregar a una lista visual
-    console.log("Documento agregado:", tipo, numero);
+    ("Documento agregado:", tipo, numero);
 
     cerrarModalDocumentacion();
 }

@@ -590,7 +590,7 @@ class ReportesManager {
         try {
             const row = buttonElement.closest('tr');
             const ventaData = JSON.parse(row.dataset.venta);
-            console.log('📦 Datos de la venta:', ventaData);
+            ('📦 Datos de la venta:', ventaData);
 
             // Series -> array<number>
             const seriesArray = (ventaData.series_ids || '')
@@ -618,7 +618,7 @@ class ReportesManager {
                 lotes_ids: lotesArray
             };
 
-            console.log('📤 Payload a enviar:', payload);
+            ('📤 Payload a enviar:', payload);
 
             let detallesHtml = `<p><strong>Cliente:</strong> ${payload.cliente}</p>`;
             if (seriesArray.length > 0) detallesHtml += `<p><strong>Series:</strong> ${seriesArray.length} serie(s)</p>`;
@@ -951,7 +951,7 @@ class ReportesManager {
 
     async cargarVentasPendientes(filtros = {}) {
         try {
-            console.log('🔄 Cargando ventas pendientes... con los select ', filtros);
+            ('🔄 Cargando ventas pendientes... con los select ', filtros);
 
             // Construir query params desde los filtros
             const params = new URLSearchParams();
@@ -959,7 +959,7 @@ class ReportesManager {
             if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
 
             const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
-            console.log('📡 URL:', url);
+            ('📡 URL:', url);
 
             const response = await fetch(url, {
                 headers: {
@@ -968,18 +968,18 @@ class ReportesManager {
                 }
             });
 
-            console.log('📡 Pendientes response status:', response.status);
+            ('📡 Pendientes response status:', response.status);
 
             if (!response.ok) {
                 throw new Error(`Error ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('📥 Ventas pendientes:', data);
+            ('📥 Ventas pendientes:', data);
 
             if (data.success) {
                 this.renderTablaVentas(data.data);
-                console.log(`✅ ${data.total} ventas pendientes cargadas`);
+                (`✅ ${data.total} ventas pendientes cargadas`);
             } else {
                 throw new Error(data.message || 'Error al cargar ventas');
             }
@@ -1335,7 +1335,7 @@ class ReportesManager {
             // estado:', estadoEl.value);
         }
 
-        // console.log('📋 Aplicando filtros:', filtros);
+        // ('📋 Aplicando filtros:', filtros);
         this.cargarVentasPendientes(filtros);
     }
 
@@ -1350,14 +1350,14 @@ class ReportesManager {
      */
     async initClienteSelect() {
         try {
-            console.log('🔄 Cargando clientes...');
+            ('🔄 Cargando clientes...');
 
             const response = await fetch('/reportes/buscar-clientes?q=');
             const data = await response.json();
 
             if (data.success && data.results) {
                 this.populateSelect('filtro-cliente-ventas', data.results, 'id', 'text');
-                console.log('✅ Clientes cargados:', data.results.length);
+                ('✅ Clientes cargados:', data.results.length);
             } else {
                 console.warn('⚠️ No se encontraron clientes');
             }
@@ -1664,7 +1664,7 @@ class ReportesManager {
      */
     pagarComision(comisionId) {
         // Implementar funcionalidad de pago de comisión
-        console.log('Pagar comisión:', comisionId);
+        ('Pagar comisión:', comisionId);
         this.showAlert('info', 'Información', 'Función de pago de comisión en desarrollo');
     }
 
@@ -1902,12 +1902,12 @@ class ReportesManager {
      * Mostrar/ocultar loading
      */
     showLoading(section) {
-        console.log(`Cargando ${section}...`);
+        (`Cargando ${section}...`);
         // Implementar loading spinner si es necesario
     }
 
     hideLoading(section) {
-        console.log(`${section} cargado`);
+        (`${section} cargado`);
         // Ocultar loading spinner si es necesario
     }
 
@@ -1934,7 +1934,7 @@ window.reportesManager = null;
 
 // Función de inicialización
 function initReportesManager() {
-    console.log('🔄 Intentando inicializar ReportesManager...');
+    ('🔄 Intentando inicializar ReportesManager...');
 
     // Verificar dependencias
     const dependencies = [
@@ -1951,14 +1951,14 @@ function initReportesManager() {
 
     // Verificar si ya existe una instancia
     if (window.reportesManager) {
-        console.log('✅ ReportesManager ya está inicializado');
+        ('✅ ReportesManager ya está inicializado');
         return window.reportesManager;
     }
 
     // Inicializar ReportesManager
     try {
         window.reportesManager = new ReportesManager();
-        console.log('✅ Sistema de reportes inicializado correctamente');
+        ('✅ Sistema de reportes inicializado correctamente');
 
         // Disparar evento personalizado para notificar que está listo
         if (typeof CustomEvent !== 'undefined') {
@@ -1993,11 +1993,11 @@ function initReportesManager() {
 }
 
 // Múltiples estrategias de inicialización
-console.log('📄 Script de reportes cargado, estado del DOM:', document.readyState);
+('📄 Script de reportes cargado, estado del DOM:', document.readyState);
 
 // 1. Si el DOM ya está listo, inicializar inmediatamente
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    console.log('🚀 DOM listo, inicializando inmediatamente...');
+    ('🚀 DOM listo, inicializando inmediatamente...');
     initReportesManager();
 } else {
     // 2. Si el DOM aún se está cargando, esperar al evento
