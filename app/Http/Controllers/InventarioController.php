@@ -2026,7 +2026,10 @@ public function getSeriesProducto($id): JsonResponse
         }
 
         $series = SerieProducto::where('serie_producto_id', $id)
-            ->where('serie_situacion', 1)
+            ->where(function($q) {
+                $q->where('serie_situacion', 1)
+                  ->orWhere('serie_estado', 'pendiente');
+            })
             ->orderBy('serie_fecha_ingreso', 'desc')
             ->get()
             ->map(function($serie) {
