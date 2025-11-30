@@ -658,6 +658,27 @@ public function obtenerVentasPendientes(Request $request): JsonResponse
                     }
                 }
 
+                // ✅ FIX: Paso 4.5: STOCK GENERAL (Sin serie ni lote)
+                // Buscar movimientos reservados que NO tengan serie NI lote
+                $generalStockMovs = DB::table('pro_movimientos')
+                    ->where('mov_documento_referencia', $ref)
+                    ->where('mov_situacion', 3) // Reservado
+                    ->whereNull('mov_serie_id')
+                    ->whereNull('mov_lote_id')
+                    ->get();
+
+                foreach ($generalStockMovs as $mov) {
+                    // Confirmar movimiento
+                    DB::table('pro_movimientos')
+                        ->where('mov_id', $mov->mov_id)
+                        ->update(['mov_situacion' => 1]);
+
+                    // Sumar a qtyTotal para descontar de stock
+                    $qtyTotal += $mov->mov_cantidad;
+
+                    $detallesProcesados[] = "Stock general procesado: {$mov->mov_cantidad}";
+                }
+
                 // Paso 5: Actualizar stock
                 if ($qtyTotal > 0) {
                     DB::table('pro_stock_actual')
@@ -2674,6 +2695,11 @@ public function procesarVenta(Request $request): JsonResponse
                             }
                         }
 
+                        // ✅ FIX: Incrementar stock reservado para lotes
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $producto->producto_id)
+                            ->increment('stock_cantidad_reservada', $totalAsignado);
+
                     } else {
                  
                         DB::table('pro_movimientos')->insert([
@@ -2689,10 +2715,15 @@ public function procesarVenta(Request $request): JsonResponse
                             'mov_lote_id'              => null,
                             'mov_documento_referencia' => "VENTA-{$ventaId}",
                             'mov_observaciones'        => "Venta - Stock general",
-                            'mov_situacion'            => 1,
+                            'mov_situacion'            => 3, // ✅ FIX: 3 = Reservado (antes 1)
                             'created_at'               => now(),
                             'updated_at'               => now(),
                         ]);
+
+                        // ✅ FIX: Incrementar stock reservado para stock general
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $producto->producto_id)
+                            ->increment('stock_cantidad_reservada', $productoData['cantidad']);
 
                         $accionStock = 'Stock general desde disponible';
                     }

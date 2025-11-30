@@ -747,6 +747,34 @@ public function certificarCambiaria(Request $request)
                         ->where('stock_producto_id', $mov->mov_producto_id)
                         ->decrement('stock_cantidad_total', $mov->mov_cantidad);
                 }
+
+                // ✅ FIX: c) Stock General (Sin serie ni lote)
+                $generalStockMovs = DB::table('pro_movimientos')
+                    ->where('mov_documento_referencia', $refVenta)
+                    ->where('mov_situacion', 3)
+                    ->whereNull('mov_serie_id')
+                    ->whereNull('mov_lote_id')
+                    ->get();
+
+                foreach ($generalStockMovs as $mov) {
+                    // Actualizar movimiento
+                    DB::table('pro_movimientos')
+                        ->where('mov_id', $mov->mov_id)
+                        ->update(['mov_situacion' => 1]);
+
+                    // Descontar de stock
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                        
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                        
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                }
             }
         }
 
