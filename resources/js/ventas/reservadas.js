@@ -86,9 +86,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         tbody.innerHTML = reservas.map(reserva => {
-            const productosHtml = reserva.detalles.map(d =>
-                `<div>${d.det_cantidad} x ${d.producto_nombre}</div>`
-            ).join('');
+            const productosHtml = reserva.detalles.map(d => {
+                let html = `<div>${d.det_cantidad} x ${d.producto_nombre}</div>`;
+                if (d.series && d.series.length > 0) {
+                    html += `<div class="text-xs text-gray-500 ml-2">Series: ${d.series.join(', ')}</div>`;
+                }
+                return html;
+            }).join('');
 
             return `
                 <tr>

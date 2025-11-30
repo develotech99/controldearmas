@@ -3022,7 +3022,7 @@ public function procesarVenta(Request $request): JsonResponse
                 ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
                 ->join('users as u', 'v.ven_user', '=', 'u.user_id')
                 ->leftJoin('pro_metodo_pago as mp', 'v.ven_metodo_pago', '=', 'mp.metpago_id')
-                ->where('v.ven_situacion', 'RESERVA')
+                ->where('v.ven_situacion', 'RESERVADA')
                 ->select(
                     'v.ven_id',
                     'v.ven_fecha',
@@ -3082,9 +3082,9 @@ public function procesarVenta(Request $request): JsonResponse
                 foreach ($detalles as $detalle) {
                     $series = DB::table('pro_movimientos as m')
                         ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
-                        ->where('m.mov_documento_referencia', 'VENTA-' . $reserva->ven_id)
+                        ->where('m.mov_documento_referencia', 'RESERVA-' . $reserva->ven_id)
                         ->where('m.mov_producto_id', $detalle->det_producto_id)
-                        ->where('m.mov_situacion', 3) // Reservado
+                        ->where('m.mov_situacion', 2) // Reservado
                         ->select('s.serie_numero_serie')
                         ->get()
                         ->pluck('serie_numero_serie');
@@ -3117,8 +3117,8 @@ public function procesarVenta(Request $request): JsonResponse
                     throw new \Exception('Venta no encontrada');
                 }
 
-                if ($venta->ven_situacion !== 'RESERVA') {
-                    throw new \Exception('La venta no está en estado RESERVA');
+                if ($venta->ven_situacion !== 'RESERVADA') {
+                    throw new \Exception('La venta no está en estado RESERVADA');
                 }
 
                 // 2. Cambiar estado de venta a CANCELADA
@@ -3129,8 +3129,8 @@ public function procesarVenta(Request $request): JsonResponse
                 // 3. Liberar series y lotes (movimientos)
                 // Buscar movimientos reservados (situacion 3) asociados a esta venta
                 $movimientos = DB::table('pro_movimientos')
-                    ->where('mov_documento_referencia', 'VENTA-' . $venId)
-                    ->where('mov_situacion', 3)
+                    ->where('mov_documento_referencia', 'RESERVA-' . $venId)
+                    ->where('mov_situacion', 2)
                     ->get();
 
                 foreach ($movimientos as $mov) {
@@ -3163,19 +3163,13 @@ public function procesarVenta(Request $request): JsonResponse
                     ->get();
 
                 foreach ($detalles as $det) {
-                    // Decrementar stock reservado
+                    // Decrementar stock reservado 2 (usado para reservas)
                     DB::table('pro_stock_actual')
                         ->where('stock_producto_id', $det->det_producto_id)
-                        ->decrement('stock_cantidad_reservada', $det->det_cantidad);
+                        ->decrement('stock_cantidad_reservada2', $det->det_cantidad);
                     
-                    // Incrementar stock disponible (porque al reservar se descontó de disponible?)
-                    // Revisando lógica de reserva (no mostrada pero inferida):
-                    // Al reservar: disponible -= cant, reservado += cant.
-                    // Al cancelar: reservado -= cant, disponible += cant.
-                    
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $det->det_producto_id)
-                        ->increment('stock_cantidad_disponible', $det->det_cantidad);
+                    // No es necesario incrementar stock disponible ya que procesarReserva no lo decrementa
+                    // Solo afecta el cálculo de disponible real (disponible - reservada - reservada2)
                         
                     // El stock total no debería cambiar, ya que la mercadería nunca salió físicamente,
                     // solo cambió de estado.
