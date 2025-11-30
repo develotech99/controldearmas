@@ -631,8 +631,10 @@ const recalcularTotalesCambiaria = () => {
         const desc = Math.max(0, toNumber($desc.value));
 
         const bruto = Math.max(0, (cant * prec) - desc);
-        const base = bruto / 1.12;
-        const iva = bruto - base;
+
+        // Match backend rounding logic (2 decimals per item)
+        const base = parseFloat((bruto / 1.12).toFixed(2));
+        const iva = parseFloat((bruto - base).toFixed(2));
 
         subtotalNeto += base;
         ivaAcum += iva;
@@ -1007,8 +1009,10 @@ const recalcularTotales = () => {
         const desc = Math.max(0, toNumber(q(item, '.item-descuento').value));
 
         const bruto = Math.max(0, (cant * prec) - desc);
-        const base = bruto / 1.12;
-        const iva = bruto - base;
+
+        // Match backend rounding logic (2 decimals per item)
+        const base = parseFloat((bruto / 1.12).toFixed(2));
+        const iva = parseFloat((bruto - base).toFixed(2));
 
         subtotalNeto += base;
         ivaAcum += iva;
