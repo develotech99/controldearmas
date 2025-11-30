@@ -3033,7 +3033,8 @@ public function procesarVenta(Request $request): JsonResponse
                     'c.cliente_apellido2',
                     'c.cliente_nit',
                     'c.cliente_nom_empresa',
-                    'u.name as user_primer_nombre'
+                    DB::raw("TRIM(CONCAT_WS(' ', u.user_primer_nombre, u.user_primer_apellido)) as user_primer_nombre"),
+                    DB::raw("'' as user_primer_apellido")
                 );
 
             if ($fechaInicio) {
