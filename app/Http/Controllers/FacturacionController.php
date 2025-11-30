@@ -246,8 +246,10 @@ public function verFacturaCambiaria($id)
                 $descuento = (float) ($validated['det_fac_descuento'][$i] ?? 0);
 
                 $totalItem = ($cantidad * $precio) - $descuento;
-                $montoGravable = $totalItem / 1.12;
-                $ivaItem = $totalItem - $montoGravable;
+                
+                // 💡 FIX: Redondear a 2 decimales por ítem para evitar errores de precisión en FEL (2.7.5.1)
+                $montoGravable = round($totalItem / 1.12, 2);
+                $ivaItem = round($totalItem - $montoGravable, 2);
 
                 $items[] = [
                     'descripcion' => $validated['det_fac_producto_desc'][$i],
@@ -264,7 +266,8 @@ public function verFacturaCambiaria($id)
                 $descuentoTotal += $descuento;
             }
 
-            $totalFactura = $subtotalNeto + $ivaTotal;
+            // El total debe ser la suma de los subtotales e IVA redondeados
+            $totalFactura = round($subtotalNeto + $ivaTotal, 2);
 
             // Generar referencia única
             $referencia = 'FACT-' . now()->format('YmdHis') . '-' . Str::random(4);

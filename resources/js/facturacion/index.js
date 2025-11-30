@@ -707,9 +707,7 @@ FormFacturaCambiaria?.addEventListener('submit', async (e) => {
             body: formData
         });
 
-        // 👇 NUEVO: ver la respuesta original ANTES de parsearla
-        console.log('RAW RESPONSE:', res);
-        console.log('RAW TEXT:', await res.clone().text());
+
 
         const data = await res.json();
 
