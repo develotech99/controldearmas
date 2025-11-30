@@ -4276,29 +4276,39 @@ class InventarioManager {
         const pendientes = series.filter(s => s.serie_estado === 'pendiente').length;
         const vendidas = series.filter(s => s.serie_estado === 'vendido').length;
 
-        // Actualizar resumen
+        // Actualizar resumen (Chips UI)
         const resumenContainer = document.getElementById('series_resumen_container');
         if (resumenContainer) {
             resumenContainer.innerHTML = `
-            <div class="grid grid-cols-4 gap-2 mb-4">
-                <div class="bg-green-50 border border-green-200 rounded p-2 text-center">
-                    <div class="text-lg font-bold text-green-600">${disponibles}</div>
-                    <div class="text-xs text-green-800">Disponibles</div>
+                <div class="flex flex-wrap gap-2 mb-4 justify-center">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700" title="Disponibles">
+                        D: ${disponibles}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-200 dark:border-orange-700" title="Pendientes">
+                        P: ${pendientes}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-700" title="Reservadas">
+                        R: ${reservadas}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700" title="Vendidas">
+                        V: ${vendidas}
+                    </span>
                 </div>
-                <div class="bg-orange-50 border border-orange-200 rounded p-2 text-center">
-                    <div class="text-lg font-bold text-orange-600">${pendientes}</div>
-                    <div class="text-xs text-orange-800">Pendientes</div>
-                </div>
-                <div class="bg-yellow-50 border border-yellow-200 rounded p-2 text-center">
-                    <div class="text-lg font-bold text-yellow-600">${reservadas}</div>
-                    <div class="text-xs text-yellow-800">Reservadas</div>
-                </div>
-                <div class="bg-red-50 border border-red-200 rounded p-2 text-center">
-                    <div class="text-lg font-bold text-red-600">${vendidas}</div>
-                    <div class="text-xs text-red-800">Vendidas</div>
-                </div>
-            </div>
-        `;
+            `;
+        }
+
+        // Sincronizar Stock Actual con Series (si hay series)
+        if (series.length > 0) {
+            // Actualizar contadores de Stock Actual para coincidir con las series
+            const stockTotalEl = document.getElementById('detalle_stock_total');
+            const stockDispEl = document.getElementById('detalle_stock_disponible');
+            const stockPendEl = document.getElementById('detalle_stock_venta_pendiente');
+            const stockResEl = document.getElementById('detalle_stock_reservado');
+
+            if (stockTotalEl) stockTotalEl.textContent = disponibles + pendientes + reservadas; // Total activo (sin vendidas)
+            if (stockDispEl) stockDispEl.textContent = disponibles;
+            if (stockPendEl) stockPendEl.textContent = pendientes;
+            if (stockResEl) stockResEl.textContent = reservadas;
         }
 
         if (series.length === 0) {
@@ -4389,24 +4399,20 @@ class InventarioManager {
                 </div>
             </div>
             
-            <!-- Resumen de estados -->
-            <div class="grid grid-cols-4 gap-2 mb-4">
-                <div class="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">${disponibles}</div>
-                    <div class="text-xs text-green-700 dark:text-green-300">Disponibles</div>
-                </div>
-                <div class="bg-orange-50 dark:bg-orange-900 border border-orange-200 dark:border-orange-700 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">${pendientes}</div>
-                    <div class="text-xs text-orange-700 dark:text-orange-300">Pendientes</div>
-                </div>
-                <div class="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${reservadas}</div>
-                    <div class="text-xs text-yellow-700 dark:text-yellow-300">Reservadas</div>
-                </div>
-                <div class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">${vendidas}</div>
-                    <div class="text-xs text-red-700 dark:text-red-300">Vendidas</div>
-                </div>
+            <!-- Resumen de estados (Chips UI) -->
+            <div class="flex flex-wrap gap-2 mb-4 justify-center">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700" title="Disponibles">
+                    D: ${disponibles}
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-200 dark:border-orange-700" title="Pendientes">
+                    P: ${pendientes}
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-700" title="Reservadas">
+                    R: ${reservadas}
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700" title="Vendidas">
+                    V: ${vendidas}
+                </span>
             </div>
             
             <!-- Lista de series -->
@@ -5598,8 +5604,8 @@ class InventarioManager {
     /**
      * Mostrar datos en la tabla Excel
      *//**
- * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
- */
+* Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
+*/
     mostrarDatosExcel() {
         const tbody = document.getElementById('excel-tbody');
 
@@ -5651,8 +5657,8 @@ class InventarioManager {
     /**
      * Buscar en vista Excel
      *//**
- * Aplicar filtros en vista Excel
- */
+* Aplicar filtros en vista Excel
+*/
     aplicarFiltrosExcel() {
         // Obtener valores de todos los filtros
         const searchTerm = document.getElementById('excel-search')?.value.toLowerCase().trim() || '';
