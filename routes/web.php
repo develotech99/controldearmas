@@ -223,7 +223,7 @@ Route::middleware('auth')->group(function () {
     //ventas batz
     Route::get('/ventas/pendientes', [VentasController::class, 'obtenerVentasPendientes'])->name('ventas.pendientes');
     Route::get('/ventas/reservadas', [VentasController::class, 'reservadas'])->name('ventas.reservadas');
-    Route::get('/reservas/activas', [VentasController::class, 'getReservasActivas'])->name('ventas.reservas.activas');
+    Route::get('/ventas/reservadas', [VentasController::class, 'reservadas'])->name('ventas.reservadas');
     ///
 
     // APIs de ventas
@@ -316,7 +316,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ventas/cancelar', [VentasController::class, 'cancelarVenta']);
     Route::get('/ventas/pendientes', [VentasController::class, 'obtenerVentasPendientes']);
     Route::post('/ventas/actualizar-licencias', [VentasController::class, 'actualizarLicencias']);
-   Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
+    Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
     ->name('ventas.marcar-disponibles');
     Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
 

@@ -23,7 +23,7 @@ async function cargarReservas() {
         if (grid) grid.classList.add('hidden');
         if (tbody) tbody.innerHTML = '';
 
-        const response = await fetch(`/reservas/activas?${params.toString()}`);
+        const response = await fetch(`/ventas/reservadas?${params.toString()}`);
         const data = await response.json();
 
         if (loading) loading.classList.add('hidden');
