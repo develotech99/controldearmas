@@ -3033,8 +3033,7 @@ public function procesarVenta(Request $request): JsonResponse
                     'c.cliente_apellido2',
                     'c.cliente_nit',
                     'c.cliente_nom_empresa',
-                    'u.user_primer_nombre',
-                    'u.user_primer_apellido'
+                    'u.name as user_primer_nombre'
                 );
 
             if ($fechaInicio) {
