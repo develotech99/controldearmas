@@ -944,15 +944,17 @@
 
                         <!-- Series (solo si requiere serie) -->
                         <div id="detalle_series_container" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    <i class="fas fa-list-ol mr-2"></i>
+                            <div class="flex items-center justify-between mb-2">
+                                <h5 class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    <i class="fas fa-barcode mr-2"></i>
                                     Series Registradas
-                                </h4>
+                                </h5>
                                 <span class="text-xs text-gray-500 dark:text-gray-400" id="detalle_series_count">
                                     0 series
                                 </span>
                             </div>
+                            <!-- Contenedor para el resumen de series -->
+                            <div id="series_resumen_container"></div>
                             <div id="detalle_series_lista" class="space-y-1 max-h-32 overflow-y-auto">
                                 <!-- Series se cargarán aquí -->
                             </div>

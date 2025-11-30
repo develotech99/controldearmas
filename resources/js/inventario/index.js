@@ -4270,6 +4270,37 @@ class InventarioManager {
 
         countElement.textContent = `${series.length} series`;
 
+        // Calcular contadores
+        const disponibles = series.filter(s => s.serie_estado === 'disponible').length;
+        const reservadas = series.filter(s => s.serie_estado === 'reservado' || s.serie_estado === 'reserva').length;
+        const pendientes = series.filter(s => s.serie_estado === 'pendiente').length;
+        const vendidas = series.filter(s => s.serie_estado === 'vendido').length;
+
+        // Actualizar resumen
+        const resumenContainer = document.getElementById('series_resumen_container');
+        if (resumenContainer) {
+            resumenContainer.innerHTML = `
+            <div class="grid grid-cols-4 gap-2 mb-4">
+                <div class="bg-green-50 border border-green-200 rounded p-2 text-center">
+                    <div class="text-lg font-bold text-green-600">${disponibles}</div>
+                    <div class="text-xs text-green-800">Disponibles</div>
+                </div>
+                <div class="bg-orange-50 border border-orange-200 rounded p-2 text-center">
+                    <div class="text-lg font-bold text-orange-600">${pendientes}</div>
+                    <div class="text-xs text-orange-800">Pendientes</div>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-2 text-center">
+                    <div class="text-lg font-bold text-yellow-600">${reservadas}</div>
+                    <div class="text-xs text-yellow-800">Reservadas</div>
+                </div>
+                <div class="bg-red-50 border border-red-200 rounded p-2 text-center">
+                    <div class="text-lg font-bold text-red-600">${vendidas}</div>
+                    <div class="text-xs text-red-800">Vendidas</div>
+                </div>
+            </div>
+        `;
+        }
+
         if (series.length === 0) {
             listaElement.innerHTML = `
             <div class="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">
@@ -5562,8 +5593,8 @@ class InventarioManager {
     /**
      * Mostrar datos en la tabla Excel
      *//**
-   * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
-   */
+  * Mostrar datos en la tabla Excel - VERSIÓN ACTUALIZADA
+  */
     mostrarDatosExcel() {
         const tbody = document.getElementById('excel-tbody');
 
@@ -5615,8 +5646,8 @@ class InventarioManager {
     /**
      * Buscar en vista Excel
      *//**
-   * Aplicar filtros en vista Excel
-   */
+  * Aplicar filtros en vista Excel
+  */
     aplicarFiltrosExcel() {
         // Obtener valores de todos los filtros
         const searchTerm = document.getElementById('excel-search')?.value.toLowerCase().trim() || '';
