@@ -426,6 +426,18 @@ public function buscarClientes(Request $request): JsonResponse
 
                 $pago->saldo_pendiente = $pago->pago_monto_total - $pago->monto_total_pagado;
 
+                // ✅ FIX: ESTADO DINÁMICO
+                if ($pago->monto_total_pagado >= $pago->pago_monto_total) {
+                    $pago->estado_pago = 'COMPLETADO';
+                    $pago->pago_estado = 'COMPLETADO'; 
+                } elseif ($pago->monto_total_pagado > 0) {
+                    $pago->estado_pago = 'PARCIAL';
+                    $pago->pago_estado = 'PARCIAL';
+                } else {
+                    $pago->estado_pago = 'PENDIENTE';
+                    // $pago->pago_estado = 'PENDIENTE'; // Mantener original si es pendiente
+                }
+
                 return $pago;
             });
 
@@ -950,7 +962,10 @@ public function buscarClientes(Request $request): JsonResponse
     ->where('dv.det_situacion', 'ACTIVO')
     ->where('mov.mov_situacion', 1)
     ->where('sp.serie_situacion', 1)
+    ->where('mov.mov_situacion', 1)
+    ->where('sp.serie_situacion', 1)
     ->where('mov.mov_tipo', 'venta')
+    ->where('mov.mov_documento_referencia', DB::raw("CONCAT('VENTA-', v.ven_id)")) // ✅ FIX: EVITAR DUPLICADOS
 
     
 
