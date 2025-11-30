@@ -110,10 +110,10 @@ function renderTable(reservas) {
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900 dark:text-white">
-                        ${reserva.user_primer_nombre} ${reserva.user_primer_apellido}
-                    </div>
-                </td>
+                <div class="text-sm text-gray-900 dark:text-white">
+                    ${reserva.vendedor || 'N/A'} 
+                </div>
+            </td>
                 <td class="px-6 py-4">
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                         ${productosHtml}

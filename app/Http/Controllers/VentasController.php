@@ -3010,17 +3010,16 @@ public function procesarVenta(Request $request): JsonResponse
     {
         //
     }
-
     public function listarReservas(Request $request)
     {
         try {
             $fechaInicio = $request->query('fecha_inicio');
             $fechaFin = $request->query('fecha_fin');
             $busqueda = $request->query('busqueda');
-
+    
             $query = DB::table('pro_ventas as v')
                 ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
-                ->join('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')  // ← CAMBIAR A leftJoin
                 ->where('v.ven_situacion', 'RESERVADA')
                 ->select(
                     'v.ven_id',
@@ -3034,18 +3033,17 @@ public function procesarVenta(Request $request): JsonResponse
                     'c.cliente_apellido2',
                     'c.cliente_nit',
                     'c.cliente_nom_empresa',
-                    DB::raw("TRIM(CONCAT_WS(' ', u.user_primer_nombre, u.user_primer_apellido)) as user_primer_nombre"),
-                    DB::raw("'' as user_primer_apellido")
+                    DB::raw("COALESCE(TRIM(CONCAT_WS(' ', u.user_primer_nombre, u.user_segundo_nombre, u.user_primer_apellido, u.user_segundo_apellido)), 'Sin asignar') as vendedor")  // ← AGREGAR COALESCE
                 );
-
+    
             if ($fechaInicio) {
                 $query->whereDate('v.ven_fecha', '>=', $fechaInicio);
             }
-
+    
             if ($fechaFin) {
                 $query->whereDate('v.ven_fecha', '<=', $fechaFin);
             }
-
+    
             if ($busqueda) {
                 $query->where(function ($q) use ($busqueda) {
                     $q->where('c.cliente_nombre1', 'like', "%{$busqueda}%")
@@ -3054,9 +3052,9 @@ public function procesarVenta(Request $request): JsonResponse
                         ->orWhere('c.cliente_nom_empresa', 'like', "%{$busqueda}%");
                 });
             }
-
+    
             $reservas = $query->orderBy('v.ven_fecha', 'desc')->get();
-
+    
             // Cargar detalles para cada reserva
             foreach ($reservas as $reserva) {
                 $detalles = DB::table('pro_detalle_ventas as d')
@@ -3067,11 +3065,10 @@ public function procesarVenta(Request $request): JsonResponse
                         'd.det_producto_id',
                         'p.producto_nombre',
                         'd.det_cantidad',
-                        'd.det_precio',
-                        'd.det_subtotal'
+                        'd.det_precio'
                     )
                     ->get();
-
+    
                 // Cargar series reservadas para cada detalle
                 foreach ($detalles as $detalle) {
                     $series = DB::table('pro_movimientos as m')
@@ -3085,19 +3082,18 @@ public function procesarVenta(Request $request): JsonResponse
                     
                     $detalle->series = $series;
                 }
-
+    
                 $reserva->detalles = $detalles;
                 $reserva->cantidad_productos = $detalles->sum('det_cantidad');
             }
-
+    
             return response()->json($reservas);
-
+    
         } catch (\Exception $e) {
             Log::error('Error al listar reservas: ' . $e->getMessage());
             return response()->json(['error' => 'Error al cargar reservas: ' . $e->getMessage()], 500);
         }
     }
-
     public function cancelarReserva(Request $request)
     {
         $venId = $request->input('id');
