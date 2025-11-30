@@ -1,3 +1,6 @@
+// Expose to window for HTML onclick events
+window.cargarReservas = cargarReservas;
+
 document.addEventListener('DOMContentLoaded', function () {
     cargarReservas();
 });
@@ -9,9 +12,9 @@ async function cargarReservas() {
     const tbody = document.getElementById('tbody-reservas');
 
     // Get filter values
-    const fechaInicio = document.getElementById('fecha_inicio').value;
-    const fechaFin = document.getElementById('fecha_fin').value;
-    const search = document.getElementById('search').value;
+    const fechaInicio = document.getElementById('fecha_inicio')?.value || '';
+    const fechaFin = document.getElementById('fecha_fin')?.value || '';
+    const search = document.getElementById('search')?.value || '';
 
     // Build query string
     const params = new URLSearchParams();
@@ -20,29 +23,29 @@ async function cargarReservas() {
     if (search) params.append('search', search);
 
     try {
-        loading.classList.remove('hidden');
-        empty.classList.add('hidden');
-        grid.classList.add('hidden');
-        tbody.innerHTML = '';
+        if (loading) loading.classList.remove('hidden');
+        if (empty) empty.classList.add('hidden');
+        if (grid) grid.classList.add('hidden');
+        if (tbody) tbody.innerHTML = '';
 
         const response = await fetch(`/api/reservas/activas?${params.toString()}`);
         const data = await response.json();
 
-        loading.classList.add('hidden');
+        if (loading) loading.classList.add('hidden');
 
         if (!data.success || !data.reservas || data.reservas.length === 0) {
-            empty.classList.remove('hidden');
-            grid.classList.add('hidden');
+            if (empty) empty.classList.remove('hidden');
+            if (grid) grid.classList.add('hidden');
             return;
         }
 
-        empty.classList.add('hidden');
-        grid.classList.remove('hidden');
+        if (empty) empty.classList.add('hidden');
+        if (grid) grid.classList.remove('hidden');
         renderReservas(data.reservas);
 
     } catch (error) {
         console.error('Error cargando reservas:', error);
-        loading.innerHTML = `<p class="text-red-500">Error al cargar las reservas. Por favor recargue la página.</p>`;
+        if (loading) loading.innerHTML = `<p class="text-red-500">Error al cargar las reservas. Por favor recargue la página.</p>`;
     }
 }
 
