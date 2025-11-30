@@ -671,6 +671,85 @@ public function certificarCambiaria(Request $request)
             'fac_alertas'             => $respuesta['Alertas'] ?? $respuesta['alertas'] ?? [],
         ]);
 
+        // LOGICA DE INVENTARIO: Si hay venta asociada y es PENDIENTE
+        if (!empty($validated['fac_venta_id'])) {
+            $venta = DB::table('pro_ventas')->where('ven_id', $validated['fac_venta_id'])->first();
+            
+            if ($venta && in_array($venta->ven_situacion, ['PENDIENTE', 'AUTORIZADA'])) {
+                // 1. Marcar venta como ACTIVA
+                DB::table('pro_ventas')
+                    ->where('ven_id', $venta->ven_id)
+                    ->update(['ven_situacion' => 'ACTIVA']);
+
+                // 2. Marcar detalles como ACTIVOS
+                DB::table('pro_detalle_ventas')
+                    ->where('det_ven_id', $venta->ven_id)
+                    ->update(['det_situacion' => 'ACTIVA']);
+
+                // 3. Procesar SERIES y LOTES (Descontar stock)
+                $refVenta = 'VENTA-' . $venta->ven_id;
+                
+                // a) Series reservadas (mov_situacion = 3) -> Vendidas (mov_situacion = 1)
+                $seriesMovs = DB::table('pro_movimientos')
+                    ->where('mov_documento_referencia', $refVenta)
+                    ->where('mov_situacion', 3)
+                    ->whereNotNull('mov_serie_id')
+                    ->get();
+
+                foreach ($seriesMovs as $mov) {
+                    // Actualizar serie a vendida
+                    DB::table('pro_series_productos')
+                        ->where('serie_id', $mov->mov_serie_id)
+                        ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
+                    
+                    // Actualizar movimiento a confirmado
+                    DB::table('pro_movimientos')
+                        ->where('mov_id', $mov->mov_id)
+                        ->update(['mov_situacion' => 1]);
+                    
+                    // Descontar de stock (reservado y total)
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                        
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                        
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                }
+
+                // b) Lotes reservados -> Confirmados
+                $lotesMovs = DB::table('pro_movimientos')
+                    ->where('mov_documento_referencia', $refVenta)
+                    ->where('mov_situacion', 3)
+                    ->whereNotNull('mov_lote_id')
+                    ->get();
+
+                foreach ($lotesMovs as $mov) {
+                    // Actualizar movimiento
+                    DB::table('pro_movimientos')
+                        ->where('mov_id', $mov->mov_id)
+                        ->update(['mov_situacion' => 1]);
+
+                    // Descontar de stock
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                        
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                        
+                    DB::table('pro_stock_actual')
+                        ->where('stock_producto_id', $mov->mov_producto_id)
+                        ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                }
+            }
+        }
+
         // Guardar detalle
         foreach ($items as $index => $item) {
             FacturacionDetalle::create([

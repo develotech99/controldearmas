@@ -606,6 +606,10 @@ public function obtenerVentasPendientes(Request $request): JsonResponse
                         ->groupBy('mov_serie_id')
                         ->pluck('qty', 'mov_serie_id');
 
+                    if ($seriesCantidades->isEmpty()) {
+                        throw new \RuntimeException('No se encontraron movimientos reservados para las series seleccionadas. La venta no puede finalizarse.');
+                    }
+
                     if ($seriesCantidades->isNotEmpty()) {
                         DB::table('pro_series_productos')
                             ->whereIn('serie_id', $seriesCantidades->keys())
