@@ -1928,7 +1928,8 @@ public function getDetalleProducto($id): JsonResponse
         // Stock actual
         $stock = $producto->stockActual;
         $productoData['stock_cantidad_total'] = $stock ? $stock->stock_cantidad_total : 0;
-        $productoData['stock_cantidad_disponible'] = $stock ? $stock->stock_cantidad_disponible : 0;
+        // FIX: Calcular disponible real (Total - Reservado)
+        $productoData['stock_cantidad_disponible'] = $stock ? max(0, $stock->stock_cantidad_total - $stock->stock_cantidad_reservada) : 0;
         $productoData['stock_cantidad_reservada'] = $stock ? $stock->stock_cantidad_reservada : 0;
         $productoData['stock_cantidad_reservada2'] = $stock ? $stock->stock_cantidad_reservada2 : 0;
         

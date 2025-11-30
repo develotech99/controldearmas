@@ -62,7 +62,8 @@ class StockActual extends Model
      */
     public function scopeConStock($query)
     {
-        return $query->where('stock_cantidad_disponible', '>', 0);
+        // FIX: Calcular disponible real (Total - Reservado)
+        return $query->whereRaw('(stock_cantidad_total - stock_cantidad_reservada) > 0');
     }
 
     /**
@@ -70,7 +71,8 @@ class StockActual extends Model
      */
     public function scopeSinStock($query)
     {
-        return $query->where('stock_cantidad_disponible', '<=', 0);
+        // FIX: Calcular disponible real (Total - Reservado)
+        return $query->whereRaw('(stock_cantidad_total - stock_cantidad_reservada) <= 0');
     }
 
     /**
@@ -80,7 +82,8 @@ class StockActual extends Model
     public function scopeStockBajo($query)
     {
         return $query->whereHas('producto', function($q) {
-            $q->whereRaw('pro_stock_actual.stock_cantidad_disponible <= pro_productos.producto_stock_minimo');
+            // FIX: Calcular disponible real (Total - Reservado)
+            $q->whereRaw('(pro_stock_actual.stock_cantidad_total - pro_stock_actual.stock_cantidad_reservada) <= pro_productos.producto_stock_minimo');
         });
     }
 
