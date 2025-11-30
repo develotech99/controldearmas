@@ -1,6 +1,3 @@
-// Expose to window for HTML onclick events
-window.cargarReservas = cargarReservas;
-
 document.addEventListener('DOMContentLoaded', function () {
     cargarReservas();
 });
@@ -159,3 +156,6 @@ window.eliminarReserva = async function (id, numero) {
         });
     }
 };
+
+// Expose to window for HTML onclick events
+window.cargarReservas = cargarReservas;
