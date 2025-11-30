@@ -922,58 +922,43 @@ public function buscarClientes(Request $request): JsonResponse
                 'anio' => $anio
             ]);
 
-            // Obtener ventas del período
-            $ventas = DB::table('pro_detalle_ventas as dv')
-    ->join('pro_ventas as v', 'dv.det_ven_id', '=', 'v.ven_id')
-    ->join('pro_productos as p', 'dv.det_producto_id', '=', 'p.producto_id')
-    ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
-    // ✅ FIX: Join directo a movimientos por referencia de venta para evitar producto cartesiano
-    ->join('pro_movimientos as mov', function($join) {
-        $join->on('mov.mov_producto_id', '=', 'dv.det_producto_id')
-             ->where('mov.mov_tipo', '=', 'venta')
-             ->where('mov.mov_situacion', '=', 1)
-             ->whereRaw("mov.mov_documento_referencia = CONCAT('VENTA-', v.ven_id)");
-    })
-    // ✅ FIX: Join a series desde el movimiento específico
-    ->join('pro_series_productos as sp', 'mov.mov_serie_id', '=', 'sp.serie_id')
-    ->join('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
-    ->join('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
-    ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
-    ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
-    ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') 
-    ->select([
-          'mov.mov_licencia_anterior AS pro_tenencia_anterior',
-    'mov.mov_licencia_nueva    AS pro_tenencia_nueva',
-        'p.producto_nombre as tipo',
-        DB::raw('COALESCE(sp.serie_numero_serie, "SIN SERIE") as serie'),
-        DB::raw('COALESCE(m.marca_descripcion, "N/A") as marca'),
-        DB::raw('COALESCE(mo.modelo_descripcion, "N/A") as modelo'),
-        DB::raw('COALESCE(cal.calibre_nombre, "N/A") as calibre'),
-        DB::raw('CONCAT(
-            COALESCE(cl.cliente_nombre1, ""), " ", 
-            COALESCE(cl.cliente_nombre2, ""), " ",
-            COALESCE(cl.cliente_apellido1, ""), " ",
-            COALESCE(cl.cliente_apellido2, "")
-        ) as comprador'),
-        'v.ven_id as autorizacion',
-        'v.ven_fecha as fecha',
-        DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura'), 
-        'dv.det_cantidad',
-    ])
-    // filtros por fecha si quieres mantenerlos
-    ->whereYear('v.ven_fecha', $anio)
-    ->whereMonth('v.ven_fecha', $mes)
-
-    // 🔹 aquí van exactamente los filtros que mencionas:
-    ->where('v.ven_situacion', 'ACTIVA')
-    ->where('dv.det_situacion', 'ACTIVO')
-    // ->where('mov.mov_situacion', 1) // Ya está en el join
-    // ->where('sp.serie_situacion', 1) // Ya está implicito por el movimiento activo
-    // ->where('mov.mov_tipo', 'venta') // Ya está en el join
-    // ->where('mov.mov_documento_referencia', DB::raw("CONCAT('VENTA-', v.ven_id)")) // Ya está en el join
-
-    
-
+            // ✅ FIX FINAL: Consulta directa Venta -> Movimientos -> Series
+            // Elimina dependencia de pro_detalle_ventas para evitar producto cartesiano
+            $ventas = DB::table('pro_ventas as v')
+                ->join('pro_movimientos as mov', function($join) {
+                    $join->on(DB::raw("CONCAT('VENTA-', v.ven_id)"), '=', 'mov.mov_documento_referencia')
+                         ->where('mov.mov_tipo', '=', 'venta')
+                         ->where('mov.mov_situacion', '=', 1);
+                })
+                ->join('pro_series_productos as sp', 'mov.mov_serie_id', '=', 'sp.serie_id')
+                ->join('pro_productos as p', 'mov.mov_producto_id', '=', 'p.producto_id')
+                ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
+                ->join('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
+                ->join('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
+                ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
+                ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
+                ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') 
+                ->select([
+                    'mov.mov_licencia_anterior AS pro_tenencia_anterior',
+                    'mov.mov_licencia_nueva    AS pro_tenencia_nueva',
+                    'p.producto_nombre as tipo',
+                    DB::raw('COALESCE(sp.serie_numero_serie, "SIN SERIE") as serie'),
+                    DB::raw('COALESCE(m.marca_descripcion, "N/A") as marca'),
+                    DB::raw('COALESCE(mo.modelo_descripcion, "N/A") as modelo'),
+                    DB::raw('COALESCE(cal.calibre_nombre, "N/A") as calibre'),
+                    DB::raw('CONCAT(
+                        COALESCE(cl.cliente_nombre1, ""), " ", 
+                        COALESCE(cl.cliente_nombre2, ""), " ",
+                        COALESCE(cl.cliente_apellido1, ""), " ",
+                        COALESCE(cl.cliente_apellido2, "")
+                    ) as comprador'),
+                    'v.ven_id as autorizacion',
+                    'v.ven_fecha as fecha',
+                    DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura')
+                ])
+                ->whereYear('v.ven_fecha', $anio)
+                ->whereMonth('v.ven_fecha', $mes)
+                ->where('v.ven_situacion', 'ACTIVA')
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%ARMA%')
                         ->orWhere('c.categoria_nombre', 'LIKE', '%PISTOLA%')
@@ -985,26 +970,22 @@ public function buscarClientes(Request $request): JsonResponse
                 ->orderBy('v.ven_fecha')
                 ->get();
 
-            // Expandir por cantidad (si una venta tiene cantidad > 1)
-            $ventasExpandidas = collect([]);
-            foreach ($ventas as $venta) {
-                $cantidad = (int)$venta->det_cantidad;
-                for ($i = 0; $i < $cantidad; $i++) {
-                    $ventasExpandidas->push((object)[
-                        'pro_tenencia_anterior' => $venta->pro_tenencia_anterior,
-                        'pro_tenencia_nueva' => $venta->pro_tenencia_nueva,
-                        'tipo' => $venta->tipo,
-                        'serie' => $venta->serie,
-                        'marca' => $venta->marca,
-                        'modelo' => $venta->modelo,
-                        'calibre' => $venta->calibre,
-                        'comprador' => trim($venta->comprador),
-                        'autorizacion' => $venta->autorizacion,
-                        'fecha' => $venta->fecha,
-                        'factura' => $venta->factura
-                    ]);
-                }
-            }
+            // ✅ FIX FINAL: No expandir por cantidad, la consulta ya trae una fila por serie
+            $ventasExpandidas = $ventas->map(function($venta) {
+                return (object)[
+                    'pro_tenencia_anterior' => $venta->pro_tenencia_anterior,
+                    'pro_tenencia_nueva' => $venta->pro_tenencia_nueva,
+                    'tipo' => $venta->tipo,
+                    'serie' => $venta->serie,
+                    'marca' => $venta->marca,
+                    'modelo' => $venta->modelo,
+                    'calibre' => $venta->calibre,
+                    'comprador' => trim($venta->comprador),
+                    'autorizacion' => $venta->autorizacion,
+                    'fecha' => $venta->fecha,
+                    'factura' => $venta->factura
+                ];
+            });
 
             \Log::info('✅ Reporte DIGECAM Armas generado:', [
                 'total_registros' => $ventasExpandidas->count(),
