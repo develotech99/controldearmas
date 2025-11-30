@@ -584,6 +584,17 @@ function mostrarProductos(productosData) {
               <div>${producto.modelo_descripcion || ""} ${producto.calibre_nombre ? "- " + producto.calibre_nombre : ""
                 }</div>
             </div>
+
+            <!-- Checkbox Vender por Caja -->
+            <div class="mb-3 flex items-center">
+                <input type="checkbox" 
+                       id="check-caja-${producto.producto_id}" 
+                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                       ${sinStock ? 'disabled' : ''}>
+                <label for="check-caja-${producto.producto_id}" class="ml-2 text-xs font-medium text-gray-900 ${sinStock ? 'text-gray-400' : ''}">
+                    Vender por caja
+                </label>
+            </div>
             
             <button type="button"
                     data-action="agregar"
@@ -888,12 +899,13 @@ function agregarAlCarrito(producto_id) {
 
     // 👇 Lógica "Vender por caja" para Munición
     const categoria = (producto.categoria_nombre || "").toLowerCase();
-    // Normalizar para detectar munición con o sin tilde
-    const esMunicion = categoria.includes("municion") || categoria.includes("munición");
+    // 1. Verificar si se seleccionó "Vender por caja"
+    const checkCaja = document.getElementById(`check-caja-${producto_id}`);
+    const venderPorCaja = checkCaja && checkCaja.checked;
 
-    if (esMunicion) {
+    if (venderPorCaja) {
         Swal.fire({
-            title: '<strong>¿Es munición?</strong>',
+            title: '<strong>Venta por Caja</strong>',
             html: `
                 <div class="text-left">
                     <label class="flex items-center space-x-3 mb-4 cursor-pointer p-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-all">
@@ -2559,6 +2571,26 @@ function actualizarVistaCarrito() {
                     `
                 : ``
             }
+            
+            ${(() => {
+                // 👇 Verificar si es munición para mostrar botón de editar cajas
+                const original = productosGlobales.find(pg => String(pg.producto_id) === String(p.producto_id));
+                const cat = (original?.categoria_nombre || "").toLowerCase();
+                const esMunicion = cat.includes("municion") || cat.includes("munición");
+
+                if (esMunicion) {
+                    return `
+                    <button type="button"
+                            data-action="editar-cajas"
+                            data-id="${String(p.producto_id)}"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium border-2 border-orange-200 bg-white hover:bg-orange-50 hover:border-orange-300 text-orange-700 transition-all duration-200 flex items-center gap-1.5">
+                        <i class="fas fa-boxes"></i>
+                        Editar Cajas
+                    </button>
+                    `;
+                }
+                return "";
+            })()}
             </div>
 
             <!-- Selector de precio -->
@@ -2721,6 +2753,9 @@ function actualizarVistaCarrito() {
                 break;
             case "lotes":
                 seleccionarLotes(id);
+                break;
+            case "editar-cajas":
+                editarCajasMunicion(id);
                 break;
         }
     });
@@ -4113,4 +4148,112 @@ function agregarDocumentoVenta() {
     ("Documento agregado:", tipo, numero);
 
     cerrarModalDocumentacion();
+}
+
+function editarCajasMunicion(producto_id) {
+    const id = String(producto_id);
+    const producto = carritoProductos.find((p) => String(p.producto_id) === id);
+    const original = productosGlobales.find((p) => String(p.producto_id) === id);
+
+    if (!producto || !original) return;
+
+    Swal.fire({
+        title: '<strong>Editar Cajas de Munición</strong>',
+        html: `
+            <div class="text-left">
+                <div class="mb-4 text-sm text-gray-600">
+                    Producto: <b>${producto.nombre}</b><br>
+                    Stock disponible: <b>${original.stock_cantidad_total}</b>
+                </div>
+
+                <div class="space-y-4 pl-2 border-l-2 border-orange-100 ml-2">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Presentación (unidades por caja)</label>
+                        <select id="swal-edit-presentacion" class="w-full border-gray-300 rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200">
+                            <option value="5">Caja de 5</option>
+                            <option value="10">Caja de 10</option>
+                            <option value="20">Caja de 20</option>
+                            <option value="25">Caja de 25</option>
+                            <option value="50">Caja de 50</option>
+                            <option value="100">Caja de 100</option>
+                            <option value="200">Caja de 200</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Número de cajas</label>
+                        <input type="number" id="swal-edit-cajas" value="1" min="1" class="w-full border-gray-300 rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200">
+                    </div>
+
+                    <div class="bg-orange-50 p-3 rounded-md border border-orange-100">
+                        <p class="text-sm text-orange-800 flex justify-between items-center">
+                            <span>Total unidades:</span>
+                            <strong id="swal-edit-total" class="text-lg text-orange-700">0</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-save mr-2"></i>Actualizar Cantidad',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#f97316', // orange-500
+        didOpen: () => {
+            const select = document.getElementById('swal-edit-presentacion');
+            const input = document.getElementById('swal-edit-cajas');
+            const totalDisplay = document.getElementById('swal-edit-total');
+
+            // Intentar adivinar la presentación actual si es posible (opcional)
+            // Por ahora default a 1 caja y calculamos
+
+            const updateTotal = () => {
+                const pres = parseInt(select.value) || 0;
+                const cajas = parseInt(input.value) || 0;
+                totalDisplay.textContent = pres * cajas;
+            };
+
+            select.addEventListener('change', updateTotal);
+            input.addEventListener('input', updateTotal);
+
+            updateTotal();
+        },
+        preConfirm: () => {
+            const pres = parseInt(document.getElementById('swal-edit-presentacion').value);
+            const cajas = parseInt(document.getElementById('swal-edit-cajas').value);
+            const total = pres * cajas;
+
+            if (isNaN(total) || total <= 0) {
+                Swal.showValidationMessage('La cantidad total debe ser mayor a 0');
+                return false;
+            }
+
+            // Validar stock
+            const stock = Number(original.stock_cantidad_total ?? 0);
+            const necesitaStock = Number(original.producto_requiere_stock ?? 1) === 1;
+
+            if (necesitaStock && total > stock) {
+                Swal.showValidationMessage(`No hay suficiente stock. Disponible: ${stock}, Solicitado: ${total}`);
+                return false;
+            }
+
+            return { cantidad: total };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Actualizar cantidad en el carrito
+            producto.cantidad = result.value.cantidad;
+
+            // Si requiere series, limpiar selección si la cantidad cambia (para obligar a re-seleccionar)
+            if (producto.producto_requiere_serie === 1) {
+                if (producto.seriesSeleccionadas.length > producto.cantidad) {
+                    producto.seriesSeleccionadas = []; // O recortar
+                    mostrarNotificacion("Cantidad cambiada. Por favor verifique las series.", "info");
+                }
+            }
+
+            actualizarVistaCarrito();
+            actualizarContadorCarrito();
+            mostrarNotificacion("Cantidad actualizada correctamente", "success");
+        }
+    });
 }
