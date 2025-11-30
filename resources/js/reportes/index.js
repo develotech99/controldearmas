@@ -1153,8 +1153,8 @@ class ReportesManager {
         tbody.innerHTML = armas.map((arma, index) => `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
-            <td class="px-2 py-2 text-center text-xs">${arma.pro_tenencia_anterior || ''}</td>
-            <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.pro_tenencia_nueva || ''}</td>
+            // <td class="px-2 py-2 text-center text-xs">${arma.pro_tenencia_anterior || ''}</td>
+            // <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.pro_tenencia_nueva || ''}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.tipo}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100 font-semibold">${arma.serie}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.marca || 'N/A'}</td>
