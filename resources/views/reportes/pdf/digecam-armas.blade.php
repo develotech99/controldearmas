@@ -132,8 +132,8 @@
         <thead>
             <tr>
                 <th style="width: 3%;">No.</th>
-                <th style="width: 8%;">TENENCIA<br>ANTERIOR</th>
-                <th style="width: 8%;">TENENCIA<br>NUEVA</th>
+                {{-- <th style="width: 8%;">TENENCIA<br>ANTERIOR</th> --}}
+                {{-- <th style="width: 8%;">TENENCIA<br>NUEVA</th> --}}
                 <th style="width: 8%;">TIPO</th>
                 <th style="width: 12%;">SERIE</th>
                 <th style="width: 10%;">MARCA</th>
@@ -153,8 +153,8 @@
             @endphp
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $ventaObj->pro_tenencia_anterior ?? '' }}</td>
-                <td class="highlight">{{ $ventaObj->pro_tenencia_nueva ?? '' }}</td>
+                {{-- <td>{{ $ventaObj->pro_tenencia_anterior ?? '' }}</td> --}}
+                {{-- <td class="highlight">{{ $ventaObj->pro_tenencia_nueva ?? '' }}</td> --}}
                 <td>{{ $ventaObj->tipo ?? 'N/A' }}</td>
                 <td class="highlight">{{ $ventaObj->serie ?? 'SIN SERIE' }}</td>
                 <td>{{ $ventaObj->marca ?? 'N/A' }}</td>
