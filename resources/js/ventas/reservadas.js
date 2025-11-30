@@ -6,6 +6,7 @@ async function cargarReservas() {
     const loading = document.getElementById('loading-reservas');
     const empty = document.getElementById('empty-reservas');
     const grid = document.getElementById('grid-reservas');
+    const tbody = document.getElementById('tbody-reservas');
 
     try {
         const response = await fetch('/api/reservas/activas');
@@ -30,56 +31,46 @@ async function cargarReservas() {
 }
 
 function renderReservas(reservas) {
-    const grid = document.getElementById('grid-reservas');
+    const tbody = document.getElementById('tbody-reservas');
 
-    grid.innerHTML = reservas.map(reserva => {
-        const itemsHtml = reserva.items.map(item => `
-            <div class="flex justify-between items-center text-sm py-1 border-b border-gray-100 last:border-0">
-                <span class="text-gray-600 truncate flex-1 pr-2" title="${item.nombre}">
-                    ${item.cantidad}x ${item.nombre}
-                </span>
-                <span class="font-medium text-gray-900">Q${parseFloat(item.precio * item.cantidad).toFixed(2)}</span>
-            </div>
-        `).join('');
+    tbody.innerHTML = reservas.map(reserva => {
+        const itemsSummary = reserva.items.map(item =>
+            `<div class="text-sm text-gray-500 dark:text-gray-400">
+                ${item.cantidad}x ${item.nombre}
+             </div>`
+        ).join('');
 
         return `
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col">
-                <!-- Header -->
-                <div class="p-4 bg-gradient-to-r from-amber-50 to-white border-b border-amber-100">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                ${reserva.situacion}
-                            </span>
-                            <h3 class="text-lg font-bold text-gray-900 mt-1">${reserva.numero}</h3>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xs text-gray-500">Total</p>
-                            <p class="text-lg font-bold text-emerald-600">Q${parseFloat(reserva.total).toFixed(2)}</p>
-                        </div>
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${reserva.numero}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">${new Date(reserva.fecha).toLocaleDateString()}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900 dark:text-gray-100">${reserva.cliente}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">${reserva.empresa || ''}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900 dark:text-gray-100">${reserva.vendedor || 'N/A'}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="max-h-20 overflow-y-auto custom-scrollbar">
+                        ${itemsSummary}
                     </div>
-                    <div class="text-sm text-gray-600">
-                        <p><i class="far fa-calendar-alt mr-1"></i> ${new Date(reserva.fecha).toLocaleDateString()}</p>
-                        <p class="truncate" title="${reserva.cliente}"><i class="far fa-user mr-1"></i> ${reserva.cliente}</p>
-                    </div>
-                </div>
-
-                <!-- Body (Items preview) -->
-                <div class="p-4 flex-1 bg-white">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Productos</p>
-                    <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                        ${itemsHtml}
-                    </div>
-                </div>
-
-                <!-- Footer (Actions) -->
-                <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-bold text-gray-900 dark:text-gray-100">Q${parseFloat(reserva.total).toFixed(2)}</div>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        ${reserva.situacion}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button onclick="eliminarReserva(${reserva.id}, '${reserva.numero}')" 
-                            class="px-3 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors text-sm font-medium flex items-center">
-                        <i class="fas fa-trash-alt mr-2"></i>Eliminar
+                            class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-bold">
+                        Eliminar
                     </button>
-                </div>
-            </div>
+                </td>
+            </tr>
         `;
     }).join('');
 }
