@@ -204,7 +204,7 @@
             </div>
         </div>
 
-        @if(Auth::user()->user_rol == 1)
+    
         <!-- Configuración Section -->
         <div class="pt-4">
             <button @click="configuracion = !configuracion"
@@ -303,7 +303,7 @@
                 </a>
             </div>
         </div>
-        @endif
+     
 
         @if(Auth::user()->user_rol == 1)
         <!-- Usuarios Section -->
