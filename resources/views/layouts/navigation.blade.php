@@ -121,6 +121,7 @@
                     <span>Detalle de Ventas</span>
                 </a>
 
+                @if(Auth::user()->user_rol == 1)
                 <a href="{{ route('comisiones.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,6 +131,7 @@
                     </svg>
                     <span>Comision vendedor</span>
                 </a>
+                @endif
             </div>
         </div>
 
@@ -159,6 +161,7 @@
                     <span>Mis Pagos</span>
                 </a>
 
+                @if(Auth::user()->user_rol == 1)
                 <a href="{{ route('admin.pagos') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,6 +171,7 @@
                     </svg>
                     <span>Administrar Pagos</span>
                 </a>
+                @endif
             </div>
         </div>
 
@@ -200,6 +204,7 @@
             </div>
         </div>
 
+        @if(Auth::user()->user_rol == 1)
         <!-- Configuración Section -->
         <div class="pt-4">
             <button @click="configuracion = !configuracion"
@@ -298,7 +303,9 @@
                 </a>
             </div>
         </div>
+        @endif
 
+        @if(Auth::user()->user_rol == 1)
         <!-- Usuarios Section -->
         <div class="pt-4">
             <button @click="usuarios = !usuarios"
@@ -336,6 +343,7 @@
                 </a>
             </div>
         </div>
+        @endif
 
         <!-- Facturación Section -->
         <div class="pt-4">
