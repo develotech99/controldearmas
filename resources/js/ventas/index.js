@@ -4019,19 +4019,23 @@ async function procesarVentaFinal() {
             limpiarFormularioVenta();
             buscarProductos();
 
-            // // Opcional: imprimir ticket o redirigir
-            // if (resultado.venta_id) {
-            //     const imprimirTicket = await Swal.fire({
-            //         title: '¿Desea imprimir el ticket?',
-            //         showCancelButton: true,
-            //         confirmButtonText: 'Sí, imprimir',
-            //         cancelButtonText: 'No, gracias'
-            //     });
+            // Opcional: imprimir ticket o redirigir
+            if (resultado.venta_id) {
+                const imprimirTicket = await Swal.fire({
+                    title: '¿Desea imprimir el comprobante?',
+                    text: "Podrás imprimirlo después desde el historial",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fas fa-print"></i> Sí, imprimir',
+                    cancelButtonText: 'No, gracias',
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33'
+                });
 
-            //     if (imprimirTicket.isConfirmed) {
-            //         window.open(`/ventas/${resultado.venta_id}/ticket`, '_blank');
-            //     }
-            // }
+                if (imprimirTicket.isConfirmed) {
+                    window.open(`/reportes/ventas/${resultado.venta_id}/imprimir`, '_blank');
+                }
+            }
 
         } else {
             // Error del servidor

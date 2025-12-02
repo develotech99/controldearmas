@@ -567,6 +567,9 @@ class ReportesManager {
                 `<span class="text-xs border-b border-gray-100 last:border-0 pb-1">
                                     <strong>${p.cantidad}x</strong> ${p.nombre} 
                                     <span class="text-gray-500">(${p.sku})</span>
+                                    ${p.series && p.series.length > 0 ?
+                    `<div class="text-[10px] text-gray-400 mt-0.5">SN: ${p.series.join(', ')}</div>`
+                    : ''}
                                 </span>`
             ).join('') : '<span class="text-gray-400 italic">Sin productos</span>'}
                         </div>
@@ -1841,6 +1844,109 @@ class ReportesManager {
     /**
      * Ver detalle de venta
      */
+    async verDetalleVenta(ventaId) {
+        try {
+            this.showLoading('detalle-venta');
+            const response = await fetch(`/reportes/ventas/${ventaId}/detalle`);
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.mostrarModalDetalleVenta(result.data);
+                } else {
+                    this.showAlert('error', 'Error', result.message || 'No se pudo cargar el detalle de la venta');
+                }
+            } else {
+                throw new Error('Error en la petición');
+            }
+        } catch (error) {
+            console.error('Error cargando detalle de venta:', error);
+            this.showAlert('error', 'Error', 'Ocurrió un error al cargar el detalle de la venta');
+        } finally {
+            this.hideLoading('detalle-venta');
+        }
+    }
+
+    mostrarModalDetalleVenta(venta) {
+        // Implementar lógica para mostrar modal con detalles
+        // Por ahora usaremos SweetAlert2 con HTML
+
+        const productosHtml = venta.detalle_ventas.map(d => `
+            <tr>
+                <td class="text-left">${d.producto.producto_nombre}</td>
+                <td class="text-center">${d.det_cantidad}</td>
+                <td class="text-right">Q ${this.formatNumber(d.det_precio)}</td>
+                <td class="text-right">Q ${this.formatNumber(d.det_cantidad * d.det_precio)}</td>
+            </tr>
+        `).join('');
+
+        const pagosHtml = venta.pagos.map(p => `
+            <tr>
+                <td class="text-left">${this.formatearFechaDisplay(p.pago_fecha_inicio)}</td>
+                <td class="text-center">${p.pago_tipo_pago}</td>
+                <td class="text-right">Q ${this.formatNumber(p.pago_monto_pagado)}</td>
+                <td class="text-center"><span class="badge badge-${p.pago_estado === 'COMPLETADO' ? 'success' : 'warning'}">${p.pago_estado}</span></td>
+            </tr>
+        `).join('');
+
+        Swal.fire({
+            title: `<strong>Detalle de Venta #${venta.ven_id}</strong>`,
+            html: `
+                <div class="text-left text-sm">
+                    <div class="mb-4 grid grid-cols-2 gap-2">
+                        <div><strong>Cliente:</strong> ${venta.cliente.cliente_nombre1} ${venta.cliente.cliente_apellido1}</div>
+                        <div><strong>Vendedor:</strong> ${venta.vendedor.user_primer_nombre} ${venta.vendedor.user_primer_apellido}</div>
+                        <div><strong>Fecha:</strong> ${this.formatearFechaDisplay(venta.ven_fecha)}</div>
+                        <div><strong>Estado:</strong> ${venta.ven_situacion}</div>
+                    </div>
+                    
+                    <h4 class="font-bold border-b mb-2 mt-4">Productos</h4>
+                    <table class="w-full mb-4">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="text-left p-1">Producto</th>
+                                <th class="text-center p-1">Cant.</th>
+                                <th class="text-right p-1">Precio</th>
+                                <th class="text-right p-1">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${productosHtml}</tbody>
+                        <tfoot>
+                            <tr class="font-bold border-t">
+                                <td colspan="3" class="text-right p-1">Total:</td>
+                                <td class="text-right p-1">Q ${this.formatNumber(venta.ven_total_vendido)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <h4 class="font-bold border-b mb-2 mt-4">Pagos</h4>
+                    <table class="w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="text-left p-1">Fecha</th>
+                                <th class="text-center p-1">Tipo</th>
+                                <th class="text-right p-1">Monto</th>
+                                <th class="text-center p-1">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>${pagosHtml}</tbody>
+                    </table>
+                </div>
+            `,
+            width: '800px',
+            showCloseButton: true,
+            showCancelButton: false,
+            focusConfirm: false,
+            confirmButtonText: '<i class="fa fa-print"></i> Imprimir',
+            confirmButtonAriaLabel: 'Imprimir',
+            showDenyButton: true,
+            denyButtonText: 'Cerrar',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.imprimirVenta(venta.ven_id);
+            }
+        });
+    }
 
     /**
      * Imprimir venta

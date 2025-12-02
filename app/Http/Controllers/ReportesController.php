@@ -148,12 +148,12 @@ public function getReporteVentas(Request $request): JsonResponse
         // Agregar información calculada a cada venta
         $ventas->getCollection()->transform(function ($venta) {
             // Calcular estado de pago
-            $totalPagado = $venta->pagos->sum('pago_monto_abonado');
+            $totalPagado = $venta->pagos->sum('pago_monto_pagado');
             $totalVenta = $venta->ven_total_vendido;
 
             if ($totalPagado == 0) {
                 $venta->estado_pago = 'PENDIENTE';
-            } elseif ($totalPagado >= $totalVenta) {
+            } elseif ($totalPagado >= $totalVenta - 0.01) { // Margen de error por decimales
                 $venta->estado_pago = 'COMPLETADO';
             } else {
                 $venta->estado_pago = 'PARCIAL';
@@ -162,13 +162,24 @@ public function getReporteVentas(Request $request): JsonResponse
             $venta->total_pagado = $totalPagado;
             $venta->saldo_pendiente = $totalVenta - $totalPagado;
 
+            // Obtener series de los movimientos asociados a esta venta
+            $movimientosSeries = DB::table('pro_movimientos')
+                ->join('pro_series_productos', 'pro_movimientos.mov_serie_id', '=', 'pro_series_productos.serie_id')
+                ->where('mov_documento_referencia', "VENTA-{$venta->ven_id}")
+                ->whereNotNull('mov_serie_id')
+                ->select('mov_producto_id', 'serie_numero_serie')
+                ->get()
+                ->groupBy('mov_producto_id');
+
             // Formatear productos para el reporte
-            $venta->productos_formateados = $venta->detalleVentas->map(function($detalle) {
+            $venta->productos_formateados = $venta->detalleVentas->map(function($detalle) use ($movimientosSeries) {
+                $series = $movimientosSeries->get($detalle->det_producto_id, collect())->pluck('serie_numero_serie')->toArray();
+                
                 return [
                     'cantidad' => $detalle->det_cantidad,
                     'nombre' => $detalle->producto->producto_nombre ?? 'N/A',
                     'sku' => $detalle->producto->pro_codigo_sku ?? 'N/A',
-                    // Aquí podrías agregar series si las tienes relacionadas en detalleVentas o en otra tabla
+                    'series' => $series
                 ];
             });
             
