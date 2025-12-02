@@ -1278,4 +1278,62 @@ public function buscarClientes(Request $request): JsonResponse
             return back()->with('error', 'Error al generar el comprobante: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Obtener detalle de venta para modal (JSON)
+     */
+    public function getDetalleVenta($id)
+    {
+        try {
+            $venta = ProVenta::with([
+                'cliente',
+                'vendedor',
+                'detalleVentas.producto',
+                'pagos'
+            ])->findOrFail($id);
+
+            // Calcular estado de pago
+            $totalPagado = $venta->pagos->sum('pago_monto_pagado');
+            $totalVenta = $venta->ven_total_vendido;
+
+            if ($totalPagado == 0) {
+                $venta->estado_pago = 'PENDIENTE';
+            } elseif ($totalPagado >= $totalVenta - 0.01) {
+                $venta->estado_pago = 'COMPLETADO';
+            } else {
+                $venta->estado_pago = 'PARCIAL';
+            }
+
+            // Formatear pagos para mostrar estado
+            foreach ($venta->pagos as $pago) {
+                $pago->pago_estado = 'COMPLETADO'; 
+            }
+            
+            // Obtener series
+            $movimientosSeries = DB::table('pro_movimientos')
+                ->join('pro_series_productos', 'pro_movimientos.mov_serie_id', '=', 'pro_series_productos.serie_id')
+                ->where('mov_documento_referencia', "VENTA-{$venta->ven_id}")
+                ->whereNotNull('mov_serie_id')
+                ->select('mov_producto_id', 'serie_numero_serie')
+                ->get()
+                ->groupBy('mov_producto_id');
+
+            // Adjuntar series a los detalles
+            foreach ($venta->detalleVentas as $detalle) {
+                $detalle->series = $movimientosSeries->get($detalle->det_producto_id, collect())->pluck('serie_numero_serie')->toArray();
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $venta
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al obtener detalle de venta: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar el detalle de la venta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
