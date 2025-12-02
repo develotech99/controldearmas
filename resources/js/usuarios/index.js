@@ -38,7 +38,8 @@ const initDataTable = () => {
         data: {
             headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
             data: []
-        }
+        },
+        order: [[3, 'desc']] // Ordenar por fecha de registro descendente
     });
 };
 
@@ -226,7 +227,7 @@ const cargarDatosEdicion = (usuario) => {
     document.getElementById('user_primer_apellido').value = usuario.primer_apellido || '';
     document.getElementById('user_segundo_apellido').value = usuario.segundo_apellido || '';
     document.getElementById('user_rol').value = usuario.rol_id || '';
-    
+
     const empresaInput = document.getElementById('user_empresa');
     if (empresaInput) {
         empresaInput.value = usuario.empresa || '';
@@ -269,7 +270,7 @@ const mostrarAlerta = (mensaje, tipo = 'info') => {
         warning: 'warning',
         info: 'info'
     };
-    
+
     Swal.fire({
         title: tipo === 'success' ? 'Éxito' : tipo === 'error' ? 'Error' : 'Aviso',
         text: mensaje,
@@ -306,7 +307,7 @@ const eliminarUsuario = async (userId) => {
             }
         };
 
-        const respuesta = await fetch(`/usuarios/${userId}`, config);  
+        const respuesta = await fetch(`/usuarios/${userId}`, config);
         const data = await respuesta.json();
 
         swalLoadingClose();
@@ -374,7 +375,7 @@ document.addEventListener('click', (e) => {
     }
 
     // Eliminar usuario
- // Este código ya lo tienes, pero verifica que esté así:
+    // Este código ya lo tienes, pero verifica que esté así:
     if (e.target.matches('.btn-eliminar') || e.target.closest('.btn-eliminar')) {
         const btn = e.target.closest('.btn-eliminar');
         const userId = btn.dataset.id;

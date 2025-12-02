@@ -92,7 +92,7 @@ function renderTable(reservas) {
 
         return `
             <tr>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4 whitespace-nowrap" data-order="${new Date(reserva.ven_fecha).getTime()}">
                     <div class="text-sm font-medium text-gray-900 dark:text-white">
                         ${reserva.ven_no_reserva || 'N/A'}
                     </div>
