@@ -282,9 +282,20 @@ const mostrarDetalleVenta = async (ventaId) => {
                 <div class="space-y-2">
                     ${pagosRealizados.map(p => `
                         <div class="flex justify-between items-center p-2 bg-green-50 rounded">
-                            <span class="text-sm">${p.fecha}</span>
-                            <span class="font-semibold text-green-600">${fmtQ(p.monto)}</span>
-                            <span class="text-xs text-gray-600">${p.metodo}</span>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium">${p.fecha}</span>
+                                <span class="text-xs text-gray-600">${p.metodo}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-semibold text-green-600">${fmtQ(p.monto)}</span>
+                                ${p.comprobante ? `
+                                    <a href="/storage/${p.comprobante}" target="_blank" 
+                                       class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                                       title="Ver Boleta">
+                                        <i class="fas fa-image mr-1"></i>Boleta
+                                    </a>
+                                ` : ''}
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -425,15 +436,59 @@ const GetFacturas = async () => {
         ventaIndex.clear();
         rows.forEach(r => ventaIndex.set(r.venta_id, r));
 
-        const $ = (id) => document.getElementById(id);
-        $('totalFacturas') && ($('totalFacturas').textContent = rows.length);
-        $('facturasPendientes') && ($('facturasPendientes').textContent = pendientes.length);
-        $('pagosCompletados') && ($('pagosCompletados').textContent = pagadas4m.length);
-        $('pagosParciales') && ($('pagosParciales').textContent = rows.filter(r => String(r.estado || '').toUpperCase() === 'PARCIAL').length);
+        // 👇 NUEVO: Poblar filtro de clientes
+        const clientesMap = new Map();
+        rows.forEach(r => {
+            if (r.cliente && r.cliente.id) {
+                clientesMap.set(r.cliente.id, r.cliente.nombre || 'Sin Nombre');
+            }
+        });
 
-        datatable.clear(); datatable.rows.add(rows).draw(); Swal.close();
+        const filtroSelect = document.getElementById('filtroCliente');
+        if (filtroSelect) {
+            const currentVal = filtroSelect.value;
+            filtroSelect.innerHTML = '<option value="">Todos los clientes</option>';
+            
+            // Ordenar alfabéticamente
+            const clientesOrdenados = Array.from(clientesMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+            
+            clientesOrdenados.forEach(([id, nombre]) => {
+                filtroSelect.innerHTML += `<option value="${id}">${nombre}</option>`;
+            });
+            filtroSelect.value = currentVal; // Restaurar selección si existe
+        }
+
+        updateStats(rows);
+        datatable.clear(); 
+        datatable.rows.add(rows).draw(); 
+        Swal.close();
+
+        // 👇 Listener para filtrado
+        if (filtroSelect) {
+            filtroSelect.onchange = () => {
+                const val = filtroSelect.value;
+                if (!val) {
+                    datatable.clear().rows.add(rows).draw();
+                    updateStats(rows);
+                } else {
+                    const filtered = rows.filter(r => String(r.cliente?.id) === val);
+                    datatable.clear().rows.add(filtered).draw();
+                    updateStats(filtered);
+                }
+            };
+        }
+
     } catch (e) { console.warn(e); Swal.close(); showError('Error', 'Ocurrió un error al cargar las facturas'); }
 };
+
+const updateStats = (data) => {
+    const $ = (id) => document.getElementById(id);
+    $('totalFacturas') && ($('totalFacturas').textContent = data.length);
+    $('facturasPendientes') && ($('facturasPendientes').textContent = data.filter(r => r.pendiente > 0).length);
+    $('pagosCompletados') && ($('pagosCompletados').textContent = data.filter(r => r.estado === 'COMPLETADO').length);
+    $('pagosParciales') && ($('pagosParciales').textContent = data.filter(r => String(r.estado || '').toUpperCase() === 'PARCIAL').length);
+};
+
 GetFacturas();
 
 const bancoSelectTop = document.getElementById('bancoSelectTop');

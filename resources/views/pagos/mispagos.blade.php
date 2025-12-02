@@ -207,9 +207,20 @@
     </style>
 
     <!-- Encabezado -->
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Control de Pagos</h2>
-        <p class="text-gray-600">Aquí puedes ver todos los pagos, su estado y subir la transferencia del pago si corresponde, si es por cuotas.</p>
+    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">Control de Pagos</h2>
+            <p class="text-gray-600">Aquí puedes ver todos los pagos, su estado y subir la transferencia del pago si
+                corresponde.</p>
+        </div>
+        <div class="w-full md:w-64">
+            <label for="filtroCliente" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Cliente</label>
+            <select id="filtroCliente"
+                class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm">
+                <option value="">Todos los clientes</option>
+                <!-- Se llenará dinámicamente -->
+            </select>
+        </div>
     </div>
 
     <!-- Estadísticas de Facturas -->
@@ -452,8 +463,7 @@
                         <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
                             <div class="flex items-center mb-4">
                                 <div class="bg-green-500 p-2 rounded-lg mr-3">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
@@ -471,8 +481,7 @@
                         <div class="bg-gray-50 border border-gray-200 rounded-xl p-6">
                             <div class="flex items-center mb-4">
                                 <div class="bg-violet-500 p-2 rounded-lg mr-3">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
                                         </path>
@@ -561,8 +570,7 @@
                         </button>
                         <button id="btnEnviarPago"
                             class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold transition-colors text-lg">
-                            <svg class="w-6 h-6 inline-block mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>

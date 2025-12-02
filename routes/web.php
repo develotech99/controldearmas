@@ -317,7 +317,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/ventas/pendientes', [VentasController::class, 'obtenerVentasPendientes']);
     Route::post('/ventas/actualizar-licencias', [VentasController::class, 'actualizarLicencias']);
     Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
-    ->name('ventas.marcar-disponibles');
+        ->name('ventas.marcar-disponibles');
     Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
 
 
@@ -360,6 +360,9 @@ Route::middleware('auth')->group(function () {
 
     // Rutas CRUD de Clientes
     Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
+    Route::get('/api/clientes/create', function () {
+        return redirect()->route('clientes.index');
+    });
     Route::post('/api/clientes/create', [VentasController::class, 'guardarCliente'])->name('ventas.api.clientes.guardar');
     Route::put('/clientes/{cliente}', [ClientesController::class, 'update'])->name('clientes.update');
     Route::delete('/clientes/{cliente}', [ClientesController::class, 'destroy'])->name('clientes.destroy');
@@ -383,10 +386,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/anular/{id}', [FacturacionController::class, 'anular'])->name('facturacion.anular');
         Route::post('/buscarCui', [FacturacionController::class, 'buscarCUI'])->name('buscarCui');
         Route::post('/certificar-cambiaria', [FacturacionController::class, 'certificarCambiaria'])
-    ->name('facturacion.certificar.cambiaria');
+            ->name('facturacion.certificar.cambiaria');
 
-Route::get('/{id}/vista-cambiaria', [FacturacionController::class, 'verFacturaCambiaria'])
-    ->name('facturacion.vista.cambiaria');
+        Route::get('/{id}/vista-cambiaria', [FacturacionController::class, 'verFacturaCambiaria'])
+            ->name('facturacion.vista.cambiaria');
     });
 });
 
