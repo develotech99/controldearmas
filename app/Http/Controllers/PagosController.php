@@ -204,13 +204,19 @@ class PagosController extends Controller
             $pendRows = DB::table('pro_pagos_subidos')
                 ->whereIn('ps_venta_id', $ventaIds)
                 ->where('ps_estado', 'PENDIENTE_VALIDACION')
-                ->get(['ps_venta_id', 'ps_cuotas_json']);
+                ->get(['ps_venta_id', 'ps_cuotas_json', 'ps_imagen_path']);
 
             $cuotasEnRevisionPorVenta = [];
+            $comprobantesEnRevisionPorVenta = [];
+
             foreach ($pendRows as $row) {
                 $lista = json_decode($row->ps_cuotas_json, true) ?: [];
                 $vid = (int) $row->ps_venta_id;
                 $cuotasEnRevisionPorVenta[$vid] = array_values(array_unique(array_merge($cuotasEnRevisionPorVenta[$vid] ?? [], array_map('intval', $lista))));
+                
+                if ($row->ps_imagen_path) {
+                    $comprobantesEnRevisionPorVenta[$vid] = $row->ps_imagen_path;
+                }
             }
 
             // ===== Clasificación =====
@@ -286,6 +292,7 @@ class PagosController extends Controller
                     ],
 
                     'cuotas_en_revision' => $enRevIds->values(),
+                    'comprobante_revision' => $comprobantesEnRevisionPorVenta[$v->ven_id] ?? null,
                     'cuotas_disponibles' => $disponibles,
 
                     'pago_master' => [

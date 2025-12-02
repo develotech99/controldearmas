@@ -61,33 +61,33 @@ const confirmAction = async (title, text) => {
 };
 
 const datatable = new DataTable('#tablaFacturas', {
-    data: [], 
-    pageLength: 10, 
-    responsive: true, 
+    data: [],
+    pageLength: 10,
+    responsive: true,
     language: ES_LANG,
     order: [[1, 'desc']], // Ordenar por fecha descendente
     columns: [
-        { 
-            title: 'Factura #', 
+        {
+            title: 'Factura #',
             data: 'venta_id',
             render: (d) => `<span class="font-bold text-blue-600">#${d}</span>`
         },
-        { 
-            title: 'Fecha', 
+        {
+            title: 'Fecha',
             data: 'fecha',
             render: (d) => {
                 const fecha = new Date(d);
                 return `<span class="text-sm text-gray-700">${fecha.toLocaleDateString('es-GT')}</span>`;
             }
         },
-        { 
-            title: 'Cliente', 
+        {
+            title: 'Cliente',
             data: null,
             render: (d, t, row) => {
                 const cliente = row.cliente || {};
                 let html = `<div class="text-sm">
                     <div class="font-semibold text-gray-900">${cliente.nombre || 'N/A'}</div>`;
-                
+
                 // Si es cliente empresa (tipo 3), mostrar empresa
                 if (cliente.tipo === 3 && cliente.empresa && cliente.empresa !== 'Sin Empresa') {
                     html += `<div class="text-xs text-gray-600 mt-1">
@@ -97,18 +97,18 @@ const datatable = new DataTable('#tablaFacturas', {
                         </span>
                     </div>`;
                 }
-                
+
                 // NIT si existe
                 if (cliente.nit && cliente.nit !== '—') {
                     html += `<div class="text-xs text-gray-500 mt-0.5">NIT: ${cliente.nit}</div>`;
                 }
-                
+
                 html += `</div>`;
                 return html;
             }
         },
-        { 
-            title: 'Vendedor', 
+        {
+            title: 'Vendedor',
             data: null,
             render: (d, t, row) => {
                 const vendedor = row.vendedor || {};
@@ -117,8 +117,8 @@ const datatable = new DataTable('#tablaFacturas', {
                 </div>`;
             }
         },
-        { 
-            title: 'Productos', 
+        {
+            title: 'Productos',
             data: 'concepto',
             render: (d, t, row) => {
                 const concepto = d || 'Sin productos';
@@ -131,15 +131,15 @@ const datatable = new DataTable('#tablaFacturas', {
                 </div>`;
             }
         },
-        { 
-            title: 'Precio Aplicado', 
+        {
+            title: 'Precio Aplicado',
             data: null,
             render: (d, t, row) => {
                 const precios = row.precios || {};
                 const cliente = row.cliente || {};
-                
+
                 let html = `<div class="text-xs">`;
-                
+
                 if (cliente.tipo === 3) {
                     // Cliente empresa - mostrar precio empresa
                     html += `<div class="font-semibold text-blue-600">${fmtQ(precios.empresa || 0)}</div>`;
@@ -149,43 +149,53 @@ const datatable = new DataTable('#tablaFacturas', {
                     html += `<div class="font-semibold text-gray-900">${fmtQ(precios.individual || 0)}</div>`;
                     html += `<div class="text-gray-500">Precio Individual</div>`;
                 }
-                
+
                 // Precio real aplicado si es diferente
                 if (precios.aplicado && precios.aplicado !== precios.individual && precios.aplicado !== precios.empresa) {
                     html += `<div class="text-green-600 font-medium mt-1">${fmtQ(precios.aplicado)}</div>`;
                     html += `<div class="text-gray-500 text-xs">Precio Real</div>`;
                 }
-                
+
                 html += `</div>`;
                 return html;
             }
         },
-        { 
-            title: 'Total Venta', 
-            data: 'monto_total', 
+        {
+            title: 'Total Venta',
+            data: 'monto_total',
             render: (d) => `<span class="font-bold text-gray-900 text-sm">${fmtQ(d)}</span>`
         },
-        { 
-            title: 'Pagado', 
-            data: 'pagado', 
+        {
+            title: 'Pagado',
+            data: 'pagado',
             render: (d) => `<span class="text-green-600 font-semibold text-sm">${fmtQ(d)}</span>`
         },
-        { 
-            title: 'Pendiente', 
-            data: 'pendiente', 
+        {
+            title: 'Pendiente',
+            data: 'pendiente',
             render: (d) => `<span class="text-red-600 font-semibold text-sm">${fmtQ(d)}</span>`
         },
-        { 
-            title: 'Estado', 
-            data: 'estado_pago', 
-            render: (d) => badge(d) 
+        {
+            title: 'Estado',
+            data: 'estado_pago',
+            render: (d) => badge(d)
         },
         {
-            title: 'Acciones', 
-            data: null, 
-            orderable: false, 
+            title: 'Acciones',
+            data: null,
+            orderable: false,
             searchable: false,
             render: (_d, _t, row) => {
+                let extraBtns = '';
+                if (row.comprobante_revision) {
+                    extraBtns += `
+                        <a href="/storage/${row.comprobante_revision}" target="_blank" 
+                           class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                           title="Ver Boleta Cargada">
+                            <i class="fas fa-file-invoice mr-1"></i>Boleta
+                        </a>`;
+                }
+
                 if (Number(row.pendiente) > 0) {
                     const totalPend = Array.isArray(row.cuotas_pendientes) ? row.cuotas_pendientes.length : 0;
                     const bloquearSolo = (Array.isArray(row.cuotas_en_revision) ? row.cuotas_en_revision.length : 0);
@@ -201,6 +211,7 @@ const datatable = new DataTable('#tablaFacturas', {
                     return `
                         <div class="flex gap-2 items-center">
                           ${bloquearSolo ? '<span class="px-2 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800"><i class="fas fa-clock mr-1"></i>En revisión</span>' : ''}
+                          ${extraBtns}
                           <button class="btn-pagar ${btnClass} px-3 py-1 rounded text-sm font-medium ${dis}" 
                                   data-venta="${row.venta_id}" 
                                   title="${title}">
@@ -217,6 +228,7 @@ const datatable = new DataTable('#tablaFacturas', {
                       <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">
                         <i class="fas fa-check-circle mr-1"></i>PAGADA
                       </span>
+                      ${extraBtns}
                       <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                               data-venta="${row.venta_id}">
                         <i class="fas fa-eye mr-1"></i>Ver
@@ -241,7 +253,7 @@ const datatable = new DataTable('#tablaFacturas', {
 
 // Función para mostrar detalle completo de la venta
 const mostrarDetalleVenta = async (ventaId) => {
-      console.log('mostrarDetalleVenta llamada con ventaId =', ventaId);
+    console.log('mostrarDetalleVenta llamada con ventaId =', ventaId);
     console.log('venta en el mapa =', ventaIndex.get(Number(ventaId)));
     const venta = ventaIndex.get(Number(ventaId));
     if (!venta) {
@@ -448,10 +460,10 @@ const GetFacturas = async () => {
         if (filtroSelect) {
             const currentVal = filtroSelect.value;
             filtroSelect.innerHTML = '<option value="">Todos los clientes</option>';
-            
+
             // Ordenar alfabéticamente
             const clientesOrdenados = Array.from(clientesMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-            
+
             clientesOrdenados.forEach(([id, nombre]) => {
                 filtroSelect.innerHTML += `<option value="${id}">${nombre}</option>`;
             });
@@ -459,8 +471,8 @@ const GetFacturas = async () => {
         }
 
         updateStats(rows);
-        datatable.clear(); 
-        datatable.rows.add(rows).draw(); 
+        datatable.clear();
+        datatable.rows.add(rows).draw();
         Swal.close();
 
         // 👇 Listener para filtrado
