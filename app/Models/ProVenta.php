@@ -55,7 +55,7 @@ class ProVenta extends Model
     // Relación con pagos
     public function pagos(): HasMany
     {
-        return $this->hasMany(ProPago::class, 'pago_ven_id', 'ven_id');
+        return $this->hasMany(ProPago::class, 'pago_venta_id', 'ven_id');
     }
 
     // Scope para ventas activas
