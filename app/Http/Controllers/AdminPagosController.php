@@ -381,7 +381,7 @@ class AdminPagosController extends Controller
 
             DB::commit();
 
-            $this->safeDeletePublicPath($ps->ps_imagen_path ?? null);
+            // $this->safeDeletePublicPath($ps->ps_imagen_path ?? null);
 
             return response()->json([
                 'codigo'  => 1,
