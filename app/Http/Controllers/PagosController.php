@@ -88,7 +88,7 @@ class PagosController extends Controller
                 ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user') // 🔥 JOIN con vendedor
                 ->leftJoinSub($conceptoSub, 'cx', fn($j) => $j->on('cx.det_ven_id', '=', 'v.ven_id'))
                 ->leftJoinSub($preciosSub, 'px', fn($j) => $j->on('px.det_ven_id', '=', 'v.ven_id')) // 🔥 JOIN precios
-                ->where('v.ven_situacion', 'ACTIVA')
+                ->where('v.ven_situacion', '!=', 'ANULADA')
                 ->when($userId, function ($query, $userId) {
                     return $query->where('v.ven_cliente', $userId);
                 })
