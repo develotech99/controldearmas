@@ -1217,4 +1217,40 @@ public function buscarClientes(Request $request): JsonResponse
 
         return $meses[$mes] ?? 'DESCONOCIDO';
     }
+
+
+    /**
+     * Imprimir comprobante de venta individual
+     */
+    public function imprimirVenta($id)
+    {
+        try {
+            $venta = ProVenta::with([
+                'cliente',
+                'vendedor',
+                'detalleVentas.producto',
+                'pagos'
+            ])->findOrFail($id);
+
+            // Calcular estado de pago
+            $totalPagado = $venta->pagos->sum('pago_monto_abonado');
+            $totalVenta = $venta->ven_total_vendido;
+
+            if ($totalPagado == 0) {
+                $venta->estado_pago = 'PENDIENTE';
+            } elseif ($totalPagado >= $totalVenta) {
+                $venta->estado_pago = 'COMPLETADO';
+            } else {
+                $venta->estado_pago = 'PARCIAL';
+            }
+
+            $pdf = Pdf::loadView('reportes.pdf.comprobante_venta', compact('venta'));
+            
+            return $pdf->stream("comprobante_venta_{$venta->ven_id}.pdf");
+
+        } catch (\Exception $e) {
+            \Log::error('Error al imprimir venta: ' . $e->getMessage());
+            return back()->with('error', 'Error al generar el comprobante: ' . $e->getMessage());
+        }
+    }
 }

@@ -561,6 +561,16 @@ class ReportesManager {
                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                         ${vendedorNombre}
                     </td>
+                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                        <div class="flex flex-col space-y-1">
+                            ${venta.productos_formateados ? venta.productos_formateados.map(p =>
+                `<span class="text-xs border-b border-gray-100 last:border-0 pb-1">
+                                    <strong>${p.cantidad}x</strong> ${p.nombre} 
+                                    <span class="text-gray-500">(${p.sku})</span>
+                                </span>`
+            ).join('') : '<span class="text-gray-400 italic">Sin productos</span>'}
+                        </div>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                         ${this.formatCurrency(venta.ven_total_vendido)}
                     </td>
