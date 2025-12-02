@@ -171,7 +171,7 @@
     </div>
 
     {{-- Modal Ver --}}
-    <div id="modalVerUsuario" class="fixed inset-0 z-50 hidden">
+    <div id="modalVerUsuario" class="fixed inset-0 z-[60] hidden">
         <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
         <div class="relative mx-auto mt-10 w-full max-w-2xl">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
