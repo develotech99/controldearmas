@@ -134,6 +134,11 @@
                         <i class="fas fa-shopping-cart mr-2"></i>
                         Ventas Pendientes
                     </button>
+                    <button onclick="reportesManager.cambiarTab('historial-ventas')"
+                        class="tab-button border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        <i class="fas fa-history mr-2"></i>
+                        Historial de Ventas
+                    </button>
                     <button onclick="reportesManager.cambiarTab('productos')"
                         class="tab-button border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                         <i class="fas fa-boxes mr-2"></i>
@@ -333,6 +338,103 @@
                 <!-- Paginación -->
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <div id="paginacion-ventas" class="flex items-center justify-between">
+                        <!-- La paginación se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Historial de Ventas -->
+        <div id="tab-historial-ventas" class="tab-content hidden">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Historial Completo de Ventas</h3>
+                        <div class="flex space-x-3">
+                            <button onclick="reportesManager.exportarReporte('ventas', 'excel')"
+                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                                <i class="fas fa-file-excel mr-2"></i>
+                                Excel
+                            </button>
+                            <button onclick="reportesManager.exportarReporte('ventas', 'pdf')"
+                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+                                <i class="fas fa-file-pdf mr-2"></i>
+                                PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros para Historial de Ventas -->
+                <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendedor</label>
+                            <select id="filtro-vendedor-historial"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Todos los vendedores</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                            <input type="text" id="filtro-cliente-historial" placeholder="Buscar cliente..."
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estado Venta</label>
+                            <select id="filtro-estado-historial"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Todos</option>
+                                <option value="ACTIVA">Activa</option>
+                                <option value="PENDIENTE">Pendiente</option>
+                                <option value="ANULADA">Anulada</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estado Pago</label>
+                            <select id="filtro-pago-historial"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Todos</option>
+                                <option value="COMPLETADO">Pagado</option>
+                                <option value="PARCIAL">Parcial</option>
+                                <option value="PENDIENTE">Pendiente</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="reportesManager.aplicarFiltrosHistorial()"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                                <i class="fas fa-search mr-2"></i>
+                                Filtrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Historial -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendedor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pagado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Saldo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado Pago</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado Venta</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-historial-ventas" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                            <!-- Datos dinámicos -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                 <!-- Paginación -->
+                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <div id="paginacion-historial-ventas" class="flex items-center justify-between">
                         <!-- La paginación se cargará dinámicamente -->
                     </div>
                 </div>

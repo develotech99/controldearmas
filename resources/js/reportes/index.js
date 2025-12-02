@@ -195,6 +195,12 @@ class ReportesManager {
             case 'digecam-municiones':
                 await this.loadReporteDigecamMuniciones();
                 break;
+            case 'digecam-municiones':
+                await this.loadReporteDigecamMuniciones();
+                break;
+            case 'historial-ventas':
+                await this.loadReporteHistorialVentas();
+                break;
         }
     }
 
@@ -447,6 +453,146 @@ class ReportesManager {
         } finally {
             this.hideLoading('ventas');
         }
+    }
+
+    /**
+     * Cargar reporte de historial de ventas (TODAS)
+     */
+    async loadReporteHistorialVentas(page = 1) {
+        try {
+            this.showLoading('historial-ventas');
+
+            const filtros = {
+                page: page,
+                fecha_inicio: this.filtros.fecha_inicio,
+                fecha_fin: this.filtros.fecha_fin,
+                vendedor_id: document.getElementById('filtro-vendedor-historial')?.value || '',
+                cliente_buscar: document.getElementById('filtro-cliente-historial')?.value || '',
+                estado: document.getElementById('filtro-estado-historial')?.value || '',
+                // El endpoint getReporteVentas ya calcula estado_pago, pero no filtra por él en backend
+                // Si queremos filtrar por estado_pago, idealmente deberíamos hacerlo en backend o en frontend post-fetch.
+                // Por ahora, enviaremos los parámetros que el backend acepta.
+            };
+
+            const params = new URLSearchParams();
+            Object.entries(filtros).forEach(([key, value]) => {
+                if (value) params.append(key, value);
+            });
+
+            // Endpoint existente que devuelve todas las ventas con paginación
+            const url = `/reportes/ventas?${params.toString()}`;
+
+            const response = await fetch(url);
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    // Filtrado en cliente para estado_pago si es necesario (ya que el backend no lo tiene nativo en query)
+                    const estadoPagoFiltro = document.getElementById('filtro-pago-historial')?.value;
+                    let ventas = result.data.data;
+
+                    if (estadoPagoFiltro) {
+                        ventas = ventas.filter(v => v.estado_pago === estadoPagoFiltro);
+                    }
+
+                    this.renderTablaHistorialVentas(ventas);
+                    this.renderPaginacion(result.data, 'paginacion-historial-ventas', (p) => this.loadReporteHistorialVentas(p));
+                } else {
+                    this.renderTablaHistorialVentas([]);
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando historial:', error);
+            this.renderTablaHistorialVentas([]);
+        } finally {
+            this.hideLoading('historial-ventas');
+        }
+    }
+
+    aplicarFiltrosHistorial() {
+        this.loadReporteHistorialVentas(1);
+    }
+
+    renderTablaHistorialVentas(ventas) {
+        const tbody = document.getElementById('tbody-historial-ventas');
+        if (!tbody) return;
+
+        if (!ventas || ventas.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        No se encontraron ventas en el historial
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = ventas.map(venta => {
+            const clienteNombre = venta.cliente
+                ? `${venta.cliente.cliente_nombre1} ${venta.cliente.cliente_apellido1}`
+                : 'N/A';
+
+            const vendedorNombre = venta.vendedor
+                ? `${venta.vendedor.user_primer_nombre} ${venta.vendedor.user_primer_apellido}`
+                : 'N/A';
+
+            // Colores para estado de pago
+            let colorPago = 'bg-gray-100 text-gray-800';
+            if (venta.estado_pago === 'COMPLETADO') colorPago = 'bg-green-100 text-green-800';
+            else if (venta.estado_pago === 'PARCIAL') colorPago = 'bg-yellow-100 text-yellow-800';
+            else if (venta.estado_pago === 'PENDIENTE') colorPago = 'bg-red-100 text-red-800';
+
+            // Colores para estado de venta
+            let colorVenta = 'bg-gray-100 text-gray-800';
+            if (venta.ven_situacion === 'ACTIVA') colorVenta = 'bg-green-100 text-green-800';
+            else if (venta.ven_situacion === 'ANULADA') colorVenta = 'bg-red-100 text-red-800';
+            else if (venta.ven_situacion === 'PENDIENTE') colorVenta = 'bg-yellow-100 text-yellow-800';
+
+            return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        ${this.formatearFechaDisplay(venta.ven_fecha)}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                        ${clienteNombre}
+                        <div class="text-xs text-gray-500">${venta.cliente?.cliente_dpi || ''}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                        ${vendedorNombre}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                        ${this.formatCurrency(venta.ven_total_vendido)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                        ${this.formatCurrency(venta.total_pagado)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                        ${this.formatCurrency(venta.saldo_pendiente)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorPago}">
+                            ${venta.estado_pago}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorVenta}">
+                            ${venta.ven_situacion}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                         <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
+                            class="text-blue-600 hover:text-blue-900 mr-2" title="Ver Detalle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <a href="/reportes/ventas/${venta.ven_id}/imprimir" target="_blank"
+                            class="text-gray-600 hover:text-gray-900" title="Imprimir Comprobante">
+                            <i class="fas fa-print"></i>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
     renderTablaVentas(ventas) {
         const tbody = document.getElementById('tbody-ventas');
