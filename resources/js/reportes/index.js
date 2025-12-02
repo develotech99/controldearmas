@@ -2112,6 +2112,73 @@ class ReportesManager {
             alert(`${title}: ${text}`);
         }
     }
+    /**
+     * Renderizar paginación genérica
+     */
+    renderPaginacion(paginationData, containerId, callback) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const { current_page, last_page, per_page, total } = paginationData;
+
+        if (last_page <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let paginationHtml = `
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                    Mostrando ${((current_page - 1) * per_page) + 1} a ${Math.min(current_page * per_page, total)} de ${total} resultados
+                </div>
+                <div class="flex items-center space-x-2">
+        `;
+
+        // Botón anterior
+        if (current_page > 1) {
+            paginationHtml += `
+                <button data-page="${current_page - 1}" 
+                        class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Anterior
+                </button>
+            `;
+        }
+
+        // Números de página
+        const startPage = Math.max(1, current_page - 2);
+        const endPage = Math.min(last_page, current_page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === current_page;
+            paginationHtml += `
+                <button data-page="${i}" 
+                        class="pagination-btn px-3 py-2 text-sm font-medium ${isActive ? 'text-white bg-blue-600' : 'text-gray-500 bg-white hover:bg-gray-50'} border border-gray-300 rounded-md">
+                    ${i}
+                </button>
+            `;
+        }
+
+        // Botón siguiente
+        if (current_page < last_page) {
+            paginationHtml += `
+                <button data-page="${current_page + 1}" 
+                        class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Siguiente
+                </button>
+            `;
+        }
+
+        paginationHtml += '</div></div>';
+        container.innerHTML = paginationHtml;
+
+        // Agregar event listeners
+        container.querySelectorAll('.pagination-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = parseInt(btn.dataset.page);
+                if (callback) callback(page);
+            });
+        });
+    }
 }
 
 // Inicializar globalmente INMEDIATAMENTE
