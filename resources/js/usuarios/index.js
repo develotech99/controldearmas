@@ -67,15 +67,14 @@ const buscarUsuarios = async (filtros = {}) => {
 
         if (codigo == 1) {
             if (Array.isArray(datos) && datos.length) {
-                const tableData = datos.map(usuario => {
-                    const nombreCompleto = `${usuario.primer_nombre || ''} ${usuario.segundo_nombre || ''} ${usuario.primer_apellido || ''} ${usuario.segundo_apellido || ''}`.trim();
-                    const iniciales = getIniciales(nombreCompleto);
+                const nombreCompleto = `${usuario.primer_nombre || ''} ${usuario.segundo_nombre || ''} ${usuario.primer_apellido || ''} ${usuario.segundo_apellido || ''}`.trim();
+                const iniciales = getIniciales(nombreCompleto);
 
+                // Encode user data to avoid HTML attribute issues
+                const usuarioStr = encodeURIComponent(JSON.stringify(usuario));
 
-                    const usuarioStr = JSON.stringify(usuario).replace(/'/g, '&#39;');
-
-                    return [
-                        `<div class="flex items-center gap-3">
+                return [
+                    `<div class="flex items-center gap-3">
               <div class="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center">
                 <span class="text-sm font-semibold text-white">${iniciales}</span>
               </div>
@@ -85,90 +84,90 @@ const buscarUsuarios = async (filtros = {}) => {
               </div>
             </div>`,
 
-                        usuario.email || 'N/D',
+                    usuario.email || 'N/D',
 
-                        usuario.rol
-                            ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+                    usuario.rol
+                        ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
                    ${usuario.rol.nombre}
                  </span>`
-                            : '<span class="text-gray-400">Sin rol</span>',
+                        : '<span class="text-gray-400">Sin rol</span>',
 
-                        usuario.created_at ? new Date(usuario.created_at).toLocaleDateString('es-GT') : '',
+                    usuario.created_at ? new Date(usuario.created_at).toLocaleDateString('es-GT') : '',
 
-                        `<div class="flex items-center justify-end gap-2">
+                    `<div class="flex items-center justify-end gap-2">
               <button class="btn-ver p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" 
-                      data-id="${usuario.id}" data-usuario='${usuarioStr}' title="Ver detalles">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      data-usuario="${usuarioStr}" title="Ver detalles">
+                <svg class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
               </button>
               <button class="btn-editar p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors" 
-                      data-id="${usuario.id}" data-usuario='${usuarioStr}' title="Editar">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      data-id="${usuario.id}" data-usuario="${usuarioStr}" title="Editar">
+                <svg class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
               </button>
               <button class="btn-eliminar p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors" 
                       data-id="${usuario.id}" title="Eliminar">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
               </button>
             </div>`
-                    ];
-                });
+                ];
+            });
 
-                // re-crear la tabla
-                if (datatableUsuarios) datatableUsuarios.destroy();
-                datatableUsuarios = new DataTable('#datatableUsuarios', {
-                    searchable: false,
-                    sortable: true,
-                    fixedHeight: true,
-                    perPage: 10,
-                    perPageSelect: [5, 10, 20, 50],
-                    labels: {
-                        placeholder: "Buscar...",
-                        perPage: "{select} registros por página",
-                        noRows: "No se encontraron registros",
-                        info: "Mostrando {start} a {end} de {rows} registros",
-                    },
-                    data: {
-                        headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
-                        data: tableData
-                    }
-                });
+            // re-crear la tabla
+            if (datatableUsuarios) datatableUsuarios.destroy();
+            datatableUsuarios = new DataTable('#datatableUsuarios', {
+                searchable: false,
+                sortable: true,
+                fixedHeight: true,
+                perPage: 10,
+                perPageSelect: [5, 10, 20, 50],
+                labels: {
+                    placeholder: "Buscar...",
+                    perPage: "{select} registros por página",
+                    noRows: "No se encontraron registros",
+                    info: "Mostrando {start} a {end} de {rows} registros",
+                },
+                data: {
+                    headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
+                    data: tableData
+                }
+            });
 
-            } else {
-                // sin datos
-                if (datatableUsuarios) datatableUsuarios.destroy();
-                datatableUsuarios = new DataTable('#datatableUsuarios', {
-                    searchable: false,
-                    sortable: true,
-                    fixedHeight: true,
-                    perPage: 10,
-                    perPageSelect: [5, 10, 20, 50],
-                    labels: {
-                        placeholder: "Buscar...",
-                        perPage: "{select} registros por página",
-                        noRows: "No se encontraron registros",
-                        info: "Mostrando {start} a {end} de {rows} registros",
-                    },
-                    data: {
-                        headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
-                        data: []
-                    }
-                });
-                Swal.fire('Aviso', 'No hay datos para mostrar', 'warning');
-            }
         } else {
-            Swal.fire('Error', mensaje || 'Ocurrió un error en la respuesta', 'error');
+            // sin datos
+            if (datatableUsuarios) datatableUsuarios.destroy();
+            datatableUsuarios = new DataTable('#datatableUsuarios', {
+                searchable: false,
+                sortable: true,
+                fixedHeight: true,
+                perPage: 10,
+                perPageSelect: [5, 10, 20, 50],
+                labels: {
+                    placeholder: "Buscar...",
+                    perPage: "{select} registros por página",
+                    noRows: "No se encontraron registros",
+                    info: "Mostrando {start} a {end} de {rows} registros",
+                },
+                data: {
+                    headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
+                    data: []
+                }
+            });
+            Swal.fire('Aviso', 'No hay datos para mostrar', 'warning');
         }
-
-    } catch (error) {
-        console.error("Error cargando usuarios:", error);
-        Swal.fire('Error', 'Error de conexión o formato de respuesta inválido', 'error');
+    } else {
+        Swal.fire('Error', mensaje || 'Ocurrió un error en la respuesta', 'error');
     }
+
+} catch (error) {
+    console.error("Error cargando usuarios:", error);
+    Swal.fire('Error', 'Error de conexión o formato de respuesta inválido', 'error');
+}
 };
 
 
@@ -357,9 +356,14 @@ document.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-ver');
         const usuarioData = btn.dataset.usuario;
         if (usuarioData) {
-            const usuario = JSON.parse(usuarioData);
-            mostrarDatosUsuario(usuario);
-            abrirModal('modalVerUsuario');
+            try {
+                const usuario = JSON.parse(decodeURIComponent(usuarioData));
+                mostrarDatosUsuario(usuario);
+                abrirModal('modalVerUsuario');
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                Swal.fire('Error', 'No se pudieron cargar los datos del usuario', 'error');
+            }
         }
     }
 
@@ -368,9 +372,14 @@ document.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-editar');
         const usuarioData = btn.dataset.usuario;
         if (usuarioData) {
-            const usuario = JSON.parse(usuarioData);
-            cargarDatosEdicion(usuario);
-            abrirModal('modalUsuario');
+            try {
+                const usuario = JSON.parse(decodeURIComponent(usuarioData));
+                cargarDatosEdicion(usuario);
+                abrirModal('modalUsuario');
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                Swal.fire('Error', 'No se pudieron cargar los datos para edición', 'error');
+            }
         }
     }
 
