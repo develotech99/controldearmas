@@ -3115,7 +3115,7 @@ public function procesarVenta(Request $request): JsonResponse
                 // 2. Cambiar estado de venta a CANCELADA
                 DB::table('pro_ventas')
                     ->where('ven_id', $venId)
-                    ->update(['ven_situacion' => 'CANCELADA']);
+                    ->update(['ven_situacion' => 'ANULADA']);
 
                 // 3. Liberar series y lotes (movimientos)
                 // Buscar movimientos reservados (situacion 3) asociados a esta venta
@@ -3169,7 +3169,7 @@ public function procesarVenta(Request $request): JsonResponse
                 // Actualizar estado de detalles
                 DB::table('pro_detalle_ventas')
                     ->where('det_ven_id', $venId)
-                    ->update(['det_situacion' => 'CANCELADA']);
+                    ->update(['det_situacion' => 'ANULADA']);
 
             });
 

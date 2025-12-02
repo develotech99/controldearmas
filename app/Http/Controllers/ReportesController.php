@@ -1058,8 +1058,8 @@ public function buscarClientes(Request $request): JsonResponse
                     'dv.det_cantidad as cantidad'
                 ])
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 'ACTIVA') // ✅ FIX: USAR STRING STATUS
-                ->where('dv.det_situacion', 'ACTIVO')
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'AUTORIZADA', 1, '1']) // ✅ FIX: Incluir todos los estados válidos
+                ->whereIn('dv.det_situacion', ['ACTIVO', 'AUTORIZADA', 1, '1'])
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%MUNICION%')
                         ->orWhere('c.categoria_nombre', 'LIKE', '%MUNICIÓN%')
