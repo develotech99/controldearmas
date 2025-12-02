@@ -6,6 +6,7 @@ use App\Models\Producto;
 use App\Models\ProductoFoto;
 use App\Models\SerieProducto;
 use App\Models\Lote;
+use App\Models\Alerta;
 use App\Models\Precio;
 use App\Models\Movimiento;
 use App\Models\LicenciaAsignacionProducto;
