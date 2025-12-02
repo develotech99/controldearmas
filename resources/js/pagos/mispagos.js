@@ -75,7 +75,10 @@ const datatable = new DataTable('#tablaFacturas', {
         {
             title: 'Fecha',
             data: 'fecha',
-            render: (d) => {
+            render: (d, type) => {
+                if (type === 'sort' || type === 'type') {
+                    return new Date(d).getTime();
+                }
                 const fecha = new Date(d);
                 return `<span class="text-sm text-gray-700">${fecha.toLocaleDateString('es-GT')}</span>`;
             }
