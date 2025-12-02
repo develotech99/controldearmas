@@ -1255,6 +1255,20 @@ public function buscarClientes(Request $request): JsonResponse
                 $venta->estado_pago = 'PARCIAL';
             }
 
+            // Obtener series de los movimientos asociados a esta venta
+            $movimientosSeries = DB::table('pro_movimientos')
+                ->join('pro_series_productos', 'pro_movimientos.mov_serie_id', '=', 'pro_series_productos.serie_id')
+                ->where('mov_documento_referencia', "VENTA-{$venta->ven_id}")
+                ->whereNotNull('mov_serie_id')
+                ->select('mov_producto_id', 'serie_numero_serie')
+                ->get()
+                ->groupBy('mov_producto_id');
+
+            // Adjuntar series a los detalles
+            foreach ($venta->detalleVentas as $detalle) {
+                $detalle->series = $movimientosSeries->get($detalle->det_producto_id, collect())->pluck('serie_numero_serie')->toArray();
+            }
+
             $pdf = Pdf::loadView('reportes.pdf.comprobante_venta', compact('venta'));
             
             return $pdf->stream("comprobante_venta_{$venta->ven_id}.pdf");

@@ -78,7 +78,14 @@
             <tr>
                 <td class="text-center">{{ $detalle->det_cantidad }}</td>
                 <td class="text-center">{{ $detalle->producto->pro_codigo_sku ?? 'N/A' }}</td>
-                <td>{{ $detalle->producto->producto_nombre ?? 'Producto no encontrado' }}</td>
+                <td>
+                    {{ $detalle->producto->producto_nombre ?? 'Producto no encontrado' }}
+                    @if(!empty($detalle->series))
+                        <div style="font-size: 10px; color: #666; margin-top: 2px;">
+                            <strong>Series:</strong> {{ implode(', ', $detalle->series) }}
+                        </div>
+                    @endif
+                </td>
                 <td class="text-right">Q {{ number_format($detalle->det_precio, 2) }}</td>
                 <td class="text-right">Q {{ number_format($detalle->det_cantidad * $detalle->det_precio, 2) }}</td>
             </tr>
