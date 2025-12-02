@@ -46,6 +46,18 @@ class ProVenta extends Model
         return $this->hasMany(ProPorcentajeVendedor::class, 'porc_vend_ven_id', 'ven_id');
     }
 
+    // Relación con detalle de ventas
+    public function detalleVentas(): HasMany
+    {
+        return $this->hasMany(ProDetalleVenta::class, 'det_ven_id', 'ven_id');
+    }
+
+    // Relación con pagos
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(ProPago::class, 'pago_ven_id', 'ven_id');
+    }
+
     // Scope para ventas activas
     public function scopeActivas($query)
     {

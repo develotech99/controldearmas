@@ -114,16 +114,16 @@ public function getReporteVentas(Request $request): JsonResponse
 
         // Filtro por fecha
         if ($request->filled('fecha_inicio')) {
-            $query->whereDate('ven_fecha', '>=', $request->fecha_inicio);
+            $query->whereDate('pro_ventas.ven_fecha', '>=', $request->fecha_inicio);
         }
 
         if ($request->filled('fecha_fin')) {
-            $query->whereDate('ven_fecha', '<=', $request->fecha_fin);
+            $query->whereDate('pro_ventas.ven_fecha', '<=', $request->fecha_fin);
         }
 
         // Filtro por vendedor
         if ($request->filled('vendedor_id')) {
-            $query->where('ven_user', $request->vendedor_id);
+            $query->where('pro_ventas.ven_user', $request->vendedor_id);
         }
 
         // Filtro por cliente - CORREGIDO: búsqueda por nombre o DPI
@@ -138,11 +138,11 @@ public function getReporteVentas(Request $request): JsonResponse
 
         // Filtro por estado
         if ($request->filled('estado')) {
-            $query->where('ven_situacion', $request->estado);
+            $query->where('pro_ventas.ven_situacion', $request->estado);
         }
 
         // Calcular estado de pago para cada venta
-        $ventas = $query->orderBy('ven_fecha', 'desc')
+        $ventas = $query->orderBy('pro_ventas.ven_fecha', 'desc')
             ->paginate($request->get('per_page', 25));
 
         // Agregar información calculada a cada venta
@@ -161,9 +161,19 @@ public function getReporteVentas(Request $request): JsonResponse
 
             $venta->total_pagado = $totalPagado;
             $venta->saldo_pendiente = $totalVenta - $totalPagado;
+
+            // Formatear productos para el reporte
+            $venta->productos_formateados = $venta->detalleVentas->map(function($detalle) {
+                return [
+                    'cantidad' => $detalle->det_cantidad,
+                    'nombre' => $detalle->producto->producto_nombre ?? 'N/A',
+                    'sku' => $detalle->producto->pro_codigo_sku ?? 'N/A',
+                    // Aquí podrías agregar series si las tienes relacionadas en detalleVentas o en otra tabla
+                ];
+            });
             
-            return $venta; // ← AGREGA ESTE RETURN
-        }); // ← AGREGA ESTE CIERRE DE PARÉNTESIS Y PUNTO Y COMA
+            return $venta; 
+        });
 
         return response()->json([
             'success' => true,

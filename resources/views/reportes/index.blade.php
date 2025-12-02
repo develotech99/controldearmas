@@ -123,7 +123,7 @@
         <!-- Navegación de Reportes -->
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
             <div class="border-b border-gray-200 dark:border-gray-700">
-                <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                <nav class="-mb-px flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">
                     <button onclick="reportesManager.cambiarTab('dashboard')"
                         class="tab-button active border-blue-500 text-blue-600 dark:text-blue-400 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                         <i class="fas fa-tachometer-alt mr-2"></i>
@@ -418,6 +418,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendedor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Productos</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pagado</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Saldo</th>
