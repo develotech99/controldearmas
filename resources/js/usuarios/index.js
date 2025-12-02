@@ -67,14 +67,15 @@ const buscarUsuarios = async (filtros = {}) => {
 
         if (codigo == 1) {
             if (Array.isArray(datos) && datos.length) {
-                const nombreCompleto = `${usuario.primer_nombre || ''} ${usuario.segundo_nombre || ''} ${usuario.primer_apellido || ''} ${usuario.segundo_apellido || ''}`.trim();
-                const iniciales = getIniciales(nombreCompleto);
+                const tableData = datos.map(usuario => {
+                    const nombreCompleto = `${usuario.primer_nombre || ''} ${usuario.segundo_nombre || ''} ${usuario.primer_apellido || ''} ${usuario.segundo_apellido || ''}`.trim();
+                    const iniciales = getIniciales(nombreCompleto);
 
-                // Encode user data to avoid HTML attribute issues
-                const usuarioStr = encodeURIComponent(JSON.stringify(usuario));
+                    // Encode user data to avoid HTML attribute issues
+                    const usuarioStr = encodeURIComponent(JSON.stringify(usuario));
 
-                return [
-                    `<div class="flex items-center gap-3">
+                    return [
+                        `<div class="flex items-center gap-3">
               <div class="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center">
                 <span class="text-sm font-semibold text-white">${iniciales}</span>
               </div>
@@ -84,17 +85,17 @@ const buscarUsuarios = async (filtros = {}) => {
               </div>
             </div>`,
 
-                    usuario.email || 'N/D',
+                        usuario.email || 'N/D',
 
-                    usuario.rol
-                        ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+                        usuario.rol
+                            ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
                    ${usuario.rol.nombre}
                  </span>`
-                        : '<span class="text-gray-400">Sin rol</span>',
+                            : '<span class="text-gray-400">Sin rol</span>',
 
-                    usuario.created_at ? new Date(usuario.created_at).toLocaleDateString('es-GT') : '',
+                        usuario.created_at ? new Date(usuario.created_at).toLocaleDateString('es-GT') : '',
 
-                    `<div class="flex items-center justify-end gap-2">
+                        `<div class="flex items-center justify-end gap-2">
               <button class="btn-ver p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" 
                       data-usuario="${usuarioStr}" title="Ver detalles">
                 <svg class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -115,59 +116,59 @@ const buscarUsuarios = async (filtros = {}) => {
                 </svg>
               </button>
             </div>`
-                ];
-            });
+                    ];
+                });
 
-            // re-crear la tabla
-            if (datatableUsuarios) datatableUsuarios.destroy();
-            datatableUsuarios = new DataTable('#datatableUsuarios', {
-                searchable: false,
-                sortable: true,
-                fixedHeight: true,
-                perPage: 10,
-                perPageSelect: [5, 10, 20, 50],
-                labels: {
-                    placeholder: "Buscar...",
-                    perPage: "{select} registros por página",
-                    noRows: "No se encontraron registros",
-                    info: "Mostrando {start} a {end} de {rows} registros",
-                },
-                data: {
-                    headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
-                    data: tableData
-                }
-            });
+                // re-crear la tabla
+                if (datatableUsuarios) datatableUsuarios.destroy();
+                datatableUsuarios = new DataTable('#datatableUsuarios', {
+                    searchable: false,
+                    sortable: true,
+                    fixedHeight: true,
+                    perPage: 10,
+                    perPageSelect: [5, 10, 20, 50],
+                    labels: {
+                        placeholder: "Buscar...",
+                        perPage: "{select} registros por página",
+                        noRows: "No se encontraron registros",
+                        info: "Mostrando {start} a {end} de {rows} registros",
+                    },
+                    data: {
+                        headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
+                        data: tableData
+                    }
+                });
 
+            } else {
+                // sin datos
+                if (datatableUsuarios) datatableUsuarios.destroy();
+                datatableUsuarios = new DataTable('#datatableUsuarios', {
+                    searchable: false,
+                    sortable: true,
+                    fixedHeight: true,
+                    perPage: 10,
+                    perPageSelect: [5, 10, 20, 50],
+                    labels: {
+                        placeholder: "Buscar...",
+                        perPage: "{select} registros por página",
+                        noRows: "No se encontraron registros",
+                        info: "Mostrando {start} a {end} de {rows} registros",
+                    },
+                    data: {
+                        headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
+                        data: []
+                    }
+                });
+                Swal.fire('Aviso', 'No hay datos para mostrar', 'warning');
+            }
         } else {
-            // sin datos
-            if (datatableUsuarios) datatableUsuarios.destroy();
-            datatableUsuarios = new DataTable('#datatableUsuarios', {
-                searchable: false,
-                sortable: true,
-                fixedHeight: true,
-                perPage: 10,
-                perPageSelect: [5, 10, 20, 50],
-                labels: {
-                    placeholder: "Buscar...",
-                    perPage: "{select} registros por página",
-                    noRows: "No se encontraron registros",
-                    info: "Mostrando {start} a {end} de {rows} registros",
-                },
-                data: {
-                    headings: ["Usuario", "Email", "Rol", "Registrado", "Acciones"],
-                    data: []
-                }
-            });
-            Swal.fire('Aviso', 'No hay datos para mostrar', 'warning');
+            Swal.fire('Error', mensaje || 'Ocurrió un error en la respuesta', 'error');
         }
-    } else {
-        Swal.fire('Error', mensaje || 'Ocurrió un error en la respuesta', 'error');
-    }
 
-} catch (error) {
-    console.error("Error cargando usuarios:", error);
-    Swal.fire('Error', 'Error de conexión o formato de respuesta inválido', 'error');
-}
+    } catch (error) {
+        console.error("Error cargando usuarios:", error);
+        Swal.fire('Error', 'Error de conexión o formato de respuesta inválido', 'error');
+    }
 };
 
 
