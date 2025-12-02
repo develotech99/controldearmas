@@ -1873,7 +1873,12 @@ class ReportesManager {
 
         const productosHtml = venta.detalle_ventas.map(d => `
             <tr>
-                <td class="text-left">${d.producto.producto_nombre}</td>
+                <td class="text-left">
+                    ${d.producto.producto_nombre}
+                    ${d.series && d.series.length > 0 ?
+                `<div class="text-xs text-gray-500">SN: ${d.series.join(', ')}</div>`
+                : ''}
+                </td>
                 <td class="text-center">${d.det_cantidad}</td>
                 <td class="text-right">Q ${this.formatNumber(d.det_precio)}</td>
                 <td class="text-right">Q ${this.formatNumber(d.det_cantidad * d.det_precio)}</td>
