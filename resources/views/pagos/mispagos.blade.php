@@ -209,14 +209,14 @@
     <!-- Encabezado -->
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">Control de Pagos</h2>
-            <p class="text-gray-600">Aquí puedes ver todos los pagos, su estado y subir la transferencia del pago si
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Control de Pagos</h2>
+            <p class="text-gray-600 dark:text-gray-400">Aquí puedes ver todos los pagos, su estado y subir la transferencia del pago si
                 corresponde.</p>
         </div>
         <div class="w-full md:w-64">
-            <label for="filtroCliente" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Cliente</label>
+            <label for="filtroCliente" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtrar por Cliente</label>
             <select id="filtroCliente"
-                class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm">
+                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 shadow-sm">
                 <option value="">Todos los clientes</option>
                 <!-- Se llenará dinámicamente -->
             </select>
@@ -225,13 +225,13 @@
 
     <!-- Estadísticas de Facturas -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center justify-between">
             <div>
-                <p class="text-gray-500">Total de pagos</p>
-                <p class="text-2xl font-semibold text-gray-800" id="totalFacturas">0</p>
+                <p class="text-gray-500 dark:text-gray-400">Total de pagos</p>
+                <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="totalFacturas">0</p>
             </div>
-            <div class="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24"
+            <div class="w-12 h-12 flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v12a2 2 0 01-2 2z" />
@@ -239,13 +239,13 @@
             </div>
         </div>
 
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center justify-between">
             <div>
-                <p class="text-gray-500">Pagos Pendientes</p>
-                <p class="text-2xl font-semibold text-gray-800" id="facturasPendientes">0</p>
+                <p class="text-gray-500 dark:text-gray-400">Pagos Pendientes</p>
+                <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="facturasPendientes">0</p>
             </div>
-            <div class="w-12 h-12 flex items-center justify-center bg-yellow-100 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24"
+            <div class="w-12 h-12 flex items-center justify-center bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -253,26 +253,26 @@
             </div>
         </div>
 
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center justify-between">
             <div>
-                <p class="text-gray-500">Pagos Completados</p>
-                <p class="text-2xl font-semibold text-gray-800" id="pagosCompletados">0</p>
+                <p class="text-gray-500 dark:text-gray-400">Pagos Completados</p>
+                <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="pagosCompletados">0</p>
             </div>
-            <div class="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24"
+            <div class="w-12 h-12 flex items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
             </div>
         </div>
 
-        <div class="bg-white shadow rounded-lg p-4 flex items-center justify-between">
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center justify-between">
             <div>
-                <p class="text-gray-500">Pagos Parciales</p>
-                <p class="text-2xl font-semibold text-gray-800" id="pagosParciales">0</p>
+                <p class="text-gray-500 dark:text-gray-400">Pagos Parciales</p>
+                <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="pagosParciales">0</p>
             </div>
-            <div class="w-12 h-12 flex items-center justify-center bg-orange-100 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24"
+            <div class="w-12 h-12 flex items-center justify-center bg-orange-100 dark:bg-orange-900/30 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 16h-1v-4h-1m0-4h.01M12 12v.01" />
@@ -282,20 +282,20 @@
     </div>
 
     <!-- Tabla de Facturas -->
-    <div class="overflow-x-auto bg-gray-50 rounded-lg shadow">
-        <table class="min-w-full table-auto divide-y divide-gray-200" id="tablaFacturas">
-            <thead class="bg-gray-200">
+    <div class="overflow-x-auto bg-gray-50 dark:bg-gray-800 rounded-lg shadow">
+        <table class="min-w-full table-auto divide-y divide-gray-200 dark:divide-gray-700" id="tablaFacturas">
+            <thead class="bg-gray-200 dark:bg-gray-700">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-700">Factura #</th>
-                    <th class="px-4 py-2 text-left text-gray-700">Cliente</th>
-                    <th class="px-4 py-2 text-left text-gray-700">Monto Total</th>
-                    <th class="px-4 py-2 text-left text-gray-700">Pagos Realizados</th>
-                    <th class="px-4 py-2 text-left text-gray-700">Monto Pendiente</th>
-                    <th class="px-4 py-2 text-left text-gray-700">Estado</th>
-                    <th class="px-4 py-2 text-left text-gray-700">Acciones</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Factura #</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Cliente</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Monto Total</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Pagos Realizados</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Monto Pendiente</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Estado</th>
+                    <th class="px-4 py-2 text-left text-gray-700 dark:text-gray-300">Acciones</th>
                 </tr>
             </thead>
-            <tbody id="facturasBody">
+            <tbody id="facturasBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <!-- Filas generadas desde JS -->
             </tbody>
         </table>
@@ -303,7 +303,7 @@
 
     <!-- Modal de Pago Mejorado -->
     <div id="modalPago" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
             <!-- Header del Modal -->
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
                 <div class="flex items-center justify-between">
@@ -330,25 +330,25 @@
             </div>
 
             <!-- Indicador de Pasos -->
-            <div class="px-6 py-4 bg-gray-50 border-b">
+            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <div class="flex items-center justify-center space-x-8">
                     <div class="step-indicator active flex items-center space-x-2">
                         <div
                             class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                             1</div>
-                        <span class="text-sm font-medium text-blue-600">Seleccionar Cuotas</span>
+                        <span class="text-sm font-medium text-blue-600 dark:text-blue-400">Seleccionar Cuotas</span>
                     </div>
                     <div class="step-indicator flex items-center space-x-2">
                         <div
-                            class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                            class="w-8 h-8 bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center text-sm font-semibold">
                             2</div>
-                        <span class="text-sm font-medium text-gray-500">Subir Comprobante</span>
+                        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Subir Comprobante</span>
                     </div>
                     <div class="step-indicator flex items-center space-x-2">
                         <div
-                            class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                            class="w-8 h-8 bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center text-sm font-semibold">
                             3</div>
-                        <span class="text-sm font-medium text-gray-500">Confirmar</span>
+                        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Confirmar</span>
                     </div>
                 </div>
             </div>
@@ -357,18 +357,18 @@
                 <!-- Paso 1: Selección de Cuotas -->
                 <div id="step1" class="space-y-6">
                     <div class="text-center">
-                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Selecciona las cuotas a pagar</h4>
-                        <p class="text-gray-600">Puedes seleccionar una o múltiples cuotas pendientes</p>
+                        <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Selecciona las cuotas a pagar</h4>
+                        <p class="text-gray-600 dark:text-gray-400">Puedes seleccionar una o múltiples cuotas pendientes</p>
                     </div>
 
                     <div id="cuotasList" class="space-y-3 max-h-64 overflow-y-auto">
                         <!-- Las cuotas se generan aquí dinámicamente -->
                     </div>
 
-                    <div class="bg-blue-50 p-4 rounded-xl">
+                    <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl">
                         <div class="flex items-center justify-between">
-                            <span class="text-lg font-semibold text-blue-800">Total a Pagar:</span>
-                            <span id="totalSeleccionado" class="text-2xl font-bold text-blue-600">Q 0.00</span>
+                            <span class="text-lg font-semibold text-blue-800 dark:text-blue-300">Total a Pagar:</span>
+                            <span id="totalSeleccionado" class="text-2xl font-bold text-blue-600 dark:text-blue-400">Q 0.00</span>
                         </div>
                     </div>
 
@@ -384,27 +384,27 @@
                 <!-- Paso 2: Subir Comprobante -->
                 <div id="step2" class="hidden space-y-6">
                     <div class="text-center">
-                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Adjunta tu comprobante de pago</h4>
-                        <p class="text-gray-600">Sube una imagen clara del comprobante o ingresa los datos manualmente</p>
+                        <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Adjunta tu comprobante de pago</h4>
+                        <p class="text-gray-600 dark:text-gray-400">Sube una imagen clara del comprobante o ingresa los datos manualmente</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Banco destino <span class="text-red-500">*</span>
                             </label>
                             <select id="bancoSelectTop"
-                                class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                                class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">— Selecciona el banco —</option>
                                 <option value="1">Banrural</option>
                                 <option value="2">Banco Industrial</option>
                             </select>
-                            <p class="text-xs text-gray-500 mt-1">Este banco se usará para validar el comprobante.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Este banco se usará para validar el comprobante.</p>
                         </div>
                     </div>
 
                     <!-- Zona de Upload -->
-                    <div class="upload-zone p-8 rounded-xl text-center cursor-pointer" id="uploadZone">
+                    <div class="upload-zone p-8 rounded-xl text-center cursor-pointer dark:bg-gray-700 dark:border-gray-600" id="uploadZone">
                         <input id="inputComprobante" type="file" accept="image/*" class="hidden">
                         <div id="uploadContent">
                             <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor"
@@ -413,8 +413,8 @@
                                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
                                 </path>
                             </svg>
-                            <p class="text-xl font-medium text-gray-700 mb-2">Arrastra tu imagen aquí</p>
-                            <p class="text-gray-500 mb-4">o haz clic para seleccionar</p>
+                            <p class="text-xl font-medium text-gray-700 dark:text-gray-300 mb-2">Arrastra tu imagen aquí</p>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">o haz clic para seleccionar</p>
                             <button type="button"
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                                 Seleccionar Archivo
@@ -422,7 +422,7 @@
                         </div>
                         <div id="previewContent" class="hidden">
                             <img id="imagePreview" class="max-h-48 mx-auto rounded-lg shadow-md mb-4">
-                            <p class="text-green-600 font-medium">✓ Imagen cargada correctamente</p>
+                            <p class="text-green-600 dark:text-green-400 font-medium">✓ Imagen cargada correctamente</p>
                         </div>
                     </div>
 
@@ -453,7 +453,7 @@
                         </div>
 
                         <!-- Mensaje debajo del botón "Ingresar Manualmente" -->
-                        <div class="text-center text-sm text-gray-600 max-w-xs">
+                        <div class="text-center text-sm text-gray-600 dark:text-gray-400 max-w-xs">
                             <p>Si ya no cuenta con su voucher, puede ingresar los datos manualmente.</p>
                         </div>
                     </div>
@@ -478,7 +478,7 @@
 
                     <!-- Formulario Manual -->
                     <div id="formWrap" class="hidden">
-                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6">
+                        <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-6">
                             <div class="flex items-center mb-4">
                                 <div class="bg-violet-500 p-2 rounded-lg mr-3">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -487,32 +487,32 @@
                                         </path>
                                     </svg>
                                 </div>
-                                <h5 class="text-lg font-semibold text-gray-800">Ingresar Datos Manualmente</h5>
+                                <h5 class="text-lg font-semibold text-gray-800 dark:text-white">Ingresar Datos Manualmente</h5>
                             </div>
                             <form id="datosPagoForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha y Hora</label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha y Hora</label>
                                     <input name="fecha" type="datetime-local"
-                                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500"
                                         placeholder="25/07/2025 16:44:32">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Monto (Q)</label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto (Q)</label>
                                     <input name="monto" type="number" step="0.01"
-                                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500"
                                         placeholder="0.00">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Referencia / Número</label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Referencia / Número</label>
                                     <input name="referencia"
-                                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500"
                                         placeholder="Número de referencia">
                                 </div>
                                 <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Concepto</label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Concepto</label>
                                     <input name="concepto"
-                                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-blue-500"
                                         placeholder="Descripción del pago">
                                 </div>
                             </form>
@@ -535,29 +535,29 @@
                 <!-- Paso 3: Confirmación -->
                 <div id="step3" class="hidden space-y-6">
                     <div class="text-center">
-                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Confirma tu pago</h4>
-                        <p class="text-gray-600">Revisa los datos antes de enviar</p>
+                        <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Confirma tu pago</h4>
+                        <p class="text-gray-600 dark:text-gray-400">Revisa los datos antes de enviar</p>
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Resumen de Cuotas -->
-                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                            <h5 class="text-lg font-semibold text-blue-800 mb-4">Cuotas Seleccionadas</h5>
+                        <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl p-6">
+                            <h5 class="text-lg font-semibold text-blue-800 dark:text-blue-300 mb-4">Cuotas Seleccionadas</h5>
                             <div id="resumenCuotas" class="space-y-2">
                                 <!-- Se llena dinámicamente -->
                             </div>
-                            <div class="border-t border-blue-200 mt-4 pt-4">
+                            <div class="border-t border-blue-200 dark:border-blue-700 mt-4 pt-4">
                                 <div class="flex justify-between items-center">
-                                    <span class="font-semibold text-blue-800">Total:</span>
-                                    <span id="totalFinal" class="text-xl font-bold text-blue-600">Q 0.00</span>
+                                    <span class="font-semibold text-blue-800 dark:text-blue-300">Total:</span>
+                                    <span id="totalFinal" class="text-xl font-bold text-blue-600 dark:text-blue-400">Q 0.00</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Resumen de Datos -->
-                        <div class="bg-green-50 border border-green-200 rounded-xl p-6">
-                            <h5 class="text-lg font-semibold text-green-800 mb-4">Datos del Comprobante</h5>
-                            <div id="resumenDatos" class="space-y-2 text-sm">
+                        <div class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl p-6">
+                            <h5 class="text-lg font-semibold text-green-800 dark:text-green-300 mb-4">Datos del Comprobante</h5>
+                            <div id="resumenDatos" class="space-y-2 text-sm dark:text-gray-300">
                                 <!-- Se llena dinámicamente -->
                             </div>
                         </div>

@@ -240,118 +240,118 @@
 <!-- div tipo excel que pidio cliente -->
 <!-- ==================================================== -->
 
-<!-- Vista Excel Expandible -->
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-    <!-- Header del div expandible -->
-    <div class="px-6 py-4 border-b border-gray-200 cursor-pointer" 
-         onclick="inventarioManager.toggleExcelView()" 
-         id="excel-header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <i class="fas fa-table text-green-600"></i>
-                <h3 class="text-lg font-semibold text-gray-800">Vista Detallada (Modo Excel)</h3>
-                <span class="text-sm text-gray-500">- Ver todos los productos con series individuales</span>
+    <!-- Vista Excel Expandible -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+        <!-- Header del div expandible -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer" 
+             onclick="inventarioManager.toggleExcelView()" 
+             id="excel-header">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-table text-green-600"></i>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Vista Detallada (Modo Excel)</h3>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">- Ver todos los productos con series individuales</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500 dark:text-gray-400" id="excel-count">0 registros</span>
+                    <i class="fas fa-chevron-down transition-transform duration-200 text-gray-500 dark:text-gray-400" id="excel-chevron"></i>
+                </div>
             </div>
-            <div class="flex items-center space-x-2">
-                <span class="text-sm text-gray-500" id="excel-count">0 registros</span>
-                <i class="fas fa-chevron-down transition-transform duration-200" id="excel-chevron"></i>
+        </div>
+
+        <!-- Contenido expandible -->
+        <div id="excel-content" class="hidden">
+            <!-- Buscador interno -->
+           <!-- SECCIÓN DE BÚSQUEDA Y FILTROS ACTUALIZADA -->
+    <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Buscador de texto -->
+            <div class="md:col-span-2 relative">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" 
+                       id="excel-search" 
+                       placeholder="Buscar por nombre, SKU, marca, modelo, serie..." 
+                       class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+
+            <!-- Filtro por Estado -->
+            <div>
+                <select id="excel-filter-estado" 
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Todos los estados</option>
+                    <option value="disponible">Disponible</option>
+                    <option value="reservado">Reservado</option>
+                    <option value="vendido">Vendido</option>
+                    <option value="baja">Baja</option>
+                </select>
+            </div>
+
+            <!-- Filtro por Categoría -->
+            <div>
+                <select id="excel-filter-categoria" 
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="flex items-center justify-between mt-3">
+            <button onclick="inventarioManager.limpiarFiltrosExcel()" 
+                    class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                <i class="fas fa-times mr-1"></i> Limpiar filtros
+            </button>
+            
+            <div id="excel-filtros-activos" class="text-sm text-blue-600 dark:text-blue-400 hidden">
+                <i class="fas fa-filter mr-1"></i>
+                <span id="excel-filtros-count">0</span> filtro(s) activo(s)
             </div>
         </div>
     </div>
-
-    <!-- Contenido expandible -->
-    <div id="excel-content" class="hidden">
-        <!-- Buscador interno -->
-       <!-- SECCIÓN DE BÚSQUEDA Y FILTROS ACTUALIZADA -->
-<div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Buscador de texto -->
-        <div class="md:col-span-2 relative">
-            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            <input type="text" 
-                   id="excel-search" 
-                   placeholder="Buscar por nombre, SKU, marca, modelo, serie..." 
-                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-        </div>
-
-        <!-- Filtro por Estado -->
-        <div>
-            <select id="excel-filter-estado" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option value="">Todos los estados</option>
-                <option value="disponible">Disponible</option>
-                <option value="reservado">Reservado</option>
-                <option value="vendido">Vendido</option>
-                <option value="baja">Baja</option>
-            </select>
-        </div>
-
-        <!-- Filtro por Categoría -->
-        <div>
-            <select id="excel-filter-categoria" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option value="">Todas las categorías</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Botones de acción -->
-    <div class="flex items-center justify-between mt-3">
-        <button onclick="inventarioManager.limpiarFiltrosExcel()" 
-                class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            <i class="fas fa-times mr-1"></i> Limpiar filtros
-        </button>
-        
-        <div id="excel-filtros-activos" class="text-sm text-blue-600 hidden">
-            <i class="fas fa-filter mr-1"></i>
-            <span id="excel-filtros-count">0</span> filtro(s) activo(s)
-        </div>
-    </div>
-</div>
 
         <!-- Tabla Excel -->
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <!-- Actualizar el thead de la tabla -->
-                <thead class="bg-gray-50">
+                <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subcategoría</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marca</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calibre</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serie</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Licencia</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lote</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Costo</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Individual</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Empresa</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Especial</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Ingreso</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">SKU</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Producto</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Categoría</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Subcategoría</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Marca</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Modelo</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Calibre</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Serie</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Licencia</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lote</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Precio Costo</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Precio Individual</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Precio Empresa</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Precio Especial</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Ingreso</th>
                     </tr>
                 </thead>
-                <tbody id="excel-tbody" class="bg-white divide-y divide-gray-200">
+                <tbody id="excel-tbody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     <!-- Los datos se llenan con JavaScript -->
                 </tbody>
             </table>
         </div>
 
         <!-- Paginación -->
-        <div class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+        <div class="px-6 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
             <div class="flex items-center justify-between">
-                <div class="text-sm text-gray-700">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
                     Mostrando <span id="excel-showing-start">0</span> a <span id="excel-showing-end">0</span> 
                     de <span id="excel-total-records">0</span> registros
                 </div>
                 <div class="flex space-x-2">
                     <button onclick="inventarioManager.cambiarPaginaExcel('prev')" 
                             id="excel-btn-prev"
-                            class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-chevron-left"></i> Anterior
                     </button>
                     <div id="excel-page-numbers" class="flex space-x-1">
@@ -359,7 +359,7 @@
                     </div>
                     <button onclick="inventarioManager.cambiarPaginaExcel('next')" 
                             id="excel-btn-next"
-                            class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                         Siguiente <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
