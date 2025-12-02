@@ -409,7 +409,7 @@ class PagosController extends Controller
             // 3) Subir archivo (opcional)
             $path = null;
             if ($request->hasFile('comprobante')) {
-                $path = $request->file('comprobante')->store('pagos', 'public'); // requiere storage:link
+                $path = $request->file('comprobante')->store('pagos_subidos', 'public'); // requiere storage:link
             }
 
             // 4) Insert en TU ESQUEMA
