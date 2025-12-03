@@ -2,8 +2,8 @@
 
 return [
 
-    'environment' => env('FEL_ENVIRONMENT', 'test'),
-    'verify_ssl' => env('FEL_VERIFY_SSL', false),
+    'environment' => env('FEL_ENVIRONMENT'),
+    'verify_ssl' => env('FEL_VERIFY_SSL'),
 
     'username' => env('FEL_USERNAME'),
     'password' => env('FEL_PASSWORD'),
