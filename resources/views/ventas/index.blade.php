@@ -102,6 +102,15 @@
                         {{-- Se llena dinámicamente con JS --}}
                     </select>
 
+                    {{-- Selector de Empresa (Oculto por defecto) --}}
+                    <div id="divEmpresaSelect" class="hidden mt-2">
+                        <label for="empresaSelect" class="block text-sm font-medium text-gray-700 mb-1">Empresa / Sucursal</label>
+                        <select id="empresaSelect" name="empresaSelect"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Seleccionar empresa...</option>
+                        </select>
+                    </div>
+
                     <div id="estadoBusquedaCliente" class="text-xs text-gray-500 mt-1"></div>
                 </div>
 

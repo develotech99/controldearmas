@@ -35,7 +35,7 @@ class ClientesController extends Controller
                 $query->where('cliente_tipo', $request->tipo);
             }
 
-            $clientes = $query->orderBy('cliente_id', 'desc')->paginate(10);
+            $clientes = $query->with('empresas')->orderBy('cliente_id', 'desc')->paginate(10);
             
             // Para uso en JavaScript
             $clientesData = $clientes->getCollection()->map(function($cliente) {
@@ -64,6 +64,7 @@ class ClientesController extends Controller
                                              ($cliente->cliente_apellido2 ?? '')),
                     'created_at' => $cliente->created_at,
                     'tiene_pdf' => !empty($cliente->cliente_pdf_licencia),
+                    'empresas' => $cliente->empresas->where('emp_situacion', 1)->values(), // Solo empresas activas
                 ];
             });
 
@@ -332,4 +333,88 @@ class ClientesController extends Controller
         }
     }
 
+    // ==========================================
+    // MÉTODOS PARA GESTIÓN DE EMPRESAS
+    // ==========================================
+
+    public function storeEmpresa(Request $request, Clientes $cliente)
+    {
+        $validator = Validator::make($request->all(), [
+            'emp_nombre' => ['required', 'string', 'max:250'],
+            'emp_nit' => ['nullable', 'string', 'max:20'],
+            'emp_direccion' => ['nullable', 'string', 'max:255'],
+            'emp_telefono' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $empresa = $cliente->empresas()->create($validator->validated());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Empresa agregada correctamente',
+                'data' => $empresa
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al crear empresa:', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error al crear empresa'], 500);
+        }
+    }
+
+    public function updateEmpresa(Request $request, \App\Models\ClienteEmpresa $empresa)
+    {
+        $validator = Validator::make($request->all(), [
+            'emp_nombre' => ['required', 'string', 'max:250'],
+            'emp_nit' => ['nullable', 'string', 'max:20'],
+            'emp_direccion' => ['nullable', 'string', 'max:255'],
+            'emp_telefono' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $empresa->update($validator->validated());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Empresa actualizada correctamente',
+                'data' => $empresa
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar empresa:', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error al actualizar empresa'], 500);
+        }
+    }
+
+    public function destroyEmpresa(\App\Models\ClienteEmpresa $empresa)
+    {
+        try {
+            // Soft delete (cambiar situación a 0)
+            $empresa->update(['emp_situacion' => 0]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Empresa eliminada correctamente'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar empresa:', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error al eliminar empresa'], 500);
+        }
+    }
 }

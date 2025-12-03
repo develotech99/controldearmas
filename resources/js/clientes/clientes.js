@@ -118,13 +118,13 @@ class ClientesManager {
             searchTerm: '',
             tipoFilter: ''
         };
-        
+
         const searchInput = document.getElementById('search-clientes');
         const tipoSelect = document.getElementById('tipo-filter');
-        
+
         if (searchInput) searchInput.value = '';
         if (tipoSelect) tipoSelect.value = '';
-        
+
         this.renderClientes();
     }
 
@@ -135,14 +135,14 @@ class ClientesManager {
             // Filtro de búsqueda
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
-                const match = 
+                const match =
                     cliente.nombre_completo?.toLowerCase().includes(term) ||
                     cliente.cliente_dpi?.toLowerCase().includes(term) ||
                     cliente.cliente_nit?.toLowerCase().includes(term) ||
                     cliente.cliente_nom_empresa?.toLowerCase().includes(term) ||
                     cliente.cliente_correo?.toLowerCase().includes(term) ||
                     cliente.cliente_telefono?.toLowerCase().includes(term);
-                
+
                 if (!match) return false;
             }
 
@@ -161,7 +161,7 @@ class ClientesManager {
     renderClientes() {
         const tbody = document.getElementById('clientes-tbody');
         const emptyState = document.getElementById('empty-state');
-        
+
         if (!tbody) return;
 
         const clientesFiltrados = this.getClientesFiltrados();
@@ -180,7 +180,7 @@ class ClientesManager {
     renderClienteRow(cliente) {
         const tipoLabel = this.getTipoLabel(cliente.cliente_tipo);
         const tipoBadge = this.getTipoBadge(cliente.cliente_tipo);
-        
+
         return `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -228,6 +228,11 @@ class ClientesManager {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex justify-end space-x-2">
+                        <button onclick="window.clientesManager.openEmpresasModal(${cliente.cliente_id})" 
+                                class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                title="Gestionar Empresas">
+                            <i class="fas fa-building"></i>
+                        </button>
                         ${cliente.tiene_pdf ? `
                             <button onclick="window.clientesManager.verPdfLicenciaModal(${cliente.cliente_id})" 
                                     class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
@@ -281,22 +286,22 @@ class ClientesManager {
     openCreateModal() {
         this.isEditing = false;
         this.editingClienteId = null;
-        
+
         const modalTitle = document.getElementById('modal-title');
         const form = document.getElementById('cliente-form');
         const camposEmpresa = document.getElementById('campos-empresa');
-        
+
         if (modalTitle) modalTitle.textContent = 'Nuevo Cliente';
         if (form) form.reset();
         if (camposEmpresa) camposEmpresa.classList.add('hidden');
-        
+
         this.toggleModal(true);
     }
 
     openEditModal(clienteId) {
         this.isEditing = true;
         this.editingClienteId = clienteId;
-        
+
         const cliente = this.clientes.find(c => c.cliente_id === clienteId);
         if (!cliente) {
             this.showAlert('error', 'Error', 'Cliente no encontrado');
@@ -305,7 +310,7 @@ class ClientesManager {
 
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) modalTitle.textContent = 'Editar Cliente';
-        
+
         this.fillForm(cliente);
         this.toggleModal(true);
     }
@@ -321,7 +326,7 @@ class ClientesManager {
     toggleModal(show) {
         const modal = document.getElementById('cliente-modal');
         if (!modal) return;
-        
+
         if (show) {
             modal.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
@@ -354,7 +359,7 @@ class ClientesManager {
             const element = document.getElementById(id);
             if (element) element.value = value;
         });
-        
+
         // Mostrar campos empresa si es tipo 3
         if (cliente.cliente_tipo == 3) {
             this.toggleCamposEmpresa();
@@ -364,11 +369,11 @@ class ClientesManager {
     toggleCamposEmpresa() {
         const tipoSelect = document.getElementById('cliente_tipo');
         const camposEmpresa = document.getElementById('campos-empresa');
-        
+
         if (!tipoSelect || !camposEmpresa) return;
-        
+
         const tipo = tipoSelect.value;
-        
+
         if (tipo == '3') {
             camposEmpresa.classList.remove('hidden');
         } else {
@@ -383,7 +388,7 @@ class ClientesManager {
         const modal = document.getElementById('pdf-modal');
         const iframe = document.getElementById('pdf-iframe');
         const modalTitle = document.getElementById('pdf-modal-title');
-        
+
         if (!modal || !iframe) {
             console.error('Modal de PDF no encontrado');
             return;
@@ -430,7 +435,7 @@ class ClientesManager {
     closePdfModal() {
         const modal = document.getElementById('pdf-modal');
         const iframe = document.getElementById('pdf-iframe');
-        
+
         if (modal) {
             modal.classList.add('hidden');
             document.body.classList.remove('overflow-hidden');
@@ -443,20 +448,173 @@ class ClientesManager {
     }
 
     // ==========================
+    // Modal Empresas
+    // ==========================
+    openEmpresasModal(clienteId) {
+        this.currentClienteId = clienteId;
+        const cliente = this.clientes.find(c => c.cliente_id === clienteId);
+
+        if (!cliente) return;
+
+        document.getElementById('empresas-modal-title').textContent = `Empresas de ${cliente.nombre_completo}`;
+        document.getElementById('emp_cliente_id').value = clienteId;
+
+        this.renderEmpresasTable(cliente.empresas || []);
+        this.resetEmpresaForm();
+
+        const modal = document.getElementById('empresas-modal');
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+
+        // Setup form listener
+        const form = document.getElementById('empresa-form');
+        form.onsubmit = (e) => this.handleEmpresaSubmit(e);
+    }
+
+    closeEmpresasModal() {
+        const modal = document.getElementById('empresas-modal');
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    renderEmpresasTable(empresas) {
+        const tbody = document.getElementById('empresas-tbody');
+        if (!tbody) return;
+
+        if (empresas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No hay empresas registradas</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = empresas.map(emp => `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${emp.emp_nombre}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_nit || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_direccion || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button onclick="window.clientesManager.editEmpresa(${emp.emp_id})" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
+                    <button onclick="window.clientesManager.deleteEmpresa(${emp.emp_id})" class="text-red-600 hover:text-red-900">Eliminar</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    resetEmpresaForm() {
+        const form = document.getElementById('empresa-form');
+        form.reset();
+        document.getElementById('emp_id').value = '';
+        document.getElementById('emp_cliente_id').value = this.currentClienteId;
+        document.getElementById('form-empresa-title').textContent = 'Nueva Empresa';
+    }
+
+    editEmpresa(empId) {
+        const cliente = this.clientes.find(c => c.cliente_id === this.currentClienteId);
+        const empresa = cliente.empresas.find(e => e.emp_id === empId);
+
+        if (!empresa) return;
+
+        document.getElementById('emp_id').value = empresa.emp_id;
+        document.getElementById('emp_nombre').value = empresa.emp_nombre;
+        document.getElementById('emp_nit').value = empresa.emp_nit || '';
+        document.getElementById('emp_direccion').value = empresa.emp_direccion || '';
+        document.getElementById('form-empresa-title').textContent = 'Editar Empresa';
+    }
+
+    async handleEmpresaSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const empId = formData.get('emp_id');
+        const clienteId = this.currentClienteId;
+
+        const url = empId
+            ? `/clientes/empresas/${empId}`
+            : `/clientes/${clienteId}/empresas`;
+
+        if (empId) formData.append('_method', 'PUT');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': this.csrfToken },
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                this.showAlert('success', 'Éxito', data.message);
+                this.resetEmpresaForm();
+                // Recargar datos del cliente
+                // Idealmente solo recargaríamos el cliente específico, pero por simplicidad recargamos la página o actualizamos el array local
+                // Vamos a actualizar el array local para no recargar toda la página
+                const cliente = this.clientes.find(c => c.cliente_id === clienteId);
+                if (empId) {
+                    const index = cliente.empresas.findIndex(e => e.emp_id == empId);
+                    if (index !== -1) cliente.empresas[index] = data.data;
+                } else {
+                    if (!cliente.empresas) cliente.empresas = [];
+                    cliente.empresas.push(data.data);
+                }
+                this.renderEmpresasTable(cliente.empresas);
+            } else {
+                this.showAlert('error', 'Error', data.message);
+            }
+        } catch (error) {
+            console.error(error);
+            this.showAlert('error', 'Error', 'Ocurrió un error');
+        }
+    }
+
+    async deleteEmpresa(empId) {
+        const result = await Swal.fire({
+            title: '¿Eliminar empresa?',
+            text: "Esta acción no se puede deshacer",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Sí, eliminar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`/clientes/empresas/${empId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    this.showAlert('success', 'Eliminado', data.message);
+                    const cliente = this.clientes.find(c => c.cliente_id === this.currentClienteId);
+                    cliente.empresas = cliente.empresas.filter(e => e.emp_id !== empId);
+                    this.renderEmpresasTable(cliente.empresas);
+                } else {
+                    this.showAlert('error', 'Error', data.message);
+                }
+            } catch (error) {
+                console.error(error);
+                this.showAlert('error', 'Error', 'Ocurrió un error');
+            }
+        }
+    }
+
+    // ==========================
     // CRUD
     // ==========================
     async handleSubmit(e) {
         e.preventDefault();
-        
+
         const btnText = document.getElementById('btn-text');
         const btnLoading = document.getElementById('btn-loading');
-        
+
         if (btnText) btnText.classList.add('hidden');
         if (btnLoading) btnLoading.classList.remove('hidden');
 
         try {
             const formData = new FormData(e.target);
-            
+
             if (this.isEditing) {
                 await this.updateCliente(this.editingClienteId, formData);
             } else {
@@ -472,35 +630,35 @@ class ClientesManager {
 
     async createCliente(formData) {
         try {
-            const response = await fetch('/api/clientes/create', {
+            const response = await fetch('/clientes', { // CAMBIADO DE /api/clientes/create a /clientes (resource)
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': this.csrfToken
                 },
                 body: formData
             });
-    
+
             const data = await response.json();
-    
+
             // Verificar éxito usando ambos formatos
             const isSuccess = data.success === true || data.codigo === 1;
-    
+
             if (isSuccess) {
                 const mensaje = data.mensaje || data.message || 'Cliente guardado correctamente';
                 this.showAlert('success', '¡Éxito!', mensaje);
                 this.closeModal();
-                
+
                 setTimeout(() => window.location.reload(), 1500);
             } else {
                 // Manejar errores
                 const errores = data.errores || data.errors;
-                
+
                 if (errores) {
                     // Convertir objeto de errores a texto legible
                     const mensajesError = Object.values(errores)
                         .flat()
                         .join('<br>');
-                    
+
                     this.showAlert('error', 'Error de validación', mensajesError);
                 } else {
                     const mensaje = data.mensaje || data.message || 'Ocurrió un error al crear el cliente';
@@ -516,7 +674,7 @@ class ClientesManager {
     async updateCliente(clienteId, formData) {
         try {
             formData.append('_method', 'PUT');
-            
+
             const response = await fetch(`/clientes/${clienteId}`, {
                 method: 'POST',
                 headers: {
@@ -530,7 +688,7 @@ class ClientesManager {
             if (data.success) {
                 this.showAlert('success', '¡Éxito!', data.message);
                 this.closeModal();
-                
+
                 // Recargar página para actualizar datos
                 setTimeout(() => window.location.reload(), 1500);
             } else {
@@ -573,7 +731,7 @@ class ClientesManager {
 
             if (data.success) {
                 this.showAlert('success', '¡Eliminado!', data.message);
-                
+
                 // Recargar página para actualizar datos
                 setTimeout(() => window.location.reload(), 1500);
             } else {

@@ -40,4 +40,9 @@ class Clientes extends Model
     {
         return $query->where('cliente_situacion', 1);
     }
+
+    public function empresas()
+    {
+        return $this->hasMany(ClienteEmpresa::class, 'emp_cliente_id', 'cliente_id');
+    }
 }

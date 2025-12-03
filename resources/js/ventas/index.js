@@ -50,8 +50,11 @@ async function clientesParticulares() {
                 nombreMostrar = nombreCliente;
             }
 
+            // Codificar empresas como JSON seguro para HTML
+            const empresasJson = JSON.stringify(c.empresas || []).replace(/"/g, '&quot;');
+
             select.innerHTML += `
-                <option value="${c.cliente_id}">
+                <option value="${c.cliente_id}" data-empresas="${empresasJson}">
                     ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
                 </option>`;
         });
@@ -59,6 +62,8 @@ async function clientesParticulares() {
         // Si hay un único resultado → se selecciona automáticamente
         if (data.length === 1) {
             select.value = data[0].cliente_id;
+            // Disparar evento change manualmente para cargar empresas
+            select.dispatchEvent(new Event('change'));
         }
     } else {
         Swal.fire({
@@ -73,6 +78,37 @@ async function clientesParticulares() {
 
 btnBuscarCliente.addEventListener("click", function () {
     clientesParticulares();
+});
+
+// Event listener para cambio de cliente -> Cargar empresas
+document.getElementById("clienteSelect").addEventListener("change", function () {
+    const selectedOption = this.options[this.selectedIndex];
+    const divEmpresa = document.getElementById("divEmpresaSelect");
+    const selectEmpresa = document.getElementById("empresaSelect");
+
+    // Limpiar select de empresas
+    selectEmpresa.innerHTML = '<option value="">Seleccionar empresa...</option>';
+
+    if (!selectedOption || !selectedOption.dataset.empresas) {
+        divEmpresa.classList.add("hidden");
+        return;
+    }
+
+    try {
+        const empresas = JSON.parse(selectedOption.dataset.empresas.replace(/&quot;/g, '"'));
+
+        if (Array.isArray(empresas) && empresas.length > 0) {
+            empresas.forEach(emp => {
+                selectEmpresa.innerHTML += `<option value="${emp.emp_id}">${emp.emp_nombre} - ${emp.emp_nit || 'S/N'}</option>`;
+            });
+            divEmpresa.classList.remove("hidden");
+        } else {
+            divEmpresa.classList.add("hidden");
+        }
+    } catch (e) {
+        console.error("Error al parsear empresas:", e);
+        divEmpresa.classList.add("hidden");
+    }
 });
 
 // Event listener para el tipo de cliente
@@ -1232,6 +1268,10 @@ async function procesarReserva() {
         const diasVigencia = Number(document.getElementById('dias_vigencia')?.value || 7);
         const observaciones = (document.getElementById('observaciones')?.value || '').trim();
 
+        // Obtener empresa seleccionada si existe
+        const empresaSelect = document.getElementById("empresaSelect");
+        const empresaId = (empresaSelect && !empresaSelect.closest('.hidden')) ? empresaSelect.value : null;
+
 
         if (!Array.isArray(carritoProductos) || carritoProductos.length === 0) {
             throw new Error('El carrito está vacío.');
@@ -1283,7 +1323,9 @@ async function procesarReserva() {
             total,
             productos,
             observaciones,
-            dias_vigencia: diasVigencia
+            dias_vigencia: diasVigencia,
+            dias_vigencia: diasVigencia,
+            empresa_id: empresaId // <-- Corregido: ID de empresa
         };
 
         // === 4) POST a Laravel ===
@@ -3872,6 +3914,10 @@ async function procesarVentaFinal() {
         const metodoPago = document.querySelector('input[name="metodoPago"]:checked').value;
         const descuento = parseFloat(document.getElementById("descuentoModal").value) || 0;
 
+        // Obtener empresa seleccionada si existe
+        const empresaSelect = document.getElementById("empresaSelect");
+        const empresaId = (empresaSelect && !empresaSelect.closest('.hidden')) ? empresaSelect.value : null;
+
         // Calcular totales
         const subtotal = carritoProductos.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
         // ('carritosproducotos',carritoProductos)
@@ -3898,6 +3944,8 @@ async function procesarVentaFinal() {
             descuento_porcentaje: descuento,
             descuento_monto: descuentoMonto.toFixed(2),
             total: total.toFixed(2),
+            total: total.toFixed(2),
+            empresa_id: empresaId, // <-- Corregido: ID de empresa
 
             // Método de pago
             metodo_pago: metodoPago,
@@ -4075,8 +4123,13 @@ function limpiarFormularioVenta() {
     // Limpiar campos
     document.getElementById("numeroAutorizacion").value = "";
     document.getElementById("selectBanco").value = "";
+    document.getElementById("selectBanco").value = "";
     document.getElementById("abonoInicial").value = "";
     document.getElementById("descuentoModal").value = "";
+
+    // Limpiar y ocultar empresa
+    document.getElementById("empresaSelect").innerHTML = '<option value="">Seleccionar empresa...</option>';
+    document.getElementById("divEmpresaSelect").classList.add("hidden");
 
     // Limpiar cuotas
     document.getElementById("cuotasLista").innerHTML = "";

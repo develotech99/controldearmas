@@ -51,7 +51,7 @@ class VentasController extends Controller
         $nit = trim($request->query('nit', ''));
         $dpi = trim($request->query('dpi', ''));
 
-        $clientes = DB::table('pro_clientes')
+        $clientes = Clientes::with('empresas')
             ->where('cliente_situacion', 1)
             ->when($nit, function ($q) use ($nit) {
                 $q->where('cliente_nit', $nit);
@@ -1184,6 +1184,7 @@ public function procesarReserva(Request $request): JsonResponse
     try {
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
+            'empresa_id' => 'required|exists:pro_clientes_empresas,emp_id',
             'fecha_reserva' => 'required|date',
             'subtotal' => 'required|numeric|min:0',
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
@@ -1215,6 +1216,7 @@ public function procesarReserva(Request $request): JsonResponse
             'ven_user' => auth()->id(),
             'ven_fecha' => $request->fecha_reserva,
             'ven_cliente' => $request->cliente_id,
+            'ven_empresa_id' => $request->empresa_id,
             'ven_total_vendido' => $request->total,
             'ven_descuento' => isset($request->descuento_monto) ? $request->descuento_monto : 0,
             'ven_observaciones' => isset($request->observaciones) ? $request->observaciones : 'Reserva - Vigente por ' . (isset($request->dias_vigencia) ? $request->dias_vigencia : 30) . ' días',
@@ -2387,6 +2389,7 @@ public function procesarVenta(Request $request): JsonResponse
         // 0. VALIDACIÓN
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
+            'empresa_id' => 'required|exists:pro_clientes_empresas,emp_id',
             'fecha_venta' => 'required|date',
             'subtotal' => 'required|numeric|min:0',
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
@@ -2540,6 +2543,7 @@ public function procesarVenta(Request $request): JsonResponse
                     'ven_descuento'     => $request->descuento_monto ?? 0,
                     'ven_observaciones' => 'Venta Pendiente de autorizar por digecam (desde reserva)',
                     'ven_situacion'     => 'PENDIENTE',
+                    'ven_empresa_id'    => $request->empresa_id,
                     'updated_at'        => now(),
                 ]);
                 
@@ -2549,6 +2553,7 @@ public function procesarVenta(Request $request): JsonResponse
                 'ven_user'          => auth()->id(),
                 'ven_fecha'         => $request->fecha_venta,
                 'ven_cliente'       => $request->cliente_id,
+                'ven_empresa_id'    => $request->empresa_id,
                 'ven_total_vendido' => $request->total,
                 'ven_descuento'     => $request->descuento_monto ?? 0,
                 'ven_observaciones' => 'Venta Pendiente de autorizar por digecam',
