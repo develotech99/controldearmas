@@ -65,6 +65,44 @@
             </div>
         </div>
 
+        <!-- Clientes Section -->
+        <div class="pt-4" x-data="{ clientes: false }">
+            <button @click="clientes = !clientes"
+                class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-300 focus:outline-none transition-colors">
+                <span>Clientes</span>
+                <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': clientes }"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div x-show="clientes" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 transform -translate-y-2"
+                x-transition:enter-end="opacity-100 transform translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 transform translate-y-0"
+                x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
+                <a href="{{ route('clientes.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
+                        </path>
+                    </svg>
+                    <span>Gestionar Clientes</span>
+                </a>
+
+                <a href="{{ route('clientes.deudas') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    <span>Clientes Morosos</span>
+                </a>
+            </div>
+        </div>
+
         <!-- Ventas Section -->
         <div class="pt-4">
             <button @click="ventas = !ventas"
@@ -81,15 +119,7 @@
                 x-transition:leave="transition ease-in duration-150"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
-                <a href="clientes"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
-                        </path>
-                    </svg>
-                    <span>Clientes</span>
-                </a>
+
 
                 <a href="{{ route('ventas.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">

@@ -16,6 +16,7 @@ use App\Http\Controllers\PagosController;
 use App\Http\Controllers\MarcasController;
 use App\Http\Controllers\VentasController;
 use App\Http\Controllers\ClientesController;
+use App\Http\Controllers\DeudasController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\TipoArmaController;
 use App\Http\Controllers\ProModeloController;
@@ -144,6 +145,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/marcas/search', [MarcasController::class, 'search'])->name('marcas.search');
     Route::post('/marcas', [MarcasController::class, 'store'])->name('marcas.store');
     Route::put('/marcas/{id}', [MarcasController::class, 'update'])->name('marcas.update');
+
+    // Clientes y Deudas
+    Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
+    Route::post('/clientes', [ClientesController::class, 'store'])->name('clientes.store');
+    Route::put('/clientes/{cliente}', [ClientesController::class, 'update'])->name('clientes.update');
+    Route::delete('/clientes/{cliente}', [ClientesController::class, 'destroy'])->name('clientes.destroy');
+    Route::get('/clientes/buscar', [ClientesController::class, 'buscarClientes'])->name('clientes.buscar');
+    Route::post('/clientes/{cliente}/empresas', [ClientesController::class, 'storeEmpresa'])->name('clientes.empresas.store');
+    Route::put('/clientes/empresas/{empresa}', [ClientesController::class, 'updateEmpresa'])->name('clientes.empresas.update');
+    Route::delete('/clientes/empresas/{empresa}', [ClientesController::class, 'destroyEmpresa'])->name('clientes.empresas.destroy');
+
+    Route::get('/clientes/deudas', [DeudasController::class, 'index'])->name('clientes.deudas');
+    Route::get('/clientes/deudas/buscar', [DeudasController::class, 'buscarDeudas'])->name('clientes.deudas.buscar');
+    Route::post('/clientes/deudas', [DeudasController::class, 'store'])->name('clientes.deudas.store');
+    Route::post('/clientes/deudas/{id}/pagar', [DeudasController::class, 'pagar'])->name('clientes.deudas.pagar');
 
     // Tipo de arma
     Route::get('/tipoarma', [TipoArmaController::class, 'index'])->name('tipoarma.index');
@@ -358,14 +374,11 @@ Route::middleware('auth')->group(function () {
         Route::post('ingresos', [AdminPagosController::class, 'registrarIngreso']);
     });
 
-    // Rutas CRUD de Clientes
-    Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
+    // Rutas CRUD de Clientes (Resto movido arriba)
     Route::get('/api/clientes/create', function () {
         return redirect()->route('clientes.index');
     });
     Route::post('/api/clientes/create', [VentasController::class, 'guardarCliente'])->name('ventas.api.clientes.guardar');
-    Route::put('/clientes/{cliente}', [ClientesController::class, 'update'])->name('clientes.update');
-    Route::delete('/clientes/{cliente}', [ClientesController::class, 'destroy'])->name('clientes.destroy');
 
     // Ruta para ver PDF de licencia
     Route::get('/clientes/{cliente}/ver-pdf-licencia', [ClientesController::class, 'verPdfLicencia'])
