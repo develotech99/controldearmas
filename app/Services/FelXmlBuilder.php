@@ -113,7 +113,7 @@ public function generarXmlFacturaCambiaria(array $datos): string
     $emisorNode = $xml->createElement('dte:Emisor');
     $emisorNode->setAttribute('NITEmisor', $emisor['nit']);
     $emisorNode->setAttribute('NombreEmisor', $emisor['nombre']);
-    $emisorNode->setAttribute('CodigoEstablecimiento', '1');
+    $emisorNode->setAttribute('CodigoEstablecimiento', $emisor['codigo_establecimiento']);
     $emisorNode->setAttribute('NombreComercial', $emisor['nombre_comercial']);
     $emisorNode->setAttribute('AfiliacionIVA', $emisor['afiliacion_iva']);
 
@@ -269,7 +269,7 @@ protected function agregarDatosGeneralesCambiaria($xml, $parent, $datos)
         $emisor = $xml->createElement('dte:Emisor');
         $emisor->setAttribute('NITEmisor', $nit);
         $emisor->setAttribute('NombreEmisor', config('fel.emisor.nombre'));
-        $emisor->setAttribute('CodigoEstablecimiento', '1');
+        $emisor->setAttribute('CodigoEstablecimiento', config('fel.emisor.codigo_establecimiento'));
         $emisor->setAttribute('NombreComercial', config('fel.emisor.nombre_comercial'));
         $emisor->setAttribute('AfiliacionIVA', config('fel.emisor.afiliacion_iva'));
 

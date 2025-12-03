@@ -43,7 +43,9 @@ return [
         'municipio' => env('FEL_MUNICIPIO', 'Guatemala'),
         'departamento' => env('FEL_DEPARTAMENTO', 'Guatemala'),
         'pais' => 'GT',
+        'pais' => 'GT',
         'afiliacion_iva' => env('FEL_AFILIACION_IVA', 'GEN'),
+        'codigo_establecimiento' => env('FEL_CODIGO_ESTABLECIMIENTO', '1'),
     ],
 
     'storage_path' => env('FEL_STORAGE_PATH', 'fel/xmls'),
