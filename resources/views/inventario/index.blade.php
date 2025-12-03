@@ -392,7 +392,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del
                                 producto *</label>
                             <input type="text" id="producto_nombre" name="producto_nombre" required
-                                placeholder="Ej: Glock 19 Gen 5"
+                                placeholder="Ej: "
                                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             <div id="producto_nombre_error" class="mt-1 text-sm text-red-600 hidden"></div>
                         </div>
@@ -1365,7 +1365,7 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Código
                                             de lote</label>
                                         <input type="text" id="numero_lote" name="numero_lote"
-                                            placeholder="Ej: L2025-01-GLOCK-001"
+                                            placeholder="Ej: L2025-01-SYS-001"
                                             class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
                                         <div id="numero_lote_error" class="mt-1 text-sm text-red-600 hidden"></div>
                                         <small class="text-xs text-gray-500 dark:text-gray-400">

@@ -43,7 +43,7 @@
                 <div class="md:col-span-6">
                     <label class="mb-1 block text-xs font-medium text-gray-600">Buscar por descripción</label>
                     <input type="text" name="descripcion" value="{{ request('descripcion') }}"
-                        placeholder="Ej. Glock, Beretta…"
+                        placeholder="Ej.System defence"
                         class="w-full rounded-xl border border-gray-300 px-3 py-2.5 outline-none ring-blue-400 transition focus:ring-2">
                 </div>
 
