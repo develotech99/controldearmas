@@ -6,8 +6,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalDeuda = document.getElementById('modalDeuda');
     const formDeuda = document.getElementById('formDeuda');
 
-    // Cargar clientes en los selects normales
-    cargarClientesSelects();
+    // Variables para búsqueda
+    const inputNIT = document.getElementById('inputNIT');
+    const btnBuscarCliente = document.getElementById('btnBuscarCliente');
+    const infoCliente = document.getElementById('infoCliente');
+    const nombreClienteSeleccionado = document.getElementById('nombreClienteSeleccionado');
+    const btnLimpiarCliente = document.getElementById('btnLimpiarCliente');
+    const clienteIdHidden = document.getElementById('cliente_id_hidden');
+    const divEmpresa = document.getElementById('divEmpresa');
+    const selectEmpresa = document.getElementById('selectEmpresa');
+
+    // Cargar clientes en el filtro (ese sí lo dejamos cargado o lo cambiamos también, por ahora lo dejamos)
+    cargarClientesFiltro();
 
     // Cargar deudas
     cargarDeudas();
@@ -17,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Modal Logic
     document.getElementById('btnNuevaDeuda').addEventListener('click', () => {
         formDeuda.reset();
-        $('#selectCliente').val(null).trigger('change');
+        limpiarSeleccionCliente();
         modalDeuda.classList.remove('hidden');
         modalDeuda.classList.add('flex');
     });
@@ -169,41 +179,84 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     };
-    // Función para cargar clientes en los selects (Reemplazo de Select2)
-    async function cargarClientesSelects() {
+
+    // Lógica de Búsqueda de Cliente
+    btnBuscarCliente.addEventListener('click', async () => {
+        const term = inputNIT.value.trim();
+        if (!term) {
+            Swal.fire('Atención', 'Ingrese un NIT o nombre para buscar', 'warning');
+            return;
+        }
+
         try {
-            // Usamos el mismo endpoint de búsqueda pero sin filtro para traer (idealmente) los recientes o todos
+            const response = await fetch(`/clientes/buscar?q=${term}`);
+            const clientes = await response.json();
+
+            if (clientes.length === 0) {
+                Swal.fire('Info', 'No se encontraron clientes', 'info');
+            } else if (clientes.length === 1) {
+                seleccionarCliente(clientes[0]);
+            } else {
+                // Si hay varios, seleccionamos el primero y avisamos
+                seleccionarCliente(clientes[0]);
+                Swal.fire('Info', `Se encontraron ${clientes.length} coincidencias. Se seleccionó la primera. Sea más específico si es necesario.`, 'info');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'Error al buscar cliente', 'error');
+        }
+    });
+
+    btnLimpiarCliente.addEventListener('click', limpiarSeleccionCliente);
+
+    function seleccionarCliente(cliente) {
+        clienteIdHidden.value = cliente.cliente_id;
+        nombreClienteSeleccionado.textContent = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1} (NIT: ${cliente.cliente_nit || 'S/N'})`;
+
+        inputNIT.classList.add('hidden');
+        btnBuscarCliente.classList.add('hidden');
+        infoCliente.classList.remove('hidden');
+
+        // Manejo de empresas
+        selectEmpresa.innerHTML = '<option value="">Seleccione una empresa...</option>';
+        if (cliente.empresas && cliente.empresas.length > 0) {
+            cliente.empresas.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.emp_id;
+                option.textContent = `${emp.emp_nombre} (NIT: ${emp.emp_nit || 'S/N'})`;
+                selectEmpresa.appendChild(option);
+            });
+            divEmpresa.classList.remove('hidden');
+        } else {
+            divEmpresa.classList.add('hidden');
+        }
+    }
+
+    function limpiarSeleccionCliente() {
+        clienteIdHidden.value = '';
+        inputNIT.value = '';
+        inputNIT.classList.remove('hidden');
+        btnBuscarCliente.classList.remove('hidden');
+        infoCliente.classList.add('hidden');
+        divEmpresa.classList.add('hidden');
+        selectEmpresa.innerHTML = '<option value="">Seleccione una empresa...</option>';
+    }
+
+    // Cargar solo filtro
+    async function cargarClientesFiltro() {
+        try {
             const response = await fetch('/clientes/buscar?q=');
             const data = await response.json();
-
-            const selectCliente = document.getElementById('selectCliente');
             const filtroCliente = document.getElementById('filtroCliente');
-
-            // Limpiar opciones actuales (manteniendo el placeholder)
-            selectCliente.innerHTML = '<option value="">Seleccione un cliente...</option>';
             filtroCliente.innerHTML = '<option value="">Todos</option>';
 
             data.forEach(cliente => {
-                const nombre = `${cliente.cliente_nombre} ${cliente.cliente_apellido}`;
-                const nit = cliente.cliente_nit ? ` - NIT: ${cliente.cliente_nit}` : '';
-                const texto = `${nombre}${nit}`;
-
-                // Opción para Modal
-                const optionModal = document.createElement('option');
-                optionModal.value = cliente.cliente_id;
-                optionModal.textContent = texto;
-                selectCliente.appendChild(optionModal);
-
-                // Opción para Filtro
-                const optionFiltro = document.createElement('option');
-                optionFiltro.value = cliente.cliente_id;
-                optionFiltro.textContent = texto;
-                filtroCliente.appendChild(optionFiltro);
+                const nombre = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1}`;
+                const option = document.createElement('option');
+                option.value = cliente.cliente_id;
+                option.textContent = nombre;
+                filtroCliente.appendChild(option);
             });
-
-        } catch (error) {
-            console.error('Error cargando clientes:', error);
-            Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
-        }
+        } catch (e) { console.error(e); }
     }
 });

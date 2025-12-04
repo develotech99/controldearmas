@@ -18,11 +18,13 @@ class DeudasController extends Controller
     {
         $query = DB::table('pro_deudas_clientes as d')
             ->join('pro_clientes as c', 'd.cliente_id', '=', 'c.cliente_id')
+            ->leftJoin('pro_clientes_empresas as e', 'd.empresa_id', '=', 'e.emp_id')
             ->select(
                 'd.*',
-                'c.cliente_nombre',
-                'c.cliente_apellido',
-                'c.cliente_nit'
+                'c.cliente_nombre1',
+                'c.cliente_apellido1',
+                'c.cliente_nit',
+                'e.emp_nombre'
             )
             ->whereNull('d.deleted_at');
 
@@ -43,6 +45,7 @@ class DeudasController extends Controller
     {
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
+            'empresa_id' => 'nullable|exists:pro_clientes_empresas,emp_id',
             'monto' => 'required|numeric|min:0.01',
             'descripcion' => 'nullable|string|max:255',
             'fecha_deuda' => 'required|date',
@@ -53,6 +56,7 @@ class DeudasController extends Controller
 
             $id = DB::table('pro_deudas_clientes')->insertGetId([
                 'cliente_id' => $request->cliente_id,
+                'empresa_id' => $request->empresa_id, // Puede ser null
                 'monto' => $request->monto,
                 'descripcion' => $request->descripcion,
                 'fecha_deuda' => $request->fecha_deuda,

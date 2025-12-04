@@ -70,9 +70,23 @@
         <form id="formDeuda" class="p-6 space-y-4">
             @csrf
             <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cliente *</label>
-                <select id="selectCliente" name="cliente_id" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white" required>
-                    <option value="">Buscar cliente...</option>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">NIT / Nombre Cliente *</label>
+                <div class="flex gap-2">
+                    <input type="text" id="inputNIT" class="flex-1 rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Ingrese NIT o Nombre">
+                    <button type="button" id="btnBuscarCliente" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                </div>
+                <input type="hidden" name="cliente_id" id="cliente_id_hidden">
+                <div id="infoCliente" class="hidden mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-sm text-blue-800 dark:text-blue-200">
+                    <span class="font-bold" id="nombreClienteSeleccionado"></span>
+                    <button type="button" id="btnLimpiarCliente" class="ml-2 text-red-600 hover:text-red-800">x</button>
+                </div>
+            </div>
+            <div id="divEmpresa" class="hidden">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Empresa (Opcional)</label>
+                <select name="empresa_id" id="selectEmpresa" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                    <option value="">Seleccione una empresa...</option>
                 </select>
             </div>
             <div>

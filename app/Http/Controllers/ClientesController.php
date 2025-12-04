@@ -448,4 +448,21 @@ class ClientesController extends Controller
             return response()->json(['success' => false, 'message' => 'Error al eliminar empresa'], 500);
         }
     }
+    public function buscar(Request $request)
+    {
+        $term = $request->get('q');
+
+        $clientes = Clientes::where('cliente_situacion', 1)
+            ->where(function ($query) use ($term) {
+                $query->where('cliente_nombre1', 'LIKE', "%$term%")
+                    ->orWhere('cliente_apellido1', 'LIKE', "%$term%")
+                    ->orWhere('cliente_nit', 'LIKE', "%$term%")
+                    ->orWhere('cliente_nom_empresa', 'LIKE', "%$term%");
+            })
+            ->with('empresas') // Eager load companies
+            ->limit(20)
+            ->get();
+
+        return response()->json($clientes);
+    }
 }
