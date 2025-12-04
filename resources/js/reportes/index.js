@@ -627,49 +627,14 @@ class ReportesManager {
         }
 
         tbody.innerHTML = ventas.map(venta => {
-            // Preparar los datos para el dataset
-            const ventaData = {
-                ven_id: venta.ven_id,
-                ven_user: venta.ven_user,
-                cliente: venta.cliente,
-                det_producto_id: venta.det_producto_id,
-                series_ids: venta.series_numeros || venta.series_ids || '',
-                lotes_ids: venta.lotes_ids || '',
-                precio_venta: venta.precio_venta || 0,
-                precio_venta_empresa: venta.precio_venta_empresa || 0
-            };
+            // Preparar los datos para el dataset (aunque ahora usaremos el objeto completo en memoria si es posible, o lo pasamos al click)
+            // Para simplificar, pasamos ven_id y usamos una funcion para buscar los datos o pasamos lo minimo.
 
-
-
-            let identificadoresDisplay = '';
-            if (venta.series_numeros) {
-                identificadoresDisplay = `
-    <div class="text-xs">
-      <span class="font-semibold">Series:</span> ${venta.series_numeros}
-    </div>
-  `;
-            } else if (venta.series_display) {
-                identificadoresDisplay = `
-    <div class="text-xs">
-      <span class="font-semibold">Series:</span> ${venta.series_display}
-    </div>
-  `;
-            }
-
-            if (venta.lotes_display) {
-                identificadoresDisplay += `
-                <div class="text-xs mt-1">
-                    <span class="font-semibold">Lotes:</span> ${venta.lotes_display}
-                </div>
-            `;
-            }
-            if (!identificadoresDisplay) {
-                identificadoresDisplay = '<span class="text-gray-400">Sin series/lotes</span>';
-            }
+            const totalItems = venta.total_items || 0;
+            const resumenProductos = venta.productos_resumen || 'Sin productos';
 
             return `
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" 
-                data-venta='${JSON.stringify(ventaData)}'>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <!-- Fecha -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <div class="text-gray-500">${this.formatearFechaDisplay(venta.ven_fecha)}</div>
@@ -677,12 +642,8 @@ class ReportesManager {
                 
                 <!-- Cliente -->
                 <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                    ${venta.cliente || 'N/A'}
-                </td>
-                
-                <!-- Empresa -->
-                <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                    ${venta.empresa || 'N/A'}
+                    <div class="font-medium">${venta.cliente || 'N/A'}</div>
+                    <div class="text-xs text-gray-500">${venta.empresa || ''}</div>
                 </td>
                 
                 <!-- Vendedor -->
@@ -690,29 +651,26 @@ class ReportesManager {
                     ${venta.vendedor || 'N/A'}
                 </td>
                 
-                <!-- Productos -->
+                <!-- Productos Resumen -->
                 <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    <div class="max-w-xs" title="${venta.productos || 'Sin productos'}">
-                        <div class="font-medium text-gray-900 dark:text-gray-100">
-                            ${venta.productos || 'Sin productos'}
-                        </div>
-                        <div class="mt-1">
-                            ${identificadoresDisplay}
-                        </div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">
+                        ${totalItems} producto(s)
                     </div>
+                    <div class="text-xs truncate max-w-xs" title="${resumenProductos}">
+                        ${resumenProductos}
+                    </div>
+                    <button onclick='reportesManager.verDetalleVenta(${JSON.stringify(venta)})'
+                            class="text-blue-600 hover:text-blue-800 text-xs mt-1 underline">
+                        Ver Detalle Completo
+                    </button>
                 </td>
                 
                 <!-- Total -->
-         <td class="px-6 py-4 whitespace-nowrap">
-  <div class="text-sm font-bold text-gray-900 dark:text-gray-100">
-    ${this.formatCurrency(venta.ven_total_vendido)}
-  </div>
-  <div class="text-xs text-gray-600 dark:text-gray-300">
-    <span class="font-semibold">P. Individual:</span> ${this.formatCurrency(venta.precio_venta || 0)}<br>
-    <span class="font-semibold">P. Empresa:</span> ${this.formatCurrency(venta.precio_venta_empresa || 0)}
-  </div>
-</td>
-
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        ${this.formatCurrency(venta.ven_total_vendido)}
+                    </div>
+                </td>
                 
                 <!-- Estado -->
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -724,20 +682,15 @@ class ReportesManager {
                 
                 <!-- Acciones -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                   <!--  <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
-                            class="text-blue-600 hover:text-blue-900 mr-2" 
-                            title="Ver detalle">
-                        <i class="fas fa-eye"></i>
-                    </button>-->
-                    <button onclick="reportesManager.autorizarVentaClick(this)"
+                    <button onclick='reportesManager.autorizarVentaClick(${JSON.stringify(venta)})'
                             class="text-green-600 hover:text-green-900 mr-2" 
                             title="Autorizar">
-                        <i class="fas fa-check"></i>
+                        <i class="fas fa-check-circle text-lg"></i>
                     </button>
                     <button onclick="reportesManager.cancelarVentaClick(${venta.ven_id})"
                             class="text-red-600 hover:text-red-900" 
                             title="Rechazar">
-                        <i class="fas fa-times"></i>
+                        <i class="fas fa-times-circle text-lg"></i>
                     </button>
                 </td>
             </tr>
@@ -745,91 +698,89 @@ class ReportesManager {
         }).join('');
     }
 
-    async autorizarVentaClick(buttonElement) {
+    verDetalleVenta(venta) {
+        if (!venta || !venta.detalles) return;
+
+        const detallesHtml = venta.detalles.map(det => {
+            const seriesHtml = det.series && det.series.length > 0
+                ? `<div class="text-xs text-gray-500">SN: ${det.series.join(', ')}</div>`
+                : '';
+            const lotesHtml = det.lotes && det.lotes.length > 0
+                ? `<div class="text-xs text-gray-500">Lotes: ${det.lotes.join(', ')}</div>`
+                : '';
+
+            return `
+                <tr class="border-b">
+                    <td class="px-4 py-2 text-left">
+                        <div class="font-medium">${det.producto_nombre}</div>
+                        ${seriesHtml}
+                        ${lotesHtml}
+                    </td>
+                    <td class="px-4 py-2 text-center">${det.cantidad}</td>
+                    <td class="px-4 py-2 text-right">${this.formatCurrency(det.precio_venta)}</td>
+                    <td class="px-4 py-2 text-right font-bold">${this.formatCurrency(det.subtotal)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        Swal.fire({
+            title: `Detalle de Venta #${venta.ven_id}`,
+            html: `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Producto</th>
+                                <th class="px-4 py-2 text-center">Cant.</th>
+                                <th class="px-4 py-2 text-right">Precio</th>
+                                <th class="px-4 py-2 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${detallesHtml}
+                        </tbody>
+                        <tfoot class="bg-gray-50 font-bold">
+                            <tr>
+                                <td colspan="3" class="px-4 py-2 text-right">Total:</td>
+                                <td class="px-4 py-2 text-right">${this.formatCurrency(venta.ven_total_vendido)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `,
+            width: '600px',
+            confirmButtonText: 'Cerrar'
+        });
+    }
+
+    async autorizarVentaClick(venta) {
         try {
-            const row = buttonElement.closest('tr');
-            const ventaData = JSON.parse(row.dataset.venta);
-            ('📦 Datos de la venta:', ventaData);
-
-            // Series -> array<number>
-            const seriesArray = (ventaData.series_ids || '')
-                .split(',')
-                .map(id => parseInt(id.trim(), 10))
-                .filter(id => !isNaN(id) && id > 0);
-
-            // Lotes -> array<number>
-            const lotesArray = (ventaData.lotes_ids || '')
-                .split(',')
-                .map(id => {
-                    const t = id.trim();
-                    if (t === 'SIN-LOTE' || t === '') return null;
-                    return parseInt(t, 10);
-                })
-                .filter(id => id !== null && !isNaN(id) && id > 0);
-
-            const payload = {
-                ven_id: ventaData.ven_id,
-                ven_user: ventaData.ven_user,
-                cliente: ventaData.cliente,
-                det_producto_id: ventaData.det_producto_id,
-                producto_id: ventaData.det_producto_id,
-                series_ids: seriesArray,
-                lotes_ids: lotesArray
-            };
-
-            ('📤 Payload a enviar:', payload);
-
-            let detallesHtml = `<p><strong>Cliente:</strong> ${payload.cliente}</p>`;
-            if (seriesArray.length > 0) detallesHtml += `<p><strong>Series:</strong> ${seriesArray.length} serie(s)</p>`;
-            if (lotesArray.length > 0) detallesHtml += `<p><strong>Lotes:</strong> ${lotesArray.length} lote(s)</p>`;
-
-            const { value: accion } = await Swal.fire({
+            const { isConfirmed, isDenied } = await Swal.fire({
                 title: 'Autorizar Venta',
                 html: `
-        <div class="text-left mb-4">${detallesHtml}</div>
-        <p class="mb-4 text-sm text-gray-600">Selecciona una acción:</p>
-      `,
+                    <p class="mb-4">¿Cómo deseas procesar esta venta?</p>
+                    <div class="text-sm text-gray-600 mb-4">
+                        <p><strong>Cliente:</strong> ${venta.cliente}</p>
+                        <p><strong>Total:</strong> ${this.formatCurrency(venta.ven_total_vendido)}</p>
+                    </div>
+                `,
                 icon: 'question',
                 showCancelButton: true,
                 showDenyButton: true,
                 confirmButtonColor: '#10b981', // Verde
                 denyButtonColor: '#3b82f6',    // Azul
                 cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-file-invoice mr-2"></i>Factura Normal',
-                denyButtonText: '<i class="fas fa-file-invoice-dollar mr-2"></i>Factura Cambiaria',
+                confirmButtonText: '<i class="fas fa-file-invoice mr-2"></i>Autorizar y Facturar',
+                denyButtonText: '<i class="fas fa-check mr-2"></i>Autorizar sin Facturar',
                 cancelButtonText: 'Cancelar',
-                footer: '<button id="btn-solo-autorizar" class="swal2-confirm swal2-styled" style="background-color: #8b5cf6; margin-top: 10px;">Solo Autorizar</button>',
-                didOpen: () => {
-                    const btnSoloAutorizar = document.getElementById('btn-solo-autorizar');
-                    if (btnSoloAutorizar) {
-                        btnSoloAutorizar.addEventListener('click', () => {
-                            Swal.close({ value: 'solo_autorizar' });
-                        });
-                    }
-                }
+                reverseButtons: true
             });
 
-            // accion:
-            // true -> Factura Normal
-            // false -> Factura Cambiaria
-            // 'solo_autorizar' -> Solo Autorizar
-            // undefined -> Cancelar
+            if (!isConfirmed && !isDenied) return;
 
-            if (accion === undefined) return;
+            const tipo = isDenied ? 'sin_facturar' : 'facturar';
 
-            let modoFacturacion = null;
-            if (accion === true) modoFacturacion = 'normal';
-            else if (accion === false) modoFacturacion = 'cambiaria';
-
-            // Siempre autorizamos primero como 'solo_autorizar'
-            const payloadFinal = { ...payload, tipo: 'solo_autorizar' };
-
-            Swal.fire({
-                title: modoFacturacion ? 'Redirigiendo...' : 'Autorizando venta...',
-                html: 'Por favor espere',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+            this.showLoading('ventas');
 
             const response = await fetch('/ventas/autorizar', {
                 method: 'POST',

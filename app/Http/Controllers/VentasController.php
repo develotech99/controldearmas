@@ -353,365 +353,100 @@ public function guardarCliente(Request $request)
 }
 
 
-
-
-
-    ///hecho por morales batz 
-
-public function obtenerVentasPendientes(Request $request): JsonResponse
-{
-    try {
-        $clienteId = $request->input('cliente_id');
-        $vendedorId = $request->input('vendedor_id');
-
-        $query = "
-        SELECT 
-            v.ven_id,
-            precio.precio_venta,
-            precio.precio_venta_empresa,
-            v.ven_user,
-            d.det_producto_id,
-            d.det_ven_id,
-            v.ven_fecha,
-            
-            TRIM(
-                CONCAT_WS(' ',
-                    TRIM(c.cliente_nombre1),
-                    TRIM(c.cliente_nombre2),
-                    TRIM(c.cliente_apellido1),
-                    TRIM(c.cliente_apellido2)
-                )
-            ) AS cliente,
-            CASE 
-                WHEN c.cliente_nom_empresa IS NULL OR c.cliente_nom_empresa = ''
-                    THEN 'Cliente Individual'
-                ELSE c.cliente_nom_empresa
-            END AS empresa,
-            TRIM(
-                CONCAT_WS(' ',
-                    TRIM(u.user_primer_nombre),
-                    TRIM(u.user_segundo_nombre),
-                    TRIM(u.user_primer_apellido),
-                    TRIM(u.user_segundo_apellido)
-                )
-            ) AS vendedor,
-            GROUP_CONCAT(DISTINCT p.producto_nombre SEPARATOR ', ') AS productos,
-                        
-            GROUP_CONCAT(DISTINCT mov.mov_serie_id ORDER BY mov.mov_serie_id SEPARATOR ',') AS series_ids,
-            GROUP_CONCAT(DISTINCT serie.serie_numero_serie ORDER BY serie.serie_numero_serie SEPARATOR ',') AS series_numeros,
-            GROUP_CONCAT(DISTINCT mov.mov_lote_id ORDER BY mov.mov_lote_id SEPARATOR ',') AS lotes_ids,
-            
-            GROUP_CONCAT(
-                DISTINCT CONCAT(mov.mov_lote_id, ' (', mov.mov_cantidad, ')')
-                ORDER BY mov.mov_lote_id SEPARATOR ', '
-            ) AS lotes_display,
-            
-            GROUP_CONCAT(
-                DISTINCT CONCAT(mov.mov_serie_id, ' (', mov.mov_cantidad, ')')
-                ORDER BY mov.mov_serie_id SEPARATOR ', '
-            ) AS series_display,
-            
-            v.ven_total_vendido,
-            v.ven_situacion
-        FROM pro_detalle_ventas d
-        INNER JOIN pro_ventas v ON v.ven_id = d.det_ven_id
-        INNER JOIN users u ON u.user_id = v.ven_user
-        INNER JOIN pro_clientes c ON c.cliente_id = v.ven_cliente
-        INNER JOIN pro_productos p ON d.det_producto_id = p.producto_id
-        inner join pro_precios precio on precio.precio_producto_id = p.producto_id
-        LEFT JOIN pro_movimientos mov ON mov.mov_producto_id = d.det_producto_id
-            AND mov.mov_situacion = 3
-            AND mov.mov_documento_referencia = CONCAT('VENTA-', v.ven_id)
-        LEFT JOIN pro_series_productos serie ON serie.serie_id = mov.mov_serie_id
-        WHERE d.det_situacion = 'PENDIENTE'
-            AND v.ven_situacion = 'PENDIENTE'
-        ";
-
-        $bindings = [];
-
-        if ($clienteId) {
-            $query .= " AND v.ven_cliente = ?";
-            $bindings[] = $clienteId;
-        }
-
-        if ($vendedorId) {
-            $query .= " AND v.ven_user = ?";
-            $bindings[] = $vendedorId;
-        }
-
-        $query .= "
-        GROUP BY 
-            v.ven_id,
-            v.ven_fecha,
-            v.ven_user,
-            d.det_producto_id,
-            d.det_ven_id,
-            v.ven_total_vendido,
-            v.ven_situacion,
-            c.cliente_nombre1,
-            c.cliente_nombre2,
-            c.cliente_apellido1,
-            c.cliente_apellido2,
-            c.cliente_nom_empresa,
-            u.user_primer_nombre,
-            u.user_segundo_nombre,
-            u.user_primer_apellido,
-            u.user_segundo_apellido,
-            precio.precio_venta,
-            precio.precio_venta_empresa
-        ORDER BY v.ven_fecha DESC
-        ";
-
-        $ventas = DB::select($query, $bindings);
-
-        $ventasProcesadas = array_map(function ($venta) {
-            return [
-                'precio_venta' => $venta->precio_venta,
-                'precio_venta_empresa' => $venta->precio_venta_empresa,
-                'ven_id' => $venta->ven_id,
-                'ven_user' => $venta->ven_user,
-                'det_producto_id' => $venta->det_producto_id,
-                'det_ven_id' => $venta->det_ven_id,
-                'ven_fecha' => $venta->ven_fecha,
-                'cliente' => $venta->cliente,
-                'empresa' => $venta->empresa,
-                'vendedor' => $venta->vendedor,
-                'productos' => $venta->productos,
-                'lotes_ids' => $venta->lotes_ids ?? '',
-                'series_ids' => $venta->series_ids ?? '',
-                'series_numeros' => $venta->series_numeros ?? '', // 👈 nuevo campo
-                'lotes_display' => $venta->lotes_display ?? '',
-                'series_display' => $venta->series_display ?? '',
-                'ven_total_vendido' => $venta->ven_total_vendido,
-                'ven_situacion' => $venta->ven_situacion
-            ];
-        }, $ventas);
-
-        return response()->json([
-            'success' => true,
-            'total' => count($ventasProcesadas),
-            'data' => $ventasProcesadas,
-            'filtros_aplicados' => [
-                'cliente_id' => $clienteId,
-                'vendedor_id' => $vendedorId
-            ]
-        ]);
-
-    } catch (QueryException $e) {
-        Log::error('Pendientes SQL', [
-            'sql' => $e->getSql(),
-            'bindings' => $e->getBindings(),
-            'info' => $e->errorInfo
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Error SQL en pendientes: ' . $e->getMessage(),
-        ], 500);
-
-    } catch (\Throwable $e) {
-        Log::error('Pendientes error', ['err' => $e]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Error en pendientes: ' . $e->getMessage(),
-        ], 500);
-    }
-}
-
-
     public function autorizarVenta(Request $request): JsonResponse
     {
-
-
         $venId = (int) $request->input('ven_id');
-        $venUser = (int) $request->input('ven_user');
-        $detProductoId = (int) $request->input('det_producto_id');
-        $productoId = (int) $request->input('producto_id', $detProductoId);
-
-        $seriesIds = collect($request->input('series_ids', []))
-            ->map(fn($v) => (int) $v)->filter()->unique()->values();
-
-        $lotesIds = collect($request->input('lotes_ids', []))
-            ->map(fn($v) => (int) $v)->filter()->unique()->values();
-
-        $tipo = $request->input('tipo', 'finalizar'); // 'finalizar' (default) o 'solo_autorizar'
-
-        $qtyTotal = 0;
-        $detallesProcesados = [];
+        $tipo = $request->input('tipo', 'facturar'); // 'facturar' or 'sin_facturar'
 
         try {
-            DB::transaction(function () use ($venId, $venUser, $productoId, $seriesIds, $lotesIds, &$qtyTotal, &$detallesProcesados, $tipo) {
-                
-                // Si es SOLO AUTORIZAR
-                if ($tipo === 'solo_autorizar') {
-                    // Solo cambiamos estado a AUTORIZADA
-                    // NO descontamos stock (sigue reservado)
-                    // NO cambiamos estado de series/lotes (siguen reservados)
-                    
-                    $affected = DB::table('pro_ventas')
-                        ->where('ven_id', $venId)
-                        ->where('ven_user', $venUser)
-                        ->update(['ven_situacion' => 'AUTORIZADA']);
+            DB::transaction(function () use ($venId, $tipo) {
+                $venta = ProVenta::with('detalleVentas.producto')->findOrFail($venId);
 
-                    if ($affected === 0) {
-                        // Verificar si ya estaba autorizada o no existe
-                        $venta = DB::table('pro_ventas')->where('ven_id', $venId)->first();
-                        if (!$venta) throw new \RuntimeException('Venta no encontrada.');
-                        if ($venta->ven_situacion === 'AUTORIZADA') {
-                            // Ya estaba autorizada, no es error critico
-                        } else {
-                            throw new \RuntimeException('No se pudo autorizar la venta (estado actual: ' . $venta->ven_situacion . ').');
+                if ($venta->ven_situacion !== 'PENDIENTE') {
+                    throw new \Exception('La venta no está en estado PENDIENTE.');
+                }
+
+                // Determine new status
+                $nuevoEstado = ($tipo === 'sin_facturar') ? 'AUTORIZADA' : 'ACTIVA';
+
+                // Update Sale Status
+                $venta->ven_situacion = $nuevoEstado;
+                $venta->save();
+
+                // Update Details Status
+                foreach ($venta->detalleVentas as $detalle) {
+                    $detalle->det_situacion = ($nuevoEstado === 'ACTIVA') ? 'ACTIVO' : 'AUTORIZADA';
+                    $detalle->save();
+
+                    // Stock Deduction Logic
+                    // We need to update the movements related to this sale/product from 'reserva' to 'venta' (or confirmed)
+                    // Movements are linked via mov_documento_referencia = "VENTA-{id}"
+                    
+                    // Find reserved movements for this product in this sale
+                    $movimientos = DB::table('pro_movimientos')
+                        ->where('mov_documento_referencia', "VENTA-{$venId}")
+                        ->where('mov_producto_id', $detalle->det_producto_id)
+                        ->where('mov_tipo', 'reserva') // Assuming they were reserved
+                        ->get();
+
+                    foreach ($movimientos as $mov) {
+                        // Update movement to finalized sale
+                        DB::table('pro_movimientos')
+                            ->where('mov_id', $mov->mov_id)
+                            ->update([
+                                'mov_tipo' => 'venta', // Change type to sale
+                                'mov_situacion' => 1, // 1 = Active/Finalized
+                                'mov_destino' => 'cliente', // Moved to client
+                                'updated_at' => now()
+                            ]);
+
+                        // Update stock table
+                        $stock = DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $detalle->det_producto_id)
+                            ->first();
+
+                        if ($stock) {
+                            DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $detalle->det_producto_id)
+                                ->decrement('stock_cantidad_reservada2', $mov->mov_cantidad);
+                            
+                            // Also decrement the main stock if it wasn't decremented during reservation
+                            // Usually reservation just holds it. Sale removes it.
+                            DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $detalle->det_producto_id)
+                                ->decrement('stock_cantidad', $mov->mov_cantidad);
+                        }
+                        
+                        // Update Series/Lotes status if applicable
+                        if ($mov->mov_serie_id) {
+                            DB::table('pro_series_productos')
+                                ->where('serie_id', $mov->mov_serie_id)
+                                ->update([
+                                    'serie_estado' => 'vendido',
+                                    'serie_situacion' => 1,
+                                    'updated_at' => now()
+                                ]);
+                        }
+                        
+                        if ($mov->mov_lote_id) {
+                             DB::table('pro_lotes')
+                                ->where('lote_id', $mov->mov_lote_id)
+                                ->decrement('lote_cantidad_disponible', $mov->mov_cantidad);
                         }
                     }
-                    
-                    // Detalles también a AUTORIZADA? O se quedan PENDIENTE? 
-                    // Mejor dejarlos PENDIENTE o AUTORIZADA para consistencia.
-                    // Usemos AUTORIZADA para indicar que ya pasó revisión.
-                    DB::table('pro_detalle_ventas')
-                        ->where('det_ven_id', $venId)
-                        ->update(['det_situacion' => 'AUTORIZADA']);
-
-                    $detallesProcesados[] = 'Venta marcada como AUTORIZADA. Stock permanece reservado.';
-                    return; 
                 }
-
-                // ==========================================
-                // FLUJO ORIGINAL (FINALIZAR / DESCONTAR STOCK)
-                // ==========================================
-
-                // Paso 1: Activar venta
-                $affected = DB::table('pro_ventas')
-                    ->where('ven_id', $venId)
-                    ->where('ven_user', $venUser)
-                    ->update(['ven_situacion' => 'ACTIVA']);
-
-                if ($affected === 0) {
-                    throw new \RuntimeException('No se pudo activar la venta (pro_ventas).');
-                }
-
-                // Paso 2: Activar detalles
-                DB::table('pro_detalle_ventas')
-                    ->where('det_ven_id', $venId)
-                    ->update(['det_situacion' => 'ACTIVO']);
-
-                $ref = 'VENTA-' . $venId;
-
-                // Paso 3: SERIES
-                if ($seriesIds->isNotEmpty()) {
-                    $seriesCantidades = DB::table('pro_movimientos')
-                        ->select('mov_serie_id', DB::raw('SUM(mov_cantidad) as qty'))
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 3)
-                        ->whereIn('mov_serie_id', $seriesIds)
-                        ->groupBy('mov_serie_id')
-                        ->pluck('qty', 'mov_serie_id');
-
-                    if ($seriesCantidades->isEmpty()) {
-                        throw new \RuntimeException('No se encontraron movimientos reservados para las series seleccionadas. La venta no puede finalizarse.');
-                    }
-
-                    if ($seriesCantidades->isNotEmpty()) {
-                        DB::table('pro_series_productos')
-                            ->whereIn('serie_id', $seriesCantidades->keys())
-                            ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
-
-                        DB::table('pro_movimientos')
-                            ->whereIn('mov_serie_id', $seriesCantidades->keys())
-                            ->where('mov_documento_referencia', $ref)
-                            ->where('mov_situacion', 3)
-                            ->update(['mov_situacion' => 1]);
-
-                        $sumaSeries = $seriesCantidades->sum();
-                        $qtyTotal += $sumaSeries;
-
-                        $detallesProcesados[] = 'Series procesadas: ' . $seriesCantidades
-                            ->map(fn($qty, $id) => "$id ($qty)")
-                            ->implode(', ');
-                    }
-                    
-                }
-                
-
-                // Paso 4: LOTES
-                if ($lotesIds->isNotEmpty()) {
-                    $lotesCantidades = DB::table('pro_movimientos')
-                        ->select('mov_lote_id', DB::raw('SUM(mov_cantidad) as qty'))
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 3)
-                        ->whereIn('mov_lote_id', $lotesIds)
-                        ->groupBy('mov_lote_id')
-                        ->pluck('qty', 'mov_lote_id');
-
-                    if ($lotesCantidades->isNotEmpty()) {
-                        DB::table('pro_movimientos')
-                            ->whereIn('mov_lote_id', $lotesCantidades->keys())
-                            ->where('mov_documento_referencia', $ref)
-                            ->where('mov_situacion', 3)
-                            ->update(['mov_situacion' => 1]);
-
-                        $sumaLotes = $lotesCantidades->sum();
-                        $qtyTotal += $sumaLotes;
-
-                        $detallesProcesados[] = 'Lotes procesados: ' . $lotesCantidades
-                            ->map(fn($qty, $id) => "$id ($qty)")
-                            ->implode(', ');
-                    }
-                }
-
-                // ✅ FIX: Paso 4.5: STOCK GENERAL (Sin serie ni lote)
-                // Buscar movimientos reservados que NO tengan serie NI lote
-                $generalStockMovs = DB::table('pro_movimientos')
-                    ->where('mov_documento_referencia', $ref)
-                    ->where('mov_situacion', 3) // Reservado
-                    ->whereNull('mov_serie_id')
-                    ->whereNull('mov_lote_id')
-                    ->get();
-
-                foreach ($generalStockMovs as $mov) {
-                    // Confirmar movimiento
-                    DB::table('pro_movimientos')
-                        ->where('mov_id', $mov->mov_id)
-                        ->update(['mov_situacion' => 1]);
-
-                    // Sumar a qtyTotal para descontar de stock
-                    $qtyTotal += $mov->mov_cantidad;
-
-                    $detallesProcesados[] = "Stock general procesado: {$mov->mov_cantidad}";
-                }
-
-                // Paso 5: Actualizar stock
-                if ($qtyTotal > 0) {
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                         ->where('stock_cantidad_reservada', '>', 0)
-                        ->decrement('stock_cantidad_reservada', $qtyTotal);
-                    
-                
-
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                        ->decrement('stock_cantidad_disponible', $qtyTotal);
-
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                        ->decrement('stock_cantidad_total', $qtyTotal);
-                }
-            }, 3);
+            });
 
             return response()->json([
-                'codigo' => 1,
-                'mensaje' => 'Venta autorizada exitosamente',
-                'meta' => [
-                        'qty_total' => $qtyTotal,
-                        'detalles' => $detallesProcesados,
-                        'ven_id' => $venId
-                    ],
+                'success' => true,
+                'message' => 'Venta autorizada correctamente.'
             ]);
-        } catch (\Throwable $e) {
-            report($e);
+
+        } catch (\Exception $e) {
+            Log::error('Error autorizando venta: ' . $e->getMessage());
             return response()->json([
-                'codigo' => 0,
-                'mensaje' => 'No se pudo autorizar la venta.',
-                'detalle' => $e->getMessage(),
+                'success' => false,
+                'message' => 'Error al autorizar venta: ' . $e->getMessage()
             ], 500);
         }
     }
