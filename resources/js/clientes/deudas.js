@@ -1,5 +1,7 @@
 import Swal from 'sweetalert2';
-import $ from 'jquery';
+import Swal from 'sweetalert2';
+// import $ from 'jquery'; // Usar window.$ definido en app.js
+import 'select2';
 import 'select2';
 import 'select2/dist/css/select2.css';
 

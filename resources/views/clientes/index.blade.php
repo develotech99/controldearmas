@@ -526,7 +526,17 @@
                                     <input type="text" name="emp_direccion" id="emp_direccion" placeholder="Dirección"
                                            class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
                                 </div>
-                                <div class="sm:col-span-1 flex space-x-2">
+                                <div class="sm:col-span-1">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Licencia Compraventa (PDF)</label>
+                                    <input type="file" name="emp_licencia_compraventa" id="emp_licencia_compraventa" accept=".pdf"
+                                           class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Vencimiento Licencia</label>
+                                    <input type="date" name="emp_licencia_vencimiento" id="emp_licencia_vencimiento"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-4 flex space-x-2 justify-end mt-2">
                                     <button type="submit" class="flex-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                         Guardar
                                     </button>
@@ -545,6 +555,7 @@
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">NIT</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Licencia</th>
                                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                     </tr>
                                 </thead>

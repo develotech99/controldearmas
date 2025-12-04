@@ -491,6 +491,10 @@ class ClientesManager {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${emp.emp_nombre}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_nit || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_direccion || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    ${emp.emp_licencia_compraventa ? `<a href="/storage/${emp.emp_licencia_compraventa}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-pdf"></i> Ver</a>` : '-'}
+                    ${emp.emp_licencia_vencimiento ? `<br><span class="text-xs text-gray-400">Vence: ${emp.emp_licencia_vencimiento}</span>` : ''}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button onclick="window.clientesManager.editEmpresa(${emp.emp_id})" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
                     <button onclick="window.clientesManager.deleteEmpresa(${emp.emp_id})" class="text-red-600 hover:text-red-900">Eliminar</button>
@@ -517,6 +521,8 @@ class ClientesManager {
         document.getElementById('emp_nombre').value = empresa.emp_nombre;
         document.getElementById('emp_nit').value = empresa.emp_nit || '';
         document.getElementById('emp_direccion').value = empresa.emp_direccion || '';
+        document.getElementById('emp_licencia_vencimiento').value = empresa.emp_licencia_vencimiento || '';
+        // Nota: El input file no se puede prellenar por seguridad
         document.getElementById('form-empresa-title').textContent = 'Editar Empresa';
     }
 

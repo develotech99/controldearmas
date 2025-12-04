@@ -344,6 +344,8 @@ class ClientesController extends Controller
             'emp_nit' => ['nullable', 'string', 'max:20'],
             'emp_direccion' => ['nullable', 'string', 'max:255'],
             'emp_telefono' => ['nullable', 'string', 'max:30'],
+            'emp_licencia_compraventa' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'emp_licencia_vencimiento' => ['nullable', 'date'],
         ]);
 
         if ($validator->fails()) {
@@ -355,7 +357,17 @@ class ClientesController extends Controller
         }
 
         try {
-            $empresa = $cliente->empresas()->create($validator->validated());
+            $data = $validator->validated();
+
+            // Manejo de archivo
+            if ($request->hasFile('emp_licencia_compraventa')) {
+                $file = $request->file('emp_licencia_compraventa');
+                $fileName = 'licencia_emp_' . time() . '_' . uniqid() . '.pdf';
+                $path = $file->storeAs('clientes/empresas/licencias', $fileName, 'public');
+                $data['emp_licencia_compraventa'] = $path;
+            }
+
+            $empresa = $cliente->empresas()->create($data);
 
             return response()->json([
                 'success' => true,
@@ -376,6 +388,8 @@ class ClientesController extends Controller
             'emp_nit' => ['nullable', 'string', 'max:20'],
             'emp_direccion' => ['nullable', 'string', 'max:255'],
             'emp_telefono' => ['nullable', 'string', 'max:30'],
+            'emp_licencia_compraventa' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'emp_licencia_vencimiento' => ['nullable', 'date'],
         ]);
 
         if ($validator->fails()) {
@@ -387,7 +401,24 @@ class ClientesController extends Controller
         }
 
         try {
-            $empresa->update($validator->validated());
+            $data = $validator->validated();
+
+            // Manejo de archivo
+            if ($request->hasFile('emp_licencia_compraventa')) {
+                // Eliminar anterior
+                if ($empresa->emp_licencia_compraventa) {
+                    Storage::disk('public')->delete($empresa->emp_licencia_compraventa);
+                }
+
+                $file = $request->file('emp_licencia_compraventa');
+                $fileName = 'licencia_emp_' . time() . '_' . uniqid() . '.pdf';
+                $path = $file->storeAs('clientes/empresas/licencias', $fileName, 'public');
+                $data['emp_licencia_compraventa'] = $path;
+            } else {
+                unset($data['emp_licencia_compraventa']);
+            }
+
+            $empresa->update($data);
 
             return response()->json([
                 'success' => true,

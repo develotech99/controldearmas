@@ -13,19 +13,6 @@ class ClienteEmpresa extends Model
     protected $primaryKey = 'emp_id';
     public $timestamps = true;
 
-    protected $fillable = [
-        'emp_cliente_id',
-        'emp_nombre',
-        'emp_nit',
-        'emp_direccion',
-        'emp_telefono',
-        'emp_situacion',
-    ];
-
-    public function cliente()
-    {
-        return $this->belongsTo(Clientes::class, 'emp_cliente_id', 'cliente_id');
-    }
 
     public function ventas()
     {
