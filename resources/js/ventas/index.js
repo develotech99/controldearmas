@@ -52,9 +52,10 @@ async function clientesParticulares() {
 
             // Codificar empresas como JSON seguro para HTML
             const empresasJson = JSON.stringify(c.empresas || []).replace(/"/g, '&quot;');
+            const saldoFavor = c.saldo ? parseFloat(c.saldo.saldo_monto) : 0;
 
             select.innerHTML += `
-                <option value="${c.cliente_id}" data-empresas="${empresasJson}">
+                <option value="${c.cliente_id}" data-empresas="${empresasJson}" data-saldo="${saldoFavor}">
                     ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
                 </option>`;
         });
@@ -89,9 +90,29 @@ document.getElementById("clienteSelect").addEventListener("change", function () 
     // Limpiar select de empresas
     selectEmpresa.innerHTML = '<option value="">Seleccionar empresa...</option>';
 
+    // Resetear Saldo a Favor
+    const saldoContainer = document.getElementById('saldoFavorContainer');
+    const checkSaldo = document.getElementById('checkSaldoFavor');
+    const textoSaldo = document.getElementById('textoSaldoFavor');
+    const infoRestante = document.getElementById('infoSaldoRestante');
+
+    if (checkSaldo) checkSaldo.checked = false;
+    if (infoRestante) infoRestante.classList.add('hidden');
+
     if (!selectedOption || !selectedOption.dataset.empresas) {
         divEmpresa.classList.add("hidden");
+        if (saldoContainer) saldoContainer.classList.add('hidden');
         return;
+    }
+
+    // Manejo de Saldo a Favor
+    const saldo = parseFloat(selectedOption.dataset.saldo || 0);
+    if (saldo > 0 && saldoContainer) {
+        saldoContainer.classList.remove('hidden');
+        textoSaldo.textContent = `Q${saldo.toFixed(2)}`;
+        checkSaldo.dataset.saldoDisponible = saldo;
+    } else if (saldoContainer) {
+        saldoContainer.classList.add('hidden');
     }
 
     try {
@@ -108,6 +129,32 @@ document.getElementById("clienteSelect").addEventListener("change", function () 
     } catch (e) {
         console.error("Error al parsear empresas:", e);
         divEmpresa.classList.add("hidden");
+    }
+});
+
+// Listener para el checkbox de Saldo a Favor
+document.getElementById('checkSaldoFavor')?.addEventListener('change', function () {
+    const infoRestante = document.getElementById('infoSaldoRestante');
+    const montoRestante = document.getElementById('montoRestantePagar');
+    const totalElement = document.getElementById('totalModal'); // Total de la venta
+
+    if (this.checked) {
+        infoRestante.classList.remove('hidden');
+        // Calcular restante
+        const totalVenta = parseFloat(totalElement.textContent.replace('Q', '')) || 0;
+        const saldoDisponible = parseFloat(this.dataset.saldoDisponible || 0);
+
+        let restante = totalVenta - saldoDisponible;
+        if (restante < 0) restante = 0;
+
+        montoRestante.textContent = `Q${restante.toFixed(2)}`;
+    } else {
+        infoRestante.classList.add('hidden');
+    }
+
+    // Si hay lógica de cuotas, actualizarla también
+    if (typeof updateCuotasFromTotal === 'function') {
+        updateCuotasFromTotal();
     }
 });
 
@@ -3854,43 +3901,40 @@ function validarDatosGenerales() {
     };
 }
 
+// Repartir según total y cantidad actual
+function updateCuotasFromTotal() {
+    const cont = document.getElementById("cuotasContainer");
+    if (!cont || cont.classList.contains("hidden")) return; // solo si método 6
 
+    const total = getTotalVenta();
 
+    // Deducción de Saldo a Favor
+    const checkSaldo = document.getElementById('checkSaldoFavor');
+    let saldoFavor = 0;
+    if (checkSaldo && checkSaldo.checked) {
+        saldoFavor = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
+        // No podemos usar más saldo del total
+        if (saldoFavor > total) saldoFavor = total;
+    }
 
+    // Restar abono del total (después de restar saldo a favor)
+    const abono = Math.min(
+        total - saldoFavor,
+        Math.max(0, Number(document.getElementById("abonoInicial")?.value || 0))
+    );
+    const saldo = Math.max(0, total - saldoFavor - abono);
 
+    // Si hay abono o saldo favor, permite 1 cuota; si no, mínimo 2
+    const minCuotas = (abono > 0 || saldoFavor > 0) ? 1 : 2;
+    const n = Math.max(minCuotas, Math.min(36, Number(document.getElementById("cuotasNumero")?.value || 2)));
 
+    // (opcional) mostrar saldo si tienes #saldoCuotas en el HTML
+    const saldoEl = document.getElementById("saldoCuotas");
+    if (saldoEl) saldoEl.textContent = `Q${saldo.toFixed(2)}`;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // Repartir SOLO el saldo
+    renderCuotas(repartirEnCuotas(saldo, n));
+}
 
 // ============================================
 // FUNCIÓN PARA PROCESAR LA VENTA FINAL
@@ -3935,6 +3979,14 @@ async function procesarVentaFinal() {
         const descuentoMonto = subtotal * (descuento / 100);
         const total = subtotal - descuentoMonto + totalTenencia; // ✅ SUMAR TENENCIA
 
+        // Saldo a Favor
+        const checkSaldo = document.getElementById('checkSaldoFavor');
+        let saldoFavorUsado = 0;
+        if (checkSaldo && checkSaldo.checked) {
+            const disponible = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
+            saldoFavorUsado = Math.min(disponible, total);
+        }
+
         // 2. DATOS DE VENTA
         const datosVenta = {
             // Información general
@@ -3944,8 +3996,10 @@ async function procesarVentaFinal() {
             descuento_porcentaje: descuento,
             descuento_monto: descuentoMonto.toFixed(2),
             total: total.toFixed(2),
-            total: total.toFixed(2),
-            empresa_id: empresaId, // <-- Corregido: ID de empresa
+            empresa_id: empresaId,
+
+            // Saldo a favor
+            saldo_favor_usado: saldoFavorUsado.toFixed(2),
 
             // Método de pago
             metodo_pago: metodoPago,

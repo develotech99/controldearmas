@@ -45,4 +45,9 @@ class Clientes extends Model
     {
         return $this->hasMany(ClienteEmpresa::class, 'emp_cliente_id', 'cliente_id');
     }
+
+    public function saldo()
+    {
+        return $this->hasOne(ClienteSaldo::class, 'saldo_cliente_id', 'cliente_id');
+    }
 }

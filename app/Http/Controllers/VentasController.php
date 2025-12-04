@@ -51,7 +51,7 @@ class VentasController extends Controller
         $nit = trim($request->query('nit', ''));
         $dpi = trim($request->query('dpi', ''));
 
-        $clientes = Clientes::with('empresas')
+        $clientes = Clientes::with(['empresas', 'saldo'])
             ->where('cliente_situacion', 1)
             ->when($nit, function ($q) use ($nit) {
                 $q->where('cliente_nit', $nit);
@@ -2754,53 +2754,111 @@ public function procesarVenta(Request $request): JsonResponse
         }
 
     
+        $totalVenta = $request->total;
         $totalPagado = 0;
         $cantidadPagos = 0;
         $metodoPago = $request->metodo_pago;
-        $totalVenta = $request->total;
+        // 3. DATOS ESPECÍFICOS SEGÚN MÉTODO DE PAGO
+        $saldoFavorUsado = floatval($request->saldo_favor_usado ?? 0);
+        $metodoPagoPrincipal = $request->metodo_pago;
+        $montoPrincipal = $totalVenta - $saldoFavorUsado;
 
-        if ($metodoPago == '6') {
-            // Cuotas
-            $abonoInicial = $request->pago['abono_inicial'] ?? 0;
-            $cuotas = $request->pago['cuotas'] ?? [];
+        // Validar saldo a favor si se usa
+        if ($saldoFavorUsado > 0) {
+            $clienteSaldo = DB::table('pro_clientes_saldo')
+                ->where('saldo_cliente_id', $request->cliente_id)
+                ->first();
 
+            if (!$clienteSaldo || $clienteSaldo->saldo_monto < $saldoFavorUsado) {
+                throw new \Exception("El cliente no tiene suficiente saldo a favor. Disponible: Q" . ($clienteSaldo->saldo_monto ?? 0));
+            }
+
+            // Descontar saldo
+            DB::table('pro_clientes_saldo')
+                ->where('saldo_cliente_id', $request->cliente_id)
+                ->decrement('saldo_monto', $saldoFavorUsado);
+
+            // Registrar historial
+            // Registrar historial
+            DB::table('pro_clientes_saldo_historial')->insert([
+                'historial_cliente_id' => $request->cliente_id,
+                'historial_monto' => -$saldoFavorUsado,
+                'historial_tipo' => 'CARGO',
+                'historial_referencia' => "VENTA-{$ventaId}",
+                'historial_fecha' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        if ($metodoPagoPrincipal == "6") { // Pagos/Cuotas
+            $pagoData = $request->pago;
+            $abonoInicial = floatval($pagoData['abono_inicial'] ?? 0);
+            $cantidadCuotas = intval($pagoData['cantidad_cuotas'] ?? 0);
+            $cuotas = $pagoData['cuotas'] ?? [];
+
+            // El monto total del pago es el total de la venta
+            // El abono inicial REAL es lo que paga en efectivo/transferencia + lo que cubre con saldo a favor
+            // PERO para efectos de cuotas, el saldo a favor reduce el monto a financiar.
+            
+            // Ajuste: Si usa saldo a favor, el "abono inicial" que viene del front es solo la parte pagada en el momento.
+            // El saldo a favor se considera un pago inicial adicional.
+            
             $pagoId = DB::table('pro_pagos')->insertGetId([
                 'pago_venta_id'        => $ventaId,
                 'pago_monto_total'     => $totalVenta,
-                'pago_monto_pagado'    => $abonoInicial,
-                'pago_monto_pendiente' => $totalVenta - $abonoInicial,
+                'pago_monto_pagado'    => $abonoInicial + $saldoFavorUsado, // Sumamos saldo a favor al pagado
+                'pago_monto_pendiente' => $totalVenta - ($abonoInicial + $saldoFavorUsado),
                 'pago_tipo_pago'       => 'CUOTAS',
-                'pago_cantidad_cuotas' => $request->pago['cantidad_cuotas'],
-                'pago_abono_inicial'   => $abonoInicial,
+                'pago_cantidad_cuotas' => $cantidadCuotas,
+                'pago_abono_inicial'   => $abonoInicial, // Guardamos lo que pagó "en el acto"
                 'pago_estado'          => 'PENDIENTE',
                 'pago_fecha_inicio'    => now(),
-                'pago_fecha_completado'=> $abonoInicial >= $totalVenta ? now() : null,
+                'pago_fecha_completado'=> null,
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
 
+            // Detalle del abono inicial (si hubo)
             if ($abonoInicial > 0) {
-                $metodoAbonoId = $request->pago['metodo_abono'] === 'transferencia' ? 4 : 1;
-
                 DB::table('pro_detalle_pagos')->insert([
                     'det_pago_pago_id'          => $pagoId,
                     'det_pago_cuota_id'         => null,
                     'det_pago_fecha'            => now(),
                     'det_pago_monto'            => $abonoInicial,
-                    'det_pago_metodo_pago'      => $metodoAbonoId,
-                    'det_pago_banco_id'         => 1,
-                    'det_pago_numero_autorizacion' => $request->pago['numero_autorizacion_abono'] ?? null,
+                    'det_pago_metodo_pago'      => $pagoData['metodo_abono'] ?? 'efectivo', // ID o texto? Ajustar según front
+                    'det_pago_banco_id'         => $pagoData['banco_id_abono'] ?? null,
+                    'det_pago_numero_autorizacion' => $pagoData['numero_autorizacion_abono'] ?? null,
                     'det_pago_tipo_pago'        => 'ABONO_INICIAL',
                     'det_pago_estado'           => 'VALIDO',
-                    'det_pago_observaciones'    => 'Abono inicial de la venta',
+                    'det_pago_observaciones'    => 'Abono inicial de venta a cuotas',
                     'det_pago_usuario_registro' => auth()->id(),
                     'created_at'                => now(),
                     'updated_at'                => now(),
                 ]);
-
-                $totalPagado += $abonoInicial;
-                $cantidadPagos++;
             }
+
+            // Detalle del Saldo a Favor (si hubo)
+            if ($saldoFavorUsado > 0) {
+                DB::table('pro_detalle_pagos')->insert([
+                    'det_pago_pago_id'          => $pagoId,
+                    'det_pago_cuota_id'         => null,
+                    'det_pago_fecha'            => now(),
+                    'det_pago_monto'            => $saldoFavorUsado,
+                    'det_pago_metodo_pago'      => 7, // ID 7 = Saldo a Favor
+                    'det_pago_banco_id'         => null,
+                    'det_pago_numero_autorizacion' => null,
+                    'det_pago_tipo_pago'        => 'ABONO_INICIAL',
+                    'det_pago_estado'           => 'VALIDO',
+                    'det_pago_observaciones'    => 'Pago con saldo a favor',
+                    'det_pago_usuario_registro' => auth()->id(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
+
+            $totalPagado = $abonoInicial + $saldoFavorUsado;
+            $cantidadPagos = ($abonoInicial > 0 ? 1 : 0) + ($saldoFavorUsado > 0 ? 1 : 0);
 
             $fechaBase = now();
             foreach ($cuotas as $index => $cuotaData) {
@@ -2820,40 +2878,62 @@ public function procesarVenta(Request $request): JsonResponse
             }
 
         } else {
-            // Pago único
+            // Pago único (o split con saldo a favor)
             $pagoId = DB::table('pro_pagos')->insertGetId([
                 'pago_venta_id'        => $ventaId,
                 'pago_monto_total'     => $totalVenta,
-                'pago_monto_pagado'    => $totalVenta,
+                'pago_monto_pagado'    => $totalVenta, // Se asume pagado completo
                 'pago_monto_pendiente' => 0,
                 'pago_tipo_pago'       => 'UNICO',
                 'pago_cantidad_cuotas' => 1,
                 'pago_abono_inicial'   => $totalVenta,
-                'pago_estado'          => 'PENDIENTE',
+                'pago_estado'          => 'COMPLETADO', // Completado directo
                 'pago_fecha_inicio'    => now(),
                 'pago_fecha_completado'=> now(),
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
 
-            DB::table('pro_detalle_pagos')->insert([
-                'det_pago_pago_id'          => $pagoId,
-                'det_pago_cuota_id'         => null,
-                'det_pago_fecha'            => now(),
-                'det_pago_monto'            => $totalVenta,
-                'det_pago_metodo_pago'      => $metodoPago,
-                'det_pago_banco_id'         => 1,
-                'det_pago_numero_autorizacion' => $request->numero_autorizacion ?? null,
-                'det_pago_tipo_pago'        => 'PAGO_UNICO',
-                'det_pago_estado'           => 'VALIDO',
-                'det_pago_observaciones'    => 'Pago completo de la venta',
-                'det_pago_usuario_registro' => auth()->id(),
-                'created_at'                => now(),
-                'updated_at'                => now(),
-            ]);
+            // 1. Registrar pago principal (si queda monto por pagar)
+            if ($montoPrincipal > 0) {
+                DB::table('pro_detalle_pagos')->insert([
+                    'det_pago_pago_id'          => $pagoId,
+                    'det_pago_cuota_id'         => null,
+                    'det_pago_fecha'            => now(),
+                    'det_pago_monto'            => $montoPrincipal,
+                    'det_pago_metodo_pago'      => $metodoPagoPrincipal,
+                    'det_pago_banco_id'         => $request->pago['banco_id'] ?? null,
+                    'det_pago_numero_autorizacion' => $request->pago['numero_autorizacion'] ?? null,
+                    'det_pago_tipo_pago'        => 'PAGO_UNICO',
+                    'det_pago_estado'           => 'VALIDO',
+                    'det_pago_observaciones'    => 'Pago principal de la venta',
+                    'det_pago_usuario_registro' => auth()->id(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
+
+            // 2. Registrar pago con saldo a favor (si hubo)
+            if ($saldoFavorUsado > 0) {
+                DB::table('pro_detalle_pagos')->insert([
+                    'det_pago_pago_id'          => $pagoId,
+                    'det_pago_cuota_id'         => null,
+                    'det_pago_fecha'            => now(),
+                    'det_pago_monto'            => $saldoFavorUsado,
+                    'det_pago_metodo_pago'      => 7, // ID 7 = Saldo a Favor
+                    'det_pago_banco_id'         => null,
+                    'det_pago_numero_autorizacion' => null,
+                    'det_pago_tipo_pago'        => 'ABONO_INICIAL',
+                    'det_pago_estado'           => 'VALIDO',
+                    'det_pago_observaciones'    => 'Pago con saldo a favor',
+                    'det_pago_usuario_registro' => auth()->id(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
 
             $totalPagado = $totalVenta;
-            $cantidadPagos = 1;
+            $cantidadPagos = ($montoPrincipal > 0 ? 1 : 0) + ($saldoFavorUsado > 0 ? 1 : 0);
         }
 
 
@@ -2908,6 +2988,7 @@ public function procesarVenta(Request $request): JsonResponse
             'fue_reserva'       => $esDesdeReserva === true,
             'accion_stock'      => $accionStock,
             'accion_disponible' => $isDisponible,
+            'saldo_favor_usado' => $saldoFavorUsado,
         ]);
 
     } catch (\Illuminate\Validation\ValidationException $e) {

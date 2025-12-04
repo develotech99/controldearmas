@@ -273,6 +273,20 @@
 
                             <!-- Contenido del método de pago (acordeón) -->
                             <div id="metodoPagoContenido" class="space-y-3">
+                                <!-- Saldo a Favor Section -->
+                                <div id="saldoFavorContainer" class="hidden bg-blue-50 p-3 rounded-lg border border-blue-200 mb-3">
+                                    <label class="flex items-center justify-between cursor-pointer">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" id="checkSaldoFavor" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <span class="ml-2 text-sm font-semibold text-blue-800">Usar Saldo a Favor</span>
+                                        </div>
+                                        <span id="textoSaldoFavor" class="text-sm font-bold text-blue-700">Q0.00</span>
+                                    </label>
+                                    <div id="infoSaldoRestante" class="text-xs text-gray-600 mt-1 hidden">
+                                        Restante a pagar: <span class="font-bold" id="montoRestantePagar">Q0.00</span>
+                                    </div>
+                                </div>
+
                                 <div class="grid gap-2">
                                     @foreach ($metodopago as $metodo)
                                         <label class="flex items-center p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
