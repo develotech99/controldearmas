@@ -77,6 +77,8 @@ class VentasController extends Controller
     }
 
 
+
+
     public function getSubcategorias($categoria_id)
     {
         $subcategorias = DB::table('pro_productos as p')
@@ -174,6 +176,7 @@ class VentasController extends Controller
             ->select(
                 'producto_id',
                 'producto_nombre',
+                'pro_codigo_sku',
                 'producto_descripcion',
                 'producto_categoria_id',
                 'categoria_nombre',

@@ -26,6 +26,7 @@ use App\Http\Controllers\PagoLicenciaController;
 use App\Http\Controllers\UsersUbicacionController;
 use App\Http\Controllers\ProEmpresaDeImportacionController;
 use App\Http\Controllers\ProLicenciaParaImportacionController;
+use App\Http\Controllers\PreventaController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -161,6 +162,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes/deudas', [DeudasController::class, 'store'])->name('clientes.deudas.store');
     Route::post('/clientes/deudas/{id}/pagar', [DeudasController::class, 'pagar'])->name('clientes.deudas.pagar');
     Route::get('/clientes/deudas/{id}/historial', [DeudasController::class, 'historial'])->name('clientes.deudas.historial');
+
+    // Preventas
+    Route::get('/preventas', [PreventaController::class, 'index'])->name('preventas.index');
+    Route::post('/preventas', [PreventaController::class, 'store'])->name('preventas.store');
+    Route::get('/preventas/pendientes', [PreventaController::class, 'getPendientes'])->name('preventas.pendientes');
 
     // Tipo de arma
     Route::get('/tipoarma', [TipoArmaController::class, 'index'])->name('tipoarma.index');
@@ -336,6 +342,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
         ->name('ventas.marcar-disponibles');
     Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
+    Route::get('/ventas/buscar-productos', [VentasController::class, 'buscarProductos'])->name('ventas.buscar-productos');
     Route::post('/ventas/update-editable', [VentasController::class, 'updateEditableSale'])->name('ventas.update-editable');
 
 

@@ -27,7 +27,8 @@ export default defineConfig({
                 'resources/js/clientes/deudas.js',
                 'resources/js/dashboard.js',
                 'resources/js/facturacion/index.js',
-                'resources/js/ventas/reservadas.js'
+                'resources/js/ventas/reservadas.js',
+                'resources/js/preventas/index.js'
 
             ],
             refresh: true,
