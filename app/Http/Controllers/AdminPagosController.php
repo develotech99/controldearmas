@@ -498,6 +498,7 @@ class AdminPagosController extends Controller
                      
                      // ⭐ Cliente
                      DB::raw("
+                        CASE
                             WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
                                 CONCAT(
                                     c.cliente_nom_empresa, 
