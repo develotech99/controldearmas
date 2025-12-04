@@ -378,15 +378,15 @@ public function guardarCliente(Request $request)
                                 ->toArray();
                         }
                         
-                        // Logic for lots if needed
-                        if ($det->producto->producto_requiere_lote ?? false) { // Assuming column exists or logic
-                             $lotes = DB::table('pro_movimientos')
-                                ->where('mov_documento_referencia', 'VENTA-' . $venta->ven_id)
-                                ->where('mov_producto_id', $det->det_producto_id)
-                                ->whereNotNull('mov_lote_id')
-                                ->pluck('mov_lote_id') // Or join with lotes table for name
-                                ->toArray();
-                        }
+                        // Logic for lots
+                        $lotes = DB::table('pro_movimientos')
+                            ->join('pro_lotes', 'pro_movimientos.mov_lote_id', '=', 'pro_lotes.lote_id')
+                            ->where('mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                            ->where('mov_producto_id', $det->det_producto_id)
+                            ->select('pro_lotes.lote_id as id', 'pro_lotes.lote_codigo as codigo')
+                            ->get()
+                            ->map(function($l) { return ['id' => $l->id, 'codigo' => $l->codigo]; })
+                            ->toArray();
                     }
 
                     return [
@@ -561,8 +561,9 @@ public function guardarCliente(Request $request)
                 }
 
                 foreach ($cambios as $cambio) {
-                    // Validar que la nueva serie esté disponible
-                    if (!empty($cambio['new_serie_id'])) {
+                    // 1. Manejo de SERIES
+                    if (isset($cambio['old_serie_id']) && isset($cambio['new_serie_id'])) {
+                        // Validar que la nueva serie esté disponible
                         $nuevaSerie = DB::table('pro_series_productos')
                             ->where('serie_id', $cambio['new_serie_id'])
                             ->where('serie_estado', 'disponible')
@@ -571,32 +572,69 @@ public function guardarCliente(Request $request)
                         if (!$nuevaSerie) {
                             throw new \Exception("La serie seleccionada no está disponible.");
                         }
-                    }
 
-                    // Buscar el movimiento asociado a la serie anterior
-                    $movimiento = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', 'VENTA-' . $venId)
-                        ->where('mov_producto_id', $cambio['producto_id'])
-                        ->where('mov_serie_id', $cambio['old_serie_id'])
-                        ->first();
+                        // Buscar el movimiento asociado a la serie anterior
+                        $movimiento = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', 'VENTA-' . $venId)
+                            ->where('mov_producto_id', $cambio['producto_id'])
+                            ->where('mov_serie_id', $cambio['old_serie_id'])
+                            ->first();
 
-                    if ($movimiento) {
-                        // 1. Liberar serie anterior
-                        DB::table('pro_series_productos')
-                            ->where('serie_id', $cambio['old_serie_id'])
-                            ->update(['serie_estado' => 'disponible', 'serie_situacion' => 1]);
+                        if ($movimiento) {
+                            // Liberar serie anterior
+                            DB::table('pro_series_productos')
+                                ->where('serie_id', $cambio['old_serie_id'])
+                                ->update(['serie_estado' => 'disponible', 'serie_situacion' => 1]);
 
-                        // 2. Ocupar nueva serie
-                        if (!empty($cambio['new_serie_id'])) {
+                            // Ocupar nueva serie
                             DB::table('pro_series_productos')
                                 ->where('serie_id', $cambio['new_serie_id'])
                                 ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
 
-                            // 3. Actualizar movimiento
+                            // Actualizar movimiento
                             DB::table('pro_movimientos')
                                 ->where('mov_id', $movimiento->mov_id)
                                 ->update([
                                     'mov_serie_id' => $cambio['new_serie_id'],
+                                    'updated_at' => now()
+                                ]);
+                        }
+                    }
+
+                    // 2. Manejo de LOTES
+                    if (isset($cambio['old_lote_id']) && isset($cambio['new_lote_id'])) {
+                        // Validar nuevo lote
+                        $nuevoLote = DB::table('pro_lotes')
+                            ->where('lote_id', $cambio['new_lote_id'])
+                            ->first();
+
+                        if (!$nuevoLote || $nuevoLote->lote_cantidad_disponible < 1) {
+                            throw new \Exception("El lote seleccionado no tiene stock disponible.");
+                        }
+
+                        // Buscar movimiento asociado al lote anterior
+                        $movimiento = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', 'VENTA-' . $venId)
+                            ->where('mov_producto_id', $cambio['producto_id'])
+                            ->where('mov_lote_id', $cambio['old_lote_id'])
+                            ->first();
+
+                        if ($movimiento) {
+                            // Revertir stock lote anterior (+1)
+                            DB::table('pro_lotes')
+                                ->where('lote_id', $cambio['old_lote_id'])
+                                ->increment('lote_cantidad_disponible');
+
+                            // Descontar stock nuevo lote (-1)
+                            DB::table('pro_lotes')
+                                ->where('lote_id', $cambio['new_lote_id'])
+                                ->decrement('lote_cantidad_disponible');
+
+                            // Actualizar movimiento
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $movimiento->mov_id)
+                                ->update([
+                                    'mov_lote_id' => $cambio['new_lote_id'],
                                     'updated_at' => now()
                                 ]);
                         }

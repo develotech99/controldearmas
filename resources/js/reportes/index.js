@@ -476,8 +476,21 @@ class ReportesManager {
                         </div>
                     `;
                     }
+                } else if (det.lotes && det.lotes.length > 0) {
+                    htmlContent += `<div class="text-sm font-semibold mb-1">Lotes Asignados:</div>`;
+                    for (const lote of det.lotes) {
+                        htmlContent += `
+                        <div class="flex items-center justify-between mb-2 bg-white p-2 rounded border">
+                            <span class="text-gray-800 font-mono">${lote.codigo}</span>
+                            <button class="text-blue-600 text-sm hover:text-blue-800 font-semibold" 
+                                onclick="reportesManager.cambiarLote(${venta.ven_id}, ${det.det_id}, ${det.producto_id}, '${lote.id}', '${lote.codigo}')">
+                                <i class="fas fa-exchange-alt mr-1"></i> Cambiar
+                            </button>
+                        </div>
+                    `;
+                    }
                 } else {
-                    htmlContent += `<div class="text-sm text-gray-400 italic">Sin series asignadas</div>`;
+                    htmlContent += `<div class="text-sm text-gray-400 italic">Sin series/lotes asignados</div>`;
                 }
                 htmlContent += `</div>`;
             }
@@ -528,35 +541,94 @@ class ReportesManager {
                 });
 
                 if (newSerieId) {
-                    // 3. Call backend to update
-                    const updateResponse = await fetch('/ventas/update-editable', { // Need to add route!
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({
-                            ven_id: venId,
-                            cambios: [{
-                                det_id: detId,
-                                producto_id: productoId,
-                                old_serie_id: oldSerieId,
-                                new_serie_id: newSerieId
-                            }]
-                        })
+                    this.procesarCambio(venId, {
+                        det_id: detId,
+                        producto_id: productoId,
+                        old_serie_id: oldSerieId,
+                        new_serie_id: newSerieId
                     });
-
-                    const result = await updateResponse.json();
-
-                    if (result.success) {
-                        Swal.fire('Éxito', 'Serie actualizada correctamente', 'success').then(() => {
-                            this.loadReporteVentas(); // Reload table
-                        });
-                    } else {
-                        throw new Error(result.message);
-                    }
                 }
 
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Error', error.message, 'error');
+            }
+        }
+
+    async cambiarLote(venId, detId, productoId, oldLoteId, oldLoteCodigo) {
+            try {
+                // 1. Fetch available lotes
+                const response = await fetch(`/inventario/productos/${productoId}/stock-lotes`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al cargar lotes');
+                }
+
+                // Filter valid lotes
+                const lotesDisponibles = (data.data.lotes || []).filter(l => l.cantidad_disponible > 0 && l.lote_id != oldLoteId);
+
+                if (lotesDisponibles.length === 0) {
+                    Swal.fire('Atención', 'No hay otros lotes con stock disponible.', 'warning');
+                    return;
+                }
+
+                // 2. Show selection modal
+                const options = {};
+                lotesDisponibles.forEach(l => {
+                    options[l.lote_id] = `${l.lote_codigo} (Disp: ${l.cantidad_disponible})`;
+                });
+
+                const { value: newLoteId } = await Swal.fire({
+                    title: 'Seleccionar Nuevo Lote',
+                    text: `Cambiando lote: ${oldLoteCodigo}`,
+                    input: 'select',
+                    inputOptions: options,
+                    inputPlaceholder: 'Seleccione un lote',
+                    showCancelButton: true,
+                    inputValidator: (value) => {
+                        return !value && 'Debe seleccionar un lote';
+                    }
+                });
+
+                if (newLoteId) {
+                    this.procesarCambio(venId, {
+                        det_id: detId,
+                        producto_id: productoId,
+                        old_lote_id: oldLoteId,
+                        new_lote_id: newLoteId
+                    });
+                }
+
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Error', error.message, 'error');
+            }
+        }
+
+    async procesarCambio(venId, cambio) {
+            try {
+                const updateResponse = await fetch('/ventas/update-editable', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        ven_id: venId,
+                        cambios: [cambio]
+                    })
+                });
+
+                const result = await updateResponse.json();
+
+                if (result.success) {
+                    Swal.fire('Éxito', 'Cambio aplicado correctamente', 'success').then(() => {
+                        this.loadReporteVentas();
+                    });
+                } else {
+                    throw new Error(result.message);
+                }
             } catch (error) {
                 console.error(error);
                 Swal.fire('Error', error.message, 'error');
