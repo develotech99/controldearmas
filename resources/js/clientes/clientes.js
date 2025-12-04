@@ -194,11 +194,7 @@ class ClientesManager {
                             <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 ${cliente.nombre_completo}
                             </div>
-                            ${cliente.cliente_nom_empresa ? `
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    <i class="fas fa-building mr-1"></i>${cliente.cliente_nom_empresa}
-                                </div>
-                            ` : ''}
+                            ${this.renderEmpresasNombres(cliente)}
                         </div>
                     </div>
                 </td>
@@ -233,13 +229,6 @@ class ClientesManager {
                                 title="Gestionar Empresas">
                             <i class="fas fa-building"></i>
                         </button>
-                        ${cliente.tiene_pdf ? `
-                            <button onclick="window.clientesManager.verPdfLicenciaModal(${cliente.cliente_id})" 
-                                    class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                    title="Ver PDF Licencia">
-                                <i class="fas fa-file-pdf"></i>
-                            </button>
-                        ` : ''}
                         <button onclick="window.clientesManager.openEditModal(${cliente.cliente_id})" 
                                 class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                 title="Editar">
@@ -254,6 +243,23 @@ class ClientesManager {
                 </td>
             </tr>
         `;
+    }
+
+    renderEmpresasNombres(cliente) {
+        if (!cliente.empresas || cliente.empresas.length === 0) {
+            // Fallback to legacy field if no companies array
+            return cliente.cliente_nom_empresa ? `
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-building mr-1"></i>${cliente.cliente_nom_empresa}
+                </div>
+            ` : '';
+        }
+
+        return cliente.empresas.map(emp => `
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+                <i class="fas fa-building mr-1"></i>${emp.emp_nombre}
+            </div>
+        `).join('');
     }
 
     getIniciales(cliente) {

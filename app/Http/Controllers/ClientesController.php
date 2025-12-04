@@ -58,6 +58,7 @@ class ClientesController extends Controller
                     'cliente_cel_vendedor' => $cliente->cliente_cel_vendedor,
                     'cliente_ubicacion' => $cliente->cliente_ubicacion,
                     'cliente_pdf_licencia' => $cliente->cliente_pdf_licencia,
+                    'empresas' => $cliente->empresas, // Include full companies data
                     'nombre_completo' => trim($cliente->cliente_nombre1 . ' ' . 
                                              ($cliente->cliente_nombre2 ?? '') . ' ' . 
                                              $cliente->cliente_apellido1 . ' ' . 
