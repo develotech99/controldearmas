@@ -95,7 +95,7 @@
     </div>
 </div>
 
-@push('scripts')
-@vite(['resources/js/clientes/deudas.js'])
-@endpush
+
 @endsection
+
+@vite(['resources/js/clientes/deudas.js'])
