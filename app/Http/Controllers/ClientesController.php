@@ -448,7 +448,7 @@ class ClientesController extends Controller
             return response()->json(['success' => false, 'message' => 'Error al eliminar empresa'], 500);
         }
     }
-    public function buscar(Request $request)
+    public function buscarClientes(Request $request)
     {
         $term = $request->get('q');
 
