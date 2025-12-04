@@ -1,59 +1,13 @@
 import Swal from 'sweetalert2';
 // import $ from 'jquery'; // Usar window.$ definido en app.js
-import 'select2';
-import 'select2/dist/css/select2.css';
 
 document.addEventListener('DOMContentLoaded', function () {
     const tablaDeudas = document.getElementById('tablaDeudas');
     const modalDeuda = document.getElementById('modalDeuda');
     const formDeuda = document.getElementById('formDeuda');
 
-    // Inicializar Select2 para búsqueda de clientes
-    $('#selectCliente').select2({
-        placeholder: 'Buscar cliente por nombre o NIT',
-        ajax: {
-            url: '/clientes/buscar',
-            dataType: 'json',
-            delay: 250,
-            data: function (params) {
-                return {
-                    q: params.term // término de búsqueda
-                };
-            },
-            processResults: function (data) {
-                return {
-                    results: data.map(cliente => ({
-                        id: cliente.cliente_id,
-                        text: `${cliente.cliente_nombre} ${cliente.cliente_apellido} - NIT: ${cliente.cliente_nit || 'S/N'}`
-                    }))
-                };
-            },
-            cache: true
-        },
-        dropdownParent: $('#modalDeuda') // Importante para que funcione dentro del modal
-    });
-
-    // Cargar clientes para el filtro (opcional, o usar select2 también)
-    $('#filtroCliente').select2({
-        placeholder: 'Filtrar por cliente',
-        allowClear: true,
-        ajax: {
-            url: '/clientes/buscar',
-            dataType: 'json',
-            delay: 250,
-            data: function (params) {
-                return { q: params.term };
-            },
-            processResults: function (data) {
-                return {
-                    results: data.map(cliente => ({
-                        id: cliente.cliente_id,
-                        text: `${cliente.cliente_nombre} ${cliente.cliente_apellido}`
-                    }))
-                };
-            }
-        }
-    });
+    // Cargar clientes en los selects normales
+    cargarClientesSelects();
 
     // Cargar deudas
     cargarDeudas();
@@ -215,4 +169,41 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     };
+    // Función para cargar clientes en los selects (Reemplazo de Select2)
+    async function cargarClientesSelects() {
+        try {
+            // Usamos el mismo endpoint de búsqueda pero sin filtro para traer (idealmente) los recientes o todos
+            const response = await fetch('/clientes/buscar?q=');
+            const data = await response.json();
+
+            const selectCliente = document.getElementById('selectCliente');
+            const filtroCliente = document.getElementById('filtroCliente');
+
+            // Limpiar opciones actuales (manteniendo el placeholder)
+            selectCliente.innerHTML = '<option value="">Seleccione un cliente...</option>';
+            filtroCliente.innerHTML = '<option value="">Todos</option>';
+
+            data.forEach(cliente => {
+                const nombre = `${cliente.cliente_nombre} ${cliente.cliente_apellido}`;
+                const nit = cliente.cliente_nit ? ` - NIT: ${cliente.cliente_nit}` : '';
+                const texto = `${nombre}${nit}`;
+
+                // Opción para Modal
+                const optionModal = document.createElement('option');
+                optionModal.value = cliente.cliente_id;
+                optionModal.textContent = texto;
+                selectCliente.appendChild(optionModal);
+
+                // Opción para Filtro
+                const optionFiltro = document.createElement('option');
+                optionFiltro.value = cliente.cliente_id;
+                optionFiltro.textContent = texto;
+                filtroCliente.appendChild(optionFiltro);
+            });
+
+        } catch (error) {
+            console.error('Error cargando clientes:', error);
+            Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
+        }
+    }
 });
