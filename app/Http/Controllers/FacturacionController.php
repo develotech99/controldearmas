@@ -431,10 +431,102 @@ public function verFacturaCambiaria($id)
                 }
             }
 
-            // Update Sale Status
+            // Update Sale Status & Finalize Stock
             if (!empty($validated['fac_venta_id'])) {
                  $venta = \App\Models\ProVenta::find($validated['fac_venta_id']);
                  if ($venta) {
+                     
+                     // 1. Finalize Stock Movements (Reserved -> Sold)
+                     $refVenta = 'VENTA-' . $venta->ven_id;
+
+                     // a) Series reservadas (mov_situacion = 3) -> Vendidas (mov_situacion = 1)
+                     $seriesMovs = DB::table('pro_movimientos')
+                        ->where('mov_documento_referencia', $refVenta)
+                        ->where('mov_situacion', 3)
+                        ->whereNotNull('mov_serie_id')
+                        ->get();
+
+                     foreach ($seriesMovs as $mov) {
+                        // Actualizar serie a vendida
+                        DB::table('pro_series_productos')
+                            ->where('serie_id', $mov->mov_serie_id)
+                            ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
+                        
+                        // Actualizar movimiento a confirmado
+                        DB::table('pro_movimientos')
+                            ->where('mov_id', $mov->mov_id)
+                            ->update(['mov_situacion' => 1]);
+                        
+                        // Descontar de stock (reservado y total)
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                            
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                            
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                     }
+
+                     // b) Lotes reservados -> Confirmados
+                     $lotesMovs = DB::table('pro_movimientos')
+                        ->where('mov_documento_referencia', $refVenta)
+                        ->where('mov_situacion', 3)
+                        ->whereNotNull('mov_lote_id')
+                        ->get();
+
+                     foreach ($lotesMovs as $mov) {
+                        // Actualizar movimiento
+                        DB::table('pro_movimientos')
+                            ->where('mov_id', $mov->mov_id)
+                            ->update(['mov_situacion' => 1]);
+
+                        // Descontar de stock
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                            
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                            
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                     }
+
+                     // c) Stock General (Sin serie ni lote)
+                     $generalStockMovs = DB::table('pro_movimientos')
+                        ->where('mov_documento_referencia', $refVenta)
+                        ->where('mov_situacion', 3)
+                        ->whereNull('mov_serie_id')
+                        ->whereNull('mov_lote_id')
+                        ->get();
+
+                     foreach ($generalStockMovs as $mov) {
+                        // Actualizar movimiento
+                        DB::table('pro_movimientos')
+                            ->where('mov_id', $mov->mov_id)
+                            ->update(['mov_situacion' => 1]);
+
+                        // Descontar de stock
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                            
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                            
+                        DB::table('pro_stock_actual')
+                            ->where('stock_producto_id', $mov->mov_producto_id)
+                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                     }
+
+                     // 2. Update Sale Status
                      $allInvoiced = true;
                      foreach ($venta->detalleVentas as $dv) {
                          $dv->refresh();
