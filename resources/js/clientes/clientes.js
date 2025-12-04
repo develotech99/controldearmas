@@ -301,6 +301,9 @@ class ClientesManager {
         if (form) form.reset();
         if (camposEmpresa) camposEmpresa.classList.add('hidden');
 
+        const tipoSelect = document.getElementById('cliente_tipo');
+        if (tipoSelect) tipoSelect.disabled = false;
+
         this.toggleModal(true);
     }
 
@@ -318,6 +321,11 @@ class ClientesManager {
         if (modalTitle) modalTitle.textContent = 'Editar Cliente';
 
         this.fillForm(cliente);
+
+        // Deshabilitar cambio de tipo al editar para evitar conflictos con campos de empresa
+        const tipoSelect = document.getElementById('cliente_tipo');
+        if (tipoSelect) tipoSelect.disabled = true;
+
         this.toggleModal(true);
     }
 
@@ -366,9 +374,14 @@ class ClientesManager {
             if (element) element.value = value;
         });
 
-        // Mostrar campos empresa si es tipo 3
-        if (cliente.cliente_tipo == 3) {
+        // Mostrar campos empresa si es tipo 3, pero SOLO si NO estamos editando
+        // Si estamos editando, las empresas se gestionan en su propio modal
+        if (cliente.cliente_tipo == 3 && !this.isEditing) {
             this.toggleCamposEmpresa();
+        } else {
+            // Asegurar que estén ocultos
+            const camposEmpresa = document.getElementById('campos-empresa');
+            if (camposEmpresa) camposEmpresa.classList.add('hidden');
         }
     }
 
