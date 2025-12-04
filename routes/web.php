@@ -336,6 +336,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
         ->name('ventas.marcar-disponibles');
     Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
+    Route::post('/ventas/update-editable', [VentasController::class, 'updateEditableSale'])->name('ventas.update-editable');
 
 
     Route::post('/reservas/procesar', [VentasController::class, 'procesarReserva'])

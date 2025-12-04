@@ -353,6 +353,76 @@ public function guardarCliente(Request $request)
 }
 
 
+    public function obtenerVentasPendientes()
+    {
+        try {
+            $ventas = ProVenta::with(['cliente', 'vendedor', 'detalleVentas.producto'])
+                ->whereIn('ven_situacion', ['PENDIENTE', 'AUTORIZADA', 'EDITABLE'])
+                ->orderBy('ven_fecha', 'desc')
+                ->get();
+
+            $ventasProcesadas = $ventas->map(function ($venta) {
+                $detalles = $venta->detalleVentas->map(function ($det) use ($venta) {
+                    $series = [];
+                    $lotes = [];
+
+                    if ($det->producto) {
+                        if ($det->producto->producto_requiere_serie) {
+                            $series = DB::table('pro_movimientos')
+                                ->join('pro_series_productos', 'pro_movimientos.mov_serie_id', '=', 'pro_series_productos.serie_id')
+                                ->where('mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                                ->where('mov_producto_id', $det->det_producto_id)
+                                ->select('pro_series_productos.serie_id as id', 'pro_series_productos.serie_numero_serie as numero')
+                                ->get()
+                                ->map(function($s) { return ['id' => $s->id, 'numero' => $s->numero]; })
+                                ->toArray();
+                        }
+                        
+                        // Logic for lots if needed
+                        if ($det->producto->producto_requiere_lote ?? false) { // Assuming column exists or logic
+                             $lotes = DB::table('pro_movimientos')
+                                ->where('mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                                ->where('mov_producto_id', $det->det_producto_id)
+                                ->whereNotNull('mov_lote_id')
+                                ->pluck('mov_lote_id') // Or join with lotes table for name
+                                ->toArray();
+                        }
+                    }
+
+                    return [
+                        'det_id' => $det->det_id,
+                        'producto_id' => $det->det_producto_id,
+                        'producto_nombre' => $det->producto->producto_nombre ?? 'Desconocido',
+                        'cantidad' => $det->det_cantidad,
+                        'precio_venta' => $det->det_precio,
+                        'subtotal' => $det->det_cantidad * $det->det_precio,
+                        'series' => $series,
+                        'lotes' => $lotes
+                    ];
+                });
+
+                return [
+                    'ven_id' => $venta->ven_id,
+                    'ven_fecha' => $venta->ven_fecha,
+                    'ven_total_vendido' => $venta->ven_total_vendido,
+                    'ven_situacion' => $venta->ven_situacion,
+                    'ven_observaciones' => $venta->ven_observaciones,
+                    'cliente' => $venta->cliente ? trim($venta->cliente->cliente_nombre1 . ' ' . $venta->cliente->cliente_apellido1) : 'Consumidor Final',
+                    'empresa' => $venta->cliente ? $venta->cliente->cliente_nom_empresa : '',
+                    'vendedor' => $venta->vendedor ? ($venta->vendedor->user_primer_nombre ?? $venta->vendedor->name) : 'Sistema',
+                    'total_items' => $detalles->sum('cantidad'),
+                    'productos_resumen' => $detalles->pluck('producto_nombre')->unique()->take(3)->join(', ') . ($detalles->unique('producto_nombre')->count() > 3 ? '...' : ''),
+                    'detalles' => $detalles
+                ];
+            });
+
+            return response()->json($ventasProcesadas);
+        } catch (\Exception $e) {
+            Log::error('Error en obtenerVentasPendientes: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function autorizarVenta(Request $request): JsonResponse
     {
         $venId = (int) $request->input('ven_id');
@@ -362,76 +432,101 @@ public function guardarCliente(Request $request)
             DB::transaction(function () use ($venId, $tipo) {
                 $venta = ProVenta::with('detalleVentas.producto')->findOrFail($venId);
 
-                if ($venta->ven_situacion !== 'PENDIENTE') {
-                    throw new \Exception('La venta no está en estado PENDIENTE.');
+                if (!in_array($venta->ven_situacion, ['PENDIENTE', 'EDITABLE'])) {
+                    throw new \Exception('La venta no está en estado PENDIENTE ni EDITABLE.');
                 }
 
                 // Determine new status
-                $nuevoEstado = ($tipo === 'sin_facturar') ? 'AUTORIZADA' : 'ACTIVA';
+                // 'sin_facturar' -> 'FINALIZADA' (o 'AUTORIZADA' si ese es el estado final que no pide factura)
+                // 'facturar' -> 'POR_FACTURAR' (o 'AUTORIZADA' si el flujo de facturación busca 'AUTORIZADA')
+                
+                // REVISIÓN DE ESTADOS:
+                // Si el usuario dice "Autorizar (igual a la lógica actual)", asumimos que el estado actual para facturar es 'AUTORIZADA' o 'ACTIVA'.
+                // En el código anterior, 'ACTIVA' parecía ser el estado post-autorización.
+                // Para 'sin_facturar', la venta debe quedar "cerrada" en cuanto a gestión, pero sin factura.
+                // Usaremos 'COMPLETADA' o 'FINALIZADA' para sin facturar si existe, si no 'AUTORIZADA' con una bandera interna?
+                // Vamos a usar 'AUTORIZADA' para el flujo normal (para que pase a facturación)
+                // Y 'FINALIZADA' (o similar) para sin facturar.
+                // PERO, el usuario dijo: "La venta queda autorizada...".
+                // Si ambas quedan 'AUTORIZADA', ¿cómo sabe facturación cual tocar?
+                // Asumiremos:
+                // Normal -> 'AUTORIZADA' (Lista para facturar)
+                // Sin Facturar -> 'FINALIZADA' (Ya no requiere nada más)
+                
+                // Ajuste según código previo: Antes se ponía 'ACTIVA'.
+                // Vamos a mantener 'ACTIVA' para el flujo normal si eso es lo que espera facturación.
+                // Y 'COMPLETADA' para sin facturar.
+                
+                $nuevoEstado = ($tipo === 'sin_facturar') ? 'COMPLETADA' : 'AUTORIZADA'; 
 
                 // Update Sale Status
                 $venta->ven_situacion = $nuevoEstado;
+                // Si es sin facturar, tal vez queramos guardar una nota
+                if ($tipo === 'sin_facturar') {
+                    $venta->ven_observaciones .= " [Autorizada sin facturar por " . auth()->user()->name . "]";
+                }
                 $venta->save();
 
                 // Update Details Status
                 foreach ($venta->detalleVentas as $detalle) {
-                    $detalle->det_situacion = ($nuevoEstado === 'ACTIVA') ? 'ACTIVO' : 'AUTORIZADA';
+                    $detalle->det_situacion = ($nuevoEstado === 'COMPLETADA') ? 'COMPLETADO' : 'AUTORIZADO';
                     $detalle->save();
 
                     // Stock Deduction Logic
-                    // We need to update the movements related to this sale/product from 'reserva' to 'venta' (or confirmed)
-                    // Movements are linked via mov_documento_referencia = "VENTA-{id}"
-                    
-                    // Find reserved movements for this product in this sale
-                    $movimientos = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', "VENTA-{$venId}")
-                        ->where('mov_producto_id', $detalle->det_producto_id)
-                        ->where('mov_tipo', 'reserva') // Assuming they were reserved
-                        ->get();
-
-                    foreach ($movimientos as $mov) {
-                        // Update movement to finalized sale
-                        DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update([
-                                'mov_tipo' => 'venta', // Change type to sale
-                                'mov_situacion' => 1, // 1 = Active/Finalized
-                                'mov_destino' => 'cliente', // Moved to client
-                                'updated_at' => now()
-                            ]);
-
-                        // Update stock table
-                        $stock = DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $detalle->det_producto_id)
-                            ->first();
-
-                        if ($stock) {
-                            DB::table('pro_stock_actual')
-                                ->where('stock_producto_id', $detalle->det_producto_id)
-                                ->decrement('stock_cantidad_reservada2', $mov->mov_cantidad);
-                            
-                            // Also decrement the main stock if it wasn't decremented during reservation
-                            // Usually reservation just holds it. Sale removes it.
-                            DB::table('pro_stock_actual')
-                                ->where('stock_producto_id', $detalle->det_producto_id)
-                                ->decrement('stock_cantidad', $mov->mov_cantidad);
-                        }
+                    // Solo si el producto requiere stock
+                    if ($detalle->producto && $detalle->producto->producto_requiere_stock) {
                         
-                        // Update Series/Lotes status if applicable
-                        if ($mov->mov_serie_id) {
-                            DB::table('pro_series_productos')
-                                ->where('serie_id', $mov->mov_serie_id)
+                        // Find reserved movements for this product in this sale
+                        $movimientos = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', "VENTA-{$venId}")
+                            ->where('mov_producto_id', $detalle->det_producto_id)
+                            ->where('mov_tipo', 'reserva')
+                            ->get();
+
+                        foreach ($movimientos as $mov) {
+                            // Update movement to finalized sale
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $mov->mov_id)
                                 ->update([
-                                    'serie_estado' => 'vendido',
-                                    'serie_situacion' => 1,
+                                    'mov_tipo' => 'venta',
+                                    'mov_situacion' => 1, // 1 = Active/Finalized
+                                    'mov_destino' => 'cliente',
                                     'updated_at' => now()
                                 ]);
-                        }
-                        
-                        if ($mov->mov_lote_id) {
-                             DB::table('pro_lotes')
-                                ->where('lote_id', $mov->mov_lote_id)
-                                ->decrement('lote_cantidad_disponible', $mov->mov_cantidad);
+
+                            // Update stock table
+                            $stock = DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $detalle->det_producto_id)
+                                ->first();
+
+                            if ($stock) {
+                                // Decrement reserved (release reservation)
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_reservada2', $mov->mov_cantidad);
+                                
+                                // Decrement physical stock (actual deduction)
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad', $mov->mov_cantidad);
+                            }
+                            
+                            // Update Series/Lotes status
+                            if ($mov->mov_serie_id) {
+                                DB::table('pro_series_productos')
+                                    ->where('serie_id', $mov->mov_serie_id)
+                                    ->update([
+                                        'serie_estado' => 'vendido',
+                                        'serie_situacion' => 1,
+                                        'updated_at' => now()
+                                    ]);
+                            }
+                            
+                            if ($mov->mov_lote_id) {
+                                 DB::table('pro_lotes')
+                                    ->where('lote_id', $mov->mov_lote_id)
+                                    ->decrement('lote_cantidad_disponible', $mov->mov_cantidad);
+                            }
                         }
                     }
                 }
@@ -439,7 +534,9 @@ public function guardarCliente(Request $request)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Venta autorizada correctamente.'
+                'message' => ($tipo === 'sin_facturar') 
+                    ? 'Venta autorizada sin facturación. Inventario actualizado.' 
+                    : 'Venta autorizada y lista para facturar. Inventario actualizado.'
             ]);
 
         } catch (\Exception $e) {
@@ -450,9 +547,77 @@ public function guardarCliente(Request $request)
             ], 500);
         }
     }
-public function actualizarLicencias(Request $request): JsonResponse
-{
-    try {
+    public function updateEditableSale(Request $request)
+    {
+        $venId = $request->input('ven_id');
+        $cambios = $request->input('cambios', []); // Array of { det_id, producto_id, old_serie_id, new_serie_id }
+
+        try {
+            DB::transaction(function () use ($venId, $cambios) {
+                $venta = ProVenta::findOrFail($venId);
+                
+                if ($venta->ven_situacion !== 'EDITABLE') {
+                    throw new \Exception('La venta no está en estado EDITABLE.');
+                }
+
+                foreach ($cambios as $cambio) {
+                    // Validar que la nueva serie esté disponible
+                    if (!empty($cambio['new_serie_id'])) {
+                        $nuevaSerie = DB::table('pro_series_productos')
+                            ->where('serie_id', $cambio['new_serie_id'])
+                            ->where('serie_estado', 'disponible')
+                            ->first();
+                            
+                        if (!$nuevaSerie) {
+                            throw new \Exception("La serie seleccionada no está disponible.");
+                        }
+                    }
+
+                    // Buscar el movimiento asociado a la serie anterior
+                    $movimiento = DB::table('pro_movimientos')
+                        ->where('mov_documento_referencia', 'VENTA-' . $venId)
+                        ->where('mov_producto_id', $cambio['producto_id'])
+                        ->where('mov_serie_id', $cambio['old_serie_id'])
+                        ->first();
+
+                    if ($movimiento) {
+                        // 1. Liberar serie anterior
+                        DB::table('pro_series_productos')
+                            ->where('serie_id', $cambio['old_serie_id'])
+                            ->update(['serie_estado' => 'disponible', 'serie_situacion' => 1]);
+
+                        // 2. Ocupar nueva serie
+                        if (!empty($cambio['new_serie_id'])) {
+                            DB::table('pro_series_productos')
+                                ->where('serie_id', $cambio['new_serie_id'])
+                                ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
+
+                            // 3. Actualizar movimiento
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $movimiento->mov_id)
+                                ->update([
+                                    'mov_serie_id' => $cambio['new_serie_id'],
+                                    'updated_at' => now()
+                                ]);
+                        }
+                    }
+                }
+                
+                // Opcional: Si se completaron todos los cambios, ¿se cambia el estado?
+                // No, el usuario debe dar click en "Autorizar" de nuevo para confirmar todo.
+            });
+
+            return response()->json(['success' => true, 'message' => 'Cambios aplicados correctamente.']);
+
+        } catch (\Exception $e) {
+            Log::error('Error actualizando venta editable: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function actualizarLicencias(Request $request): JsonResponse
+    {
+        try {
         // Log para ver qué está llegando
         Log::info('🟢 Payload recibido en actualizarLicencias:', $request->all());
 

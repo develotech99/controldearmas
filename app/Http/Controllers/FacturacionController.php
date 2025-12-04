@@ -972,86 +972,32 @@ public function certificarCambiaria(Request $request)
             $xmlAnulacionPath = "{$dir}/anulacion_{$factura->fac_uuid}.xml";
             $disk->put($xmlAnulacionPath, $xmlAnulacion);
 
-            // LOGICA DE REVERSION DE INVENTARIO
+            // LOGICA DE REVERSION DE INVENTARIO (MODIFICADO: NO REVERTIR STOCK, SOLO ESTADO EDITABLE)
             if ($factura->fac_venta_id) {
                 $venta = DB::table('pro_ventas')->where('ven_id', $factura->fac_venta_id)->first();
                 
-                if ($venta && in_array($venta->ven_situacion, ['PENDIENTE', 'AUTORIZADA'])) {
-                // Actualizar venta a ACTIVA
-                DB::table('pro_ventas')
-                    ->where('ven_id', $venta->ven_id)
-                    ->update(['ven_situacion' => 'ACTIVA']);
-
-                // Actualizar detalles a ACTIVA
-                DB::table('pro_detalle_ventas')
-                    ->where('det_ven_id', $venta->ven_id)
-                    ->update(['det_situacion' => 'ACTIVA']);
-
-                    $refVenta = 'VENTA-' . $venta->ven_id;
-
-                    // 3. Revertir Series (Movimientos tipo 1 -> Anulados/Revertidos)
-                    // Buscar movimientos confirmados de esta venta
-                    $movimientos = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $refVenta)
-                        ->where('mov_situacion', 1)
-                        ->get();
-
-                    foreach ($movimientos as $mov) {
-                        // Si es serie
-                        if ($mov->mov_serie_id) {
-                            // Devolver serie a disponible
-                            DB::table('pro_series_productos')
-                                ->where('serie_id', $mov->mov_serie_id)
-                                ->update(['serie_estado' => 'disponible', 'serie_situacion' => 1]);
-                        }
-                        
-                        // Si es lote (incrementar disponible en lote)
-                        if ($mov->mov_lote_id) {
-                             DB::table('pro_lotes')
-                                ->where('lote_id', $mov->mov_lote_id)
-                                ->increment('lote_cantidad_disponible', $mov->mov_cantidad);
-                                
-                             // Si estaba cerrado, abrirlo
-                             DB::table('pro_lotes')
-                                ->where('lote_id', $mov->mov_lote_id)
-                                ->update(['lote_situacion' => 1]);
-                        }
-
-                        // Revertir Stock Actual (Incrementar)
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->increment('stock_cantidad_disponible', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->increment('stock_cantidad_total', $mov->mov_cantidad);
-
-                        // Marcar movimiento como anulado (o crear contra-movimiento)
-                        // Aquí optamos por marcar el movimiento original como anulado (situacion 0)
-                        // Ojo: Si se prefiere historial, crear un nuevo movimiento de ingreso por anulación.
-                        // Por simplicidad y consistencia con "ANULADA", lo marcamos como 0 o creamos reingreso.
-                        // Vamos a crear un movimiento de anulación para trazabilidad.
-                        
-                        DB::table('pro_movimientos')->insert([
-                            'mov_producto_id' => $mov->mov_producto_id,
-                            'mov_tipo' => 'anulacion_venta',
-                            'mov_origen' => 'Factura Anulada ' . $factura->fac_referencia,
-                            'mov_destino' => 'Bodega',
-                            'mov_cantidad' => $mov->mov_cantidad, // Positivo para ingreso
-                            'mov_fecha' => now(),
-                            'mov_usuario_id' => auth()->id(),
-                            'mov_serie_id' => $mov->mov_serie_id,
-                            'mov_lote_id' => $mov->mov_lote_id,
-                            'mov_documento_referencia' => 'ANUL-' . $factura->fac_referencia,
-                            'mov_observaciones' => 'Reingreso por anulación de factura',
-                            'mov_situacion' => 1
+                // Si la venta existe, la pasamos a EDITABLE para que el usuario pueda corregir
+                // No revertimos stock porque la venta sigue "viva", solo la factura murió.
+                if ($venta) {
+                    DB::table('pro_ventas')
+                        ->where('ven_id', $venta->ven_id)
+                        ->update([
+                            'ven_situacion' => 'EDITABLE',
+                            'ven_observaciones' => $venta->ven_observaciones . " [Factura anulada: " . $factura->fac_referencia . " - Venta en edición]"
                         ]);
+
+                    // Detalles también a EDITABLE? O se quedan como están?
+                    // Mejor dejarlos en un estado que permita edición pero indique que están reservados/vendidos.
+                    // 'AUTORIZADA' o 'EDITABLE'. Usemos 'EDITABLE' para consistencia.
+                    DB::table('pro_detalle_ventas')
+                        ->where('det_ven_id', $venta->ven_id)
+                        ->update(['det_situacion' => 'EDITABLE']);
                         
-                        // Actualizar el movimiento original a anulado para que no cuente doble si se recalcula
-                         DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update(['mov_situacion' => 0]); // 0 = Anulado/Inactivo
-                    }
+                    // NOTA: Los movimientos de stock (pro_movimientos) se quedan como 'venta' (situacion 1)
+                    // o deberían pasar a 'reserva' (situacion 3)?
+                    // Si se quedan como 'venta', el stock físico ya se descontó.
+                    // Si el usuario cambia una serie, tendremos que hacer el swap en el controlador de ventas.
+                    // Si cancela la venta definitivamente, ahí sí revertimos.
                 }
             }
 
