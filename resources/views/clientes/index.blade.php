@@ -351,52 +351,18 @@
 
                                 <!-- Campos Empresa (ocultos por defecto) -->
                                 <div id="campos-empresa" class="mb-6 hidden">
-                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 pb-2 border-b border-gray-200 dark:border-gray-600">
-                                        <i class="fas fa-building mr-2"></i>Información de Empresa
-                                    </h4>
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        <div class="sm:col-span-2">
-                                            <label for="cliente_nom_empresa" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Nombre de la Empresa
-                                            </label>
-                                            <input type="text" name="cliente_nom_empresa" id="cliente_nom_empresa"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div>
-                                            <label for="cliente_nom_vendedor" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Nombre del Vendedor
-                                            </label>
-                                            <input type="text" name="cliente_nom_vendedor" id="cliente_nom_vendedor"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div>
-                                            <label for="cliente_cel_vendedor" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Celular del Vendedor
-                                            </label>
-                                            <input type="text" name="cliente_cel_vendedor" id="cliente_cel_vendedor"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div class="sm:col-span-2">
-                                            <label for="cliente_ubicacion" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Referencia de la Empresa
-                                            </label>
-                                            <input type="text" name="cliente_ubicacion" id="cliente_ubicacion"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div class="sm:col-span-2">
-                                            <label for="cliente_pdf_licencia" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                <i class="fas fa-file-pdf text-red-600 mr-1"></i>
-                                                PDF Licencia de Compraventa
-                                            </label>
-                                            <input id="cliente_pdf_licencia" 
-                                                name="cliente_pdf_licencia" 
-                                                type="file" 
-                                                accept=".pdf"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                <i class="fas fa-info-circle"></i> Solo archivos PDF, máximo 10MB
-                                            </p>
-                                        </div>
+                                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            <i class="fas fa-building mr-2"></i>Información de Empresas
+                                        </h4>
+                                        <button type="button" onclick="window.clientesManager.addEmpresaField()" 
+                                                class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            <i class="fas fa-plus mr-1"></i> Agregar Empresa
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="empresas-container" class="space-y-4">
+                                        <!-- Las empresas se agregarán aquí dinámicamente -->
                                     </div>
                                 </div>
                             </div>
@@ -524,6 +490,14 @@
                                 </div>
                                 <div class="sm:col-span-1">
                                     <input type="text" name="emp_direccion" id="emp_direccion" placeholder="Dirección"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_nom_vendedor" id="emp_nom_vendedor" placeholder="Nombre Vendedor"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_cel_vendedor" id="emp_cel_vendedor" placeholder="Celular Vendedor"
                                            class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
                                 </div>
                                 <div class="sm:col-span-1">

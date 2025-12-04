@@ -123,6 +123,96 @@ class ClientesController extends Controller
         }
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'cliente_nombre1' => ['required', 'string', 'max:50'],
+            'cliente_nombre2' => ['nullable', 'string', 'max:50'],
+            'cliente_apellido1' => ['required', 'string', 'max:50'],
+            'cliente_apellido2' => ['nullable', 'string', 'max:50'],
+            'cliente_dpi' => ['nullable', 'string', 'max:20'],
+            'cliente_nit' => ['nullable', 'string', 'max:20'],
+            'cliente_direccion' => ['nullable', 'string', 'max:255'],
+            'cliente_telefono' => ['nullable', 'string', 'max:30'],
+            'cliente_correo' => ['nullable', 'email', 'max:150'],
+            'cliente_tipo' => ['required', 'integer', 'in:1,2,3'],
+            'cliente_user_id' => ['nullable', 'integer'],
+            // Validación de empresas si el tipo es 3
+            'empresas' => ['nullable', 'array'],
+            'empresas.*.nombre' => ['required_if:cliente_tipo,3', 'string', 'max:250'],
+            'empresas.*.nit' => ['nullable', 'string', 'max:20'],
+            'empresas.*.licencia' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $data = $validator->validated();
+            $data['cliente_situacion'] = 1;
+
+            // Crear Cliente
+            $cliente = Clientes::create($data);
+
+            // Si es empresa (tipo 3) y tiene empresas
+            if ($request->cliente_tipo == 3 && $request->has('empresas')) {
+                foreach ($request->empresas as $index => $empData) {
+                    $empresaData = [
+                        'emp_nombre' => $empData['nombre'],
+                        'emp_nit' => $empData['nit'] ?? null,
+                        'emp_direccion' => $empData['direccion'] ?? null,
+                        'emp_telefono' => $empData['cel_vendedor'] ?? null, // Legacy mapping
+                        'emp_nom_vendedor' => $empData['vendedor'] ?? null,
+                        'emp_cel_vendedor' => $empData['cel_vendedor'] ?? null,
+                    ];
+
+                    // Manejo de archivo
+                    if ($request->hasFile("empresas.{$index}.licencia")) {
+                        $file = $request->file("empresas.{$index}.licencia");
+                        $fileName = 'licencia_emp_' . time() . '_' . uniqid() . '.pdf';
+                        $path = $file->storeAs('clientes/empresas/licencias', $fileName, 'public');
+                        $empresaData['emp_licencia_compraventa'] = $path;
+                    }
+
+                    $cliente->empresas()->create($empresaData);
+                }
+                
+                // Actualizar campos legacy del cliente con la primera empresa para compatibilidad
+                if (count($request->empresas) > 0) {
+                    $first = $request->empresas[0];
+                    $cliente->update([
+                        'cliente_nom_empresa' => $first['nombre'],
+                        'cliente_nom_vendedor' => $first['vendedor'] ?? null,
+                        'cliente_cel_vendedor' => $first['cel_vendedor'] ?? null,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cliente creado exitosamente',
+                'data' => $cliente
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al crear cliente:', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error al crear cliente: ' . $e->getMessage()], 500);
+        }
+    }
+
 
     /**
      * Update the specified resource in storage.
@@ -344,6 +434,8 @@ class ClientesController extends Controller
             'emp_nit' => ['nullable', 'string', 'max:20'],
             'emp_direccion' => ['nullable', 'string', 'max:255'],
             'emp_telefono' => ['nullable', 'string', 'max:30'],
+            'emp_nom_vendedor' => ['nullable', 'string', 'max:255'],
+            'emp_cel_vendedor' => ['nullable', 'string', 'max:30'],
             'emp_licencia_compraventa' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'emp_licencia_vencimiento' => ['nullable', 'date'],
         ]);
@@ -388,6 +480,8 @@ class ClientesController extends Controller
             'emp_nit' => ['nullable', 'string', 'max:20'],
             'emp_direccion' => ['nullable', 'string', 'max:255'],
             'emp_telefono' => ['nullable', 'string', 'max:30'],
+            'emp_nom_vendedor' => ['nullable', 'string', 'max:255'],
+            'emp_cel_vendedor' => ['nullable', 'string', 'max:30'],
             'emp_licencia_compraventa' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'emp_licencia_vencimiento' => ['nullable', 'date'],
         ]);

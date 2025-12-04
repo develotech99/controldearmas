@@ -369,6 +369,7 @@ class ClientesManager {
     toggleCamposEmpresa() {
         const tipoSelect = document.getElementById('cliente_tipo');
         const camposEmpresa = document.getElementById('campos-empresa');
+        const container = document.getElementById('empresas-container');
 
         if (!tipoSelect || !camposEmpresa) return;
 
@@ -376,9 +377,76 @@ class ClientesManager {
 
         if (tipo == '3') {
             camposEmpresa.classList.remove('hidden');
+            // Si no hay campos de empresa, agregar uno por defecto
+            if (container && container.children.length === 0) {
+                this.addEmpresaField();
+            }
         } else {
             camposEmpresa.classList.add('hidden');
         }
+    }
+
+    addEmpresaField() {
+        const container = document.getElementById('empresas-container');
+        if (!container) return;
+
+        const index = container.children.length;
+        const id = Date.now(); // Unique ID for DOM elements
+
+        const html = `
+            <div class="empresa-item bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600 relative animate-fade-in-down" id="empresa-${id}">
+                ${index > 0 ? `
+                <button type="button" onclick="document.getElementById('empresa-${id}').remove()" 
+                        class="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                ` : ''}
+                
+                <h5 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">Empresa ${index + 1}</h5>
+                
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de la Empresa *</label>
+                        <input type="text" name="empresas[${index}][nombre]" required
+                               class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">NIT</label>
+                        <input type="text" name="empresas[${index}][nit]"
+                               class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dirección</label>
+                        <input type="text" name="empresas[${index}][direccion]"
+                               class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Vendedor</label>
+                        <input type="text" name="empresas[${index}][vendedor]"
+                               class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Celular Vendedor</label>
+                        <input type="text" name="empresas[${index}][cel_vendedor]"
+                               class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <i class="fas fa-file-pdf text-red-600 mr-1"></i> PDF Licencia de Compraventa
+                        </label>
+                        <input type="file" name="empresas[${index}][licencia]" accept=".pdf"
+                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', html);
     }
 
     // ==========================
@@ -521,6 +589,8 @@ class ClientesManager {
         document.getElementById('emp_nombre').value = empresa.emp_nombre;
         document.getElementById('emp_nit').value = empresa.emp_nit || '';
         document.getElementById('emp_direccion').value = empresa.emp_direccion || '';
+        document.getElementById('emp_nom_vendedor').value = empresa.emp_nom_vendedor || '';
+        document.getElementById('emp_cel_vendedor').value = empresa.emp_cel_vendedor || '';
         document.getElementById('emp_licencia_vencimiento').value = empresa.emp_licencia_vencimiento || '';
         // Nota: El input file no se puede prellenar por seguridad
         document.getElementById('form-empresa-title').textContent = 'Editar Empresa';

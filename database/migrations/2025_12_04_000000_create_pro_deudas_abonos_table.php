@@ -24,7 +24,7 @@ return new class extends Migration
                 $table->softDeletes();
 
                 $table->foreign('deuda_id')->references('deuda_id')->on('pro_deudas_clientes')->onDelete('cascade');
-                $table->foreign('user_id')->references('id')->on('users');
+                $table->foreign('user_id')->references('user_id')->on('users');
             });
         }
     }

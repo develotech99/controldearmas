@@ -15,7 +15,7 @@ return new class extends Migration
 
         Schema::create('pro_deudas_clientes', function (Blueprint $table) {
             $table->id('deuda_id');
-            $table->unsignedBigInteger('cliente_id');
+            $table->unsignedInteger('cliente_id');
             $table->unsignedBigInteger('empresa_id')->nullable();
             $table->decimal('monto', 10, 2);
             $table->string('descripcion')->nullable();
@@ -28,7 +28,7 @@ return new class extends Migration
 
             $table->foreign('cliente_id')->references('cliente_id')->on('pro_clientes')->onDelete('cascade');
             $table->foreign('empresa_id')->references('emp_id')->on('pro_clientes_empresas')->onDelete('set null');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('user_id')->references('user_id')->on('users');
         });
     }
 
