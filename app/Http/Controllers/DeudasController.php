@@ -156,6 +156,7 @@ class DeudasController extends Controller
             DB::table('cja_historial')->insert([
                 'cja_tipo' => 'PAGO_DEUDA',
                 'cja_id_venta' => null,
+                'cja_id_import' => $id, // Store deuda_id here for linking
                 'cja_usuario' => auth()->id(),
                 'cja_monto' => $request->monto,
                 'cja_fecha' => now(),

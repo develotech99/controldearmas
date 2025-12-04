@@ -478,10 +478,13 @@ class AdminPagosController extends Controller
      
              $q = DB::table('cja_historial as h')
                  ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
-                 ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'h.cja_id_venta')
-                 ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
-                 ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
-                 ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'h.cja_usuario')
+                ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'h.cja_id_venta')
+                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+                // Joins for Debt Payments (using cja_id_import as deuda_id)
+                ->leftJoin('pro_deudas_clientes as dc', 'dc.deuda_id', '=', 'h.cja_id_import')
+                ->leftJoin('pro_clientes as dc_c', 'dc_c.cliente_id', '=', 'dc.cliente_id')
+                ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
+                ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'h.cja_usuario')
                  ->select(
                      'h.cja_id',
                      'h.cja_fecha',
@@ -495,25 +498,32 @@ class AdminPagosController extends Controller
                      
                      // ⭐ Cliente
                      DB::raw("
-                         CASE 
-                             WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
-                                 CONCAT(
-                                     c.cliente_nom_empresa, 
-                                     ' | ', 
-                                     TRIM(CONCAT_WS(' ', 
-                                         COALESCE(c.cliente_nombre1, ''), 
-                                         COALESCE(c.cliente_apellido1, '')
-                                     ))
-                                 )
-                             WHEN c.cliente_id IS NOT NULL THEN 
-                                 TRIM(CONCAT_WS(' ', 
-                                     COALESCE(c.cliente_nombre1, ''),
-                                     COALESCE(c.cliente_nombre2, ''),
-                                     COALESCE(c.cliente_apellido1, ''),
-                                     COALESCE(c.cliente_apellido2, '')
-                                 ))
-                             ELSE NULL
-                         END as cliente_nombre
+                            WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
+                                CONCAT(
+                                    c.cliente_nom_empresa, 
+                                    ' | ', 
+                                    TRIM(CONCAT_WS(' ', 
+                                        COALESCE(c.cliente_nombre1, ''), 
+                                        COALESCE(c.cliente_apellido1, '')
+                                    ))
+                                )
+                            WHEN c.cliente_id IS NOT NULL THEN 
+                                TRIM(CONCAT_WS(' ', 
+                                    COALESCE(c.cliente_nombre1, ''),
+                                    COALESCE(c.cliente_nombre2, ''),
+                                    COALESCE(c.cliente_apellido1, ''),
+                                    COALESCE(c.cliente_apellido2, '')
+                                ))
+                            -- Logic for PAGO_DEUDA using cja_id_import as deuda_id
+                            WHEN h.cja_tipo = 'PAGO_DEUDA' AND dc.cliente_id IS NOT NULL THEN
+                                TRIM(CONCAT_WS(' ', 
+                                    COALESCE(dc_c.cliente_nombre1, ''),
+                                    COALESCE(dc_c.cliente_nombre2, ''),
+                                    COALESCE(dc_c.cliente_apellido1, ''),
+                                    COALESCE(dc_c.cliente_apellido2, '')
+                                ))
+                            ELSE NULL
+                        END as cliente_nombre
                      "),
                      DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
                      'c.cliente_tipo',
