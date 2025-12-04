@@ -159,7 +159,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/clientes/deudas', [DeudasController::class, 'index'])->name('clientes.deudas');
     Route::get('/clientes/deudas/buscar', [DeudasController::class, 'buscarDeudas'])->name('clientes.deudas.buscar');
     Route::post('/clientes/deudas', [DeudasController::class, 'store'])->name('clientes.deudas.store');
-    Route::post('/clientes/deudas/{id}/pagar', [DeudasController::class, 'pagar'])->name('clientes.deudas.pagar');
+    Route::post('/clientes/deudas/{id}/pagar', [DeudasController::class, 'registrarAbono'])->name('clientes.deudas.pagar');
+    Route::get('/clientes/deudas/{id}/historial', [DeudasController::class, 'historialAbonos'])->name('clientes.deudas.historial');
 
     // Tipo de arma
     Route::get('/tipoarma', [TipoArmaController::class, 'index'])->name('tipoarma.index');
