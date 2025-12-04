@@ -230,6 +230,11 @@ public function verFacturaCambiaria($id)
                 'fac_venta_id' => 'nullable|integer|exists:pro_ventas,ven_id',
                 'det_fac_producto_id' => 'nullable|array',
                 'det_fac_producto_id.*' => 'nullable|integer|exists:pro_productos,producto_id',
+                // Partial Billing Fields
+                'det_fac_detalle_venta_id' => 'nullable|array',
+                'det_fac_detalle_venta_id.*' => 'nullable|integer|exists:pro_detalle_ventas,det_id',
+                'det_fac_series' => 'nullable|array', // Array of arrays of series IDs
+                'det_fac_series.*' => 'nullable|array',
             ]);
 
             DB::beginTransaction();
@@ -239,11 +244,31 @@ public function verFacturaCambiaria($id)
             $subtotalNeto = 0;
             $ivaTotal = 0;
             $descuentoTotal = 0;
+            $detallesVentaUpdates = []; // To track updates and commit them later
 
             for ($i = 0; $i < count($validated['det_fac_producto_desc']); $i++) {
                 $cantidad = (float) $validated['det_fac_cantidad'][$i];
                 $precio = (float) $validated['det_fac_precio_unitario'][$i];
                 $descuento = (float) ($validated['det_fac_descuento'][$i] ?? 0);
+
+                // Partial Billing Validation & Logic
+                $detalleVentaId = $validated['det_fac_detalle_venta_id'][$i] ?? null;
+                if ($detalleVentaId) {
+                    $detalleVenta = \App\Models\ProDetalleVenta::lockForUpdate()->find($detalleVentaId);
+                    if ($detalleVenta) {
+                        $pendiente = $detalleVenta->det_cantidad - $detalleVenta->det_cantidad_facturada;
+                        // Allow a small margin of error for floats if needed, but quantity is usually integer/decimal
+                        if ($cantidad > $pendiente + 0.0001) {
+                            throw new Exception("La cantidad a facturar ({$cantidad}) excede lo pendiente ({$pendiente}) para el producto '{$validated['det_fac_producto_desc'][$i]}'");
+                        }
+                        
+                        // Store update to perform later
+                        $detallesVentaUpdates[] = [
+                            'model' => $detalleVenta,
+                            'cantidad' => $cantidad
+                        ];
+                    }
+                }
 
                 $totalItem = ($cantidad * $precio) - $descuento;
                 
@@ -259,6 +284,10 @@ public function verFacturaCambiaria($id)
                     'monto_gravable' => $montoGravable,
                     'iva' => $ivaItem,
                     'total' => $totalItem,
+                    // Metadata for saving later
+                    'detalle_venta_id' => $detalleVentaId,
+                    'producto_id' => $validated['det_fac_producto_id'][$i] ?? null,
+                    'series_ids' => $validated['det_fac_series'][$i] ?? [],
                 ];
 
                 $subtotalNeto += $montoGravable;
@@ -279,7 +308,7 @@ public function verFacturaCambiaria($id)
                     'nombre' => $validated['fac_receptor_nombre'],
                     'direccion' => $validated['fac_receptor_direccion'] ?? '',
                 ],
-                'items' => $items,
+                'items' => $items, // Note: XML Builder should handle extra keys gracefully or we should clean them
                 'totales' => [
                     'subtotal' => $subtotalNeto,
                     'iva' => $ivaTotal,
@@ -366,92 +395,18 @@ public function verFacturaCambiaria($id)
                 'fac_venta_id' => $validated['fac_venta_id'] ?? null,
             ]);
 
-            // LOGICA DE INVENTARIO: Si hay venta asociada y es PENDIENTE
-            if (!empty($validated['fac_venta_id'])) {
-                $venta = DB::table('pro_ventas')->where('ven_id', $validated['fac_venta_id'])->first();
-                
-                if ($venta && in_array($venta->ven_situacion, ['PENDIENTE', 'AUTORIZADA'])) {
-                    // 1. Marcar venta como ACTIVA
-                    DB::table('pro_ventas')
-                        ->where('ven_id', $venta->ven_id)
-                        ->update(['ven_situacion' => 'ACTIVA']);
-
-                    // 2. Marcar detalles como ACTIVOS
-                    DB::table('pro_detalle_ventas')
-                        ->where('det_ven_id', $venta->ven_id)
-                        ->update(['det_situacion' => 'ACTIVA']);
-
-                    // 3. Procesar SERIES y LOTES (Descontar stock)
-                    $refVenta = 'VENTA-' . $venta->ven_id;
-                    
-                    // a) Series reservadas (mov_situacion = 3) -> Vendidas (mov_situacion = 1)
-                    $seriesMovs = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $refVenta)
-                        ->where('mov_situacion', 3)
-                        ->whereNotNull('mov_serie_id')
-                        ->get();
-
-                    foreach ($seriesMovs as $mov) {
-                        // Actualizar serie a vendida
-                        DB::table('pro_series_productos')
-                            ->where('serie_id', $mov->mov_serie_id)
-                            ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
-                        
-                        // Actualizar movimiento a confirmado
-                        DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update(['mov_situacion' => 1]);
-                        
-                        // Descontar de stock (reservado y total)
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
-                    }
-
-                    // b) Lotes reservados -> Confirmados
-                    $lotesMovs = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $refVenta)
-                        ->where('mov_situacion', 3)
-                        ->whereNotNull('mov_lote_id')
-                        ->get();
-
-                    foreach ($lotesMovs as $mov) {
-                        // Actualizar movimiento
-                        DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update(['mov_situacion' => 1]);
-
-                        // Descontar de stock
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
-                    }
-                }
+            // Apply updates to ProDetalleVenta
+            foreach ($detallesVentaUpdates as $update) {
+                $update['model']->increment('det_cantidad_facturada', $update['cantidad']);
             }
-
 
             // Guardar detalle
             foreach ($items as $index => $item) {
-                FacturacionDetalle::create([
+                $detalle = \App\Models\FacturacionDetalle::create([
                     'det_fac_factura_id' => $factura->fac_id,
                     'det_fac_tipo' => 'B',
-                    'det_fac_producto_id' => $validated['det_fac_producto_id'][$index] ?? null,
+                    'det_fac_producto_id' => $item['producto_id'],
+                    'det_fac_detalle_venta_id' => $item['detalle_venta_id'],
                     'det_fac_producto_desc' => $item['descripcion'],
                     'det_fac_cantidad' => $item['cantidad'],
                     'det_fac_unidad_medida' => 'UNI',
@@ -462,6 +417,41 @@ public function verFacturaCambiaria($id)
                     'det_fac_impuesto' => $item['iva'],
                     'det_fac_total' => $item['total'],
                 ]);
+
+                // Save Series for this item
+                if (!empty($item['series_ids'])) {
+                    foreach ($item['series_ids'] as $serieId) {
+                        DB::table('facturacion_series')->insert([
+                            'fac_detalle_id' => $detalle->det_fac_id,
+                            'serie_id' => $serieId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            // Update Sale Status
+            if (!empty($validated['fac_venta_id'])) {
+                 $venta = \App\Models\ProVenta::find($validated['fac_venta_id']);
+                 if ($venta) {
+                     $allInvoiced = true;
+                     foreach ($venta->detalleVentas as $dv) {
+                         $dv->refresh();
+                         if ($dv->det_cantidad_facturada < $dv->det_cantidad) {
+                             $allInvoiced = false;
+                             break;
+                         }
+                     }
+                     
+                     if ($allInvoiced) {
+                         $venta->update(['ven_situacion' => 'FACTURADA']);
+                     } else {
+                         if ($venta->ven_situacion !== 'AUTORIZADA') {
+                             $venta->update(['ven_situacion' => 'AUTORIZADA']);
+                         }
+                     }
+                 }
             }
 
             DB::commit();

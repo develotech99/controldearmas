@@ -1035,6 +1035,18 @@ const bindItemEvents = (itemEl) => {
     q(itemEl, '.btn-eliminar-item').addEventListener('click', () => {
         itemEl.remove();
         recalcularTotales();
+        reindexItems();
+    });
+};
+
+const reindexItems = () => {
+    const items = contenedorItems.querySelectorAll('.item-factura');
+    items.forEach((item, index) => {
+        // Update series inputs names to match index
+        const seriesInputs = item.querySelectorAll('.input-serie-id');
+        seriesInputs.forEach(input => {
+            input.name = `det_fac_series[${index}][]`;
+        });
     });
 };
 
@@ -1045,6 +1057,39 @@ const agregarItem = (prefill = {}) => {
     const nodo = tpl.cloneNode(true);
 
     if (prefill.descripcion) q(nodo, 'input[name="det_fac_producto_desc[]"]').value = prefill.descripcion;
+    if (prefill.producto_id) {
+        let input = q(nodo, 'input[name="det_fac_producto_id[]"]');
+        if (!input) {
+            // If template doesn't have it, create it (though it should)
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'det_fac_producto_id[]';
+            nodo.appendChild(input);
+        }
+        input.value = prefill.producto_id;
+    }
+
+    // Partial Billing Fields
+    if (prefill.detalle_venta_id) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'det_fac_detalle_venta_id[]';
+        input.value = prefill.detalle_venta_id;
+        nodo.appendChild(input);
+    }
+
+    // Series
+    if (prefill.series_ids && Array.isArray(prefill.series_ids)) {
+        prefill.series_ids.forEach(serieId => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.className = 'input-serie-id';
+            // Name will be set by reindexItems
+            input.value = serieId;
+            nodo.appendChild(input);
+        });
+    }
+
     if (typeof prefill.cantidad !== 'undefined') q(nodo, '.item-cantidad').value = prefill.cantidad;
     if (typeof prefill.precio !== 'undefined') q(nodo, '.item-precio').value = prefill.precio;
     if (typeof prefill.descuento !== 'undefined') q(nodo, '.item-descuento').value = prefill.descuento;
@@ -1053,56 +1098,7 @@ const agregarItem = (prefill = {}) => {
 
     bindItemEvents(nodo);
     calcularItem(nodo);
-};
-
-btnAgregarItem?.addEventListener('click', () => agregarItem());
-
-
-document.getElementById("btnAbrirModalFactura")?.addEventListener("click", () => {
-
-    if (contenedorItems.querySelectorAll('.item-factura').length === 0) {
-        agregarItem();
-    }
-
-    recalcularTotales();
-});
-
-// =============================
-// BUSQUEDA DE VENTAS
-// =============================
-const buscarVenta = async () => {
-    const q = busquedaVenta.value.trim();
-    if (q.length < 2) return;
-
-    setBtnLoading(btnBuscarVenta, true);
-    resultadosVenta.innerHTML = '';
-    resultadosVenta.classList.remove('hidden');
-
-    try {
-        const res = await fetch(`/facturacion/buscar-venta?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
-
-        if (data.codigo === 1 && data.data.length > 0) {
-            data.data.forEach(venta => {
-                const div = document.createElement('div');
-                div.className = 'p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm';
-                div.innerHTML = `
-                    <div class="font-bold text-blue-800">Venta #${venta.ven_id} - ${venta.ven_fecha}</div>
-                    <div class="text-gray-600">${venta.cliente_nombre1} ${venta.cliente_apellido1} (${venta.cliente_nit})</div>
-                    <div class="text-xs text-gray-500">Total: Q ${venta.ven_total_vendido}</div>
-                `;
-                div.addEventListener('click', () => seleccionarVenta(venta));
-                resultadosVenta.appendChild(div);
-            });
-        } else {
-            resultadosVenta.innerHTML = '<div class="p-2 text-gray-500 text-sm">No se encontraron ventas pendientes.</div>';
-        }
-    } catch (err) {
-        console.error(err);
-        resultadosVenta.innerHTML = '<div class="p-2 text-red-500 text-sm">Error al buscar ventas.</div>';
-    } finally {
-        setBtnLoading(btnBuscarVenta, false);
-    }
+    reindexItems();
 };
 
 const seleccionarVenta = (venta) => {
@@ -1132,16 +1128,22 @@ const seleccionarVenta = (venta) => {
 
                 // Agregar una línea por cada serie
                 det.series.forEach(serie => {
+                    // Check if serie is object or string (backward compatibility)
+                    const serieNumero = serie.numero || serie;
+                    const serieId = serie.id || null; // If string, we might not have ID here unless passed differently
+
                     agregarItem({
-                        descripcion: `${det.producto_nombre} (Serie: ${serie})`,
+                        descripcion: `${det.producto_nombre} (Serie: ${serieNumero})`,
                         cantidad: 1,
                         precio: det.det_precio,
                         descuento: descuentoUnitario.toFixed(2),
-                        producto_id: det.det_producto_id
+                        producto_id: det.det_producto_id,
+                        detalle_venta_id: det.det_id,
+                        series_ids: serieId ? [serieId] : []
                     });
                 });
 
-                // Si hay cantidad sobrante sin serie
+                // Si hay cantidad sobrante sin serie (should not happen for serialized items if data is correct)
                 const sobrante = cantidadTotal - det.series.length;
                 if (sobrante > 0) {
                     agregarItem({
@@ -1149,7 +1151,8 @@ const seleccionarVenta = (venta) => {
                         cantidad: sobrante,
                         precio: det.det_precio,
                         descuento: (descuentoUnitario * sobrante).toFixed(2),
-                        producto_id: det.det_producto_id
+                        producto_id: det.det_producto_id,
+                        detalle_venta_id: det.det_id
                     });
                 }
             } else {
@@ -1159,7 +1162,8 @@ const seleccionarVenta = (venta) => {
                     cantidad: det.det_cantidad,
                     precio: det.det_precio,
                     descuento: det.det_descuento,
-                    producto_id: det.det_producto_id
+                    producto_id: det.det_producto_id,
+                    detalle_venta_id: det.det_id
                 });
             }
         });
