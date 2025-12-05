@@ -15,7 +15,7 @@ async function clientesParticulares() {
 
     const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
     const data = await res.json();
-    //('venttas desde el buscar',data);
+    console.log('Resultados búsqueda clientes:', data);
 
     // Siempre limpiamos el select
     select.innerHTML = "";
@@ -1587,7 +1587,7 @@ function mostrarReservasCliente(reservas) {
   </div>
 
   <!-- Lista de productos de la reserva -->
-  <div class="space-y-2 mb-6">
+  <div class="space-y-2 mb-6 hidden">
     ${items.map((item) => {
             const necesitaStock = Number(item.producto_requiere_stock ?? 1) === 1;
             const requiereSerie = Number(item.producto_requiere_serie ?? 0) === 1;
