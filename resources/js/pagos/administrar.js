@@ -562,7 +562,7 @@ const CargarMovimientos = async () => {
         const metodoId = document.getElementById("filtroMetodo")?.value || "";
         const { from, to } = rangoMes();
 
-        const url = new URL(`${API}/movimientos`, window.location.origin);
+        const url = new URL(`/pagos/movimientos`, window.location.origin);
         url.searchParams.set("from", from);
         url.searchParams.set("to", to);
         if (metodoId) url.searchParams.set("metodo_id", metodoId);
