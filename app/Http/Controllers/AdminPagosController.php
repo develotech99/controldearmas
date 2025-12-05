@@ -75,14 +75,15 @@ class AdminPagosController extends Controller
             $estado = (string) $request->query('estado', '');
 
             $rows = DB::table('pro_pagos_subidos as ps')
-                ->join('pro_ventas as v', 'v.ven_id', '=', 'ps.ps_venta_id')
-                ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
-                // tu esquema usa users.user_id en varios FKs
+                ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'ps.ps_venta_id')
+                ->leftJoin('pro_preventas as prev', 'prev.prev_id', '=', 'ps.ps_preventa_id') // Join Preventas
+                ->leftJoin('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
                 ->leftJoin('users as u', 'u.user_id', '=', 'ps.ps_cliente_user_id')
                 ->leftJoin('pro_clientes as c', 'c.cliente_user_id', '=', 'ps.ps_cliente_user_id')
                 ->select([
                     'ps.ps_id',
                     'ps.ps_venta_id',
+                    'ps.ps_preventa_id', // Add preventa ID
                     'ps.ps_estado',
                     'ps.ps_referencia',
                     'ps.ps_concepto',
@@ -96,6 +97,11 @@ class AdminPagosController extends Controller
                     'v.ven_fecha',
                     'v.ven_total_vendido',
                     'v.ven_observaciones',
+
+                    'prev.prev_id', // Preventa fields
+                    'prev.prev_fecha',
+                    'prev.prev_total',
+                    'prev.prev_observaciones',
 
                     'pg.pago_id',
                     'pg.pago_monto_total',
@@ -133,7 +139,8 @@ class AdminPagosController extends Controller
                         $w->where('ps.ps_referencia', 'like', "%{$q}%")
                             ->orWhere('ps.ps_concepto', 'like', "%{$q}%")
                             ->orWhere('v.ven_observaciones', 'like', "%{$q}%")
-                            ->orWhere('v.ven_id', 'like', "%{$q}%");
+                            ->orWhere('v.ven_id', 'like', "%{$q}%")
+                            ->orWhere('prev.prev_id', 'like', "%{$q}%"); // Search by preventa ID
                     });
                 })
                 ->orderByDesc('ps.created_at')
@@ -180,14 +187,26 @@ class AdminPagosController extends Controller
                 ->keyBy('cuota_control_id');
 
             $data = $rows->map(function ($r) use ($conceptoSub, $cuotasAgg) {
-                $c = $conceptoSub[$r->ven_id] ?? null;
+                // Determine context (Venta or Preventa)
+                $isPreventa = !empty($r->ps_preventa_id);
+                $ventaId = $r->ven_id ?? null;
+                $preventaId = $r->prev_id ?? null;
+
+                $c = ($ventaId && isset($conceptoSub[$ventaId])) ? $conceptoSub[$ventaId] : null;
 
                 // Debía para ESTE envío (lo que el cliente seleccionó)
                 $debiaEnvio = (float) ($r->ps_monto_total_cuotas_front ?? 0);
 
                 // Pendiente global de la venta (contexto)
-                $pendienteVenta = (float) ($r->pago_monto_pendiente
-                    ?? max(($r->pago_monto_total ?? 0) - ($r->pago_monto_pagado ?? 0), 0));
+                $pendienteVenta = 0;
+                if (!$isPreventa) {
+                    $pendienteVenta = (float) ($r->pago_monto_pendiente
+                        ?? max(($r->pago_monto_total ?? 0) - ($r->pago_monto_pagado ?? 0), 0));
+                } else {
+                    // For Preventa, pending is Total - Paid (assuming prev_monto_pagado is updated)
+                    // But here we might just show the total preventa amount as context
+                    $pendienteVenta = (float) ($r->prev_total ?? 0); 
+                }
 
                 // Qué mostrar en la columna "Debía" de la bandeja:
                 $debiaMostrado = $debiaEnvio > 0 ? $debiaEnvio : $pendienteVenta;
@@ -207,15 +226,16 @@ class AdminPagosController extends Controller
                 }
 
                 // Agregados de cuotas de la venta (si tienes tabla de cuotas)
-                $cuAgg = $cuotasAgg[$r->pago_id] ?? null;
+                $cuAgg = ($r->pago_id && isset($cuotasAgg[$r->pago_id])) ? $cuotasAgg[$r->pago_id] : null;
 
                 return [
                     'ps_id'           => (int) $r->ps_id,
-                    'venta_id'        => (int) $r->ven_id,
-                    'fecha'           => $r->ven_fecha,
+                    'venta_id'        => $ventaId ? (int) $ventaId : null,
+                    'preventa_id'     => $preventaId ? (int) $preventaId : null, // Add preventa ID
+                    'fecha'           => $r->ven_fecha ?? $r->prev_fecha, // Use preventa date if venta date is null
                     'cliente'         => $r->cliente,
 
-                    'concepto'        => $c->concepto_resumen ?? '—',
+                    'concepto'        => $isPreventa ? 'PREVENTA #' . $preventaId : ($c->concepto_resumen ?? '—'),
                     'items_count'     => (int) ($c->items_count ?? 0),
 
                     // Lo que verás en la tabla:
@@ -226,7 +246,7 @@ class AdminPagosController extends Controller
                     // Contexto adicional (por si quieres mostrarlo en tooltip o columnas nuevas)
                     'debia_envio'         => round($debiaEnvio, 2),
                     'pendiente_venta'     => round($pendienteVenta, 2),
-                    'venta_total'         => round((float) ($r->ven_total_vendido ?? 0), 2),
+                    'venta_total'         => round((float) ($r->ven_total_vendido ?? $r->prev_total ?? 0), 2),
 
                     'estado'          => $r->ps_estado,
                     'referencia'      => $r->ps_referencia,
@@ -238,8 +258,9 @@ class AdminPagosController extends Controller
                     'cuotas_pendientes'      => $cuAgg->cuotas_pendientes ?? null,
                     'monto_cuotas_pendiente' => isset($cuAgg) ? round((float) $cuAgg->monto_cuotas_pendiente, 2) : null,
 
-                    'observaciones_venta' => $r->ven_observaciones,
+                    'observaciones_venta' => $r->ven_observaciones ?? $r->prev_observaciones,
                     'created_at'       => $r->created_at,
+                    'is_preventa'      => $isPreventa, // Flag for frontend
                 ];
             })->values();
 
@@ -280,6 +301,88 @@ class AdminPagosController extends Controller
                 return response()->json(['codigo' => 0, 'mensaje' => 'El registro no está pendiente'], 422);
             }
 
+            $monto = (float) ($ps->ps_monto_comprobante ?? 0);
+            $fecha = $ps->ps_fecha_comprobante ?: now();
+            $observaciones = $data['observaciones'] ?? $ps->ps_concepto;
+
+            DB::beginTransaction();
+
+            // --- LÓGICA PREVENTA ---
+            if ($ps->ps_preventa_id) {
+                $preventa = DB::table('pro_preventas')->where('prev_id', $ps->ps_preventa_id)->first();
+                if (!$preventa) throw new Exception("Preventa no encontrada");
+
+                // 1. Actualizar Saldo a Favor del Cliente
+                $clienteId = $preventa->prev_cliente_id;
+                
+                // Ensure saldo row exists
+                $saldoRow = DB::table('pro_clientes_saldo')->where('saldo_cliente_id', $clienteId)->first();
+                if (!$saldoRow) {
+                    DB::table('pro_clientes_saldo')->insert([
+                        'saldo_cliente_id' => $clienteId,
+                        'saldo_monto' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+
+                // Increment Saldo
+                DB::table('pro_clientes_saldo')
+                    ->where('saldo_cliente_id', $clienteId)
+                    ->increment('saldo_monto', $monto);
+
+                // Get new saldo for history
+                $nuevoSaldo = DB::table('pro_clientes_saldo')->where('saldo_cliente_id', $clienteId)->value('saldo_monto');
+
+                // 2. Historial Saldo
+                DB::table('pro_clientes_saldo_historial')->insert([
+                    'hist_cliente_id' => $clienteId,
+                    'hist_tipo' => 'ABONO',
+                    'hist_monto' => $monto,
+                    'hist_saldo_anterior' => $nuevoSaldo - $monto,
+                    'hist_saldo_nuevo' => $nuevoSaldo,
+                    'hist_referencia' => 'PRE-' . $preventa->prev_id,
+                    'hist_observaciones' => 'Abono validado de Preventa #' . $preventa->prev_id,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // 3. Caja
+                DB::table('cja_historial')->insert([
+                    'cja_tipo'          => 'DEPOSITO', // Use DEPOSITO for pre-sales/abonos
+                    'cja_id_venta'      => null, // No venta yet
+                    'cja_usuario'       => auth()->id(),
+                    'cja_monto'         => $monto,
+                    'cja_fecha'         => now(),
+                    'cja_metodo_pago'   => $metodoEfectivoId,
+                    'cja_no_referencia' => $ps->ps_referencia ?? null,
+                    'cja_situacion'     => 'ACTIVO',
+                    'cja_observaciones' => 'Abono Preventa #' . $preventa->prev_id . '. ' . $observaciones,
+                    'created_at'        => now(),
+                ]);
+
+                // 4. Saldos Caja
+                CajaSaldo::ensureRow($metodoEfectivoId, 'GTQ')->addAmount($monto);
+
+                // 5. PS -> APROBADO
+                DB::table('pro_pagos_subidos')->where('ps_id', $ps->ps_id)->update([
+                    'ps_estado'         => 'APROBADO',
+                    'ps_notas_revision' => $observaciones,
+                    'ps_revisado_por'   => auth()->id(),
+                    'ps_revisado_en'    => now(),
+                    'updated_at'        => now(),
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'codigo'  => 1,
+                    'mensaje' => 'Pago de preventa aprobado exitosamente',
+                    'data'    => []
+                ], 200);
+            }
+
+            // --- LÓGICA VENTA NORMAL (EXISTENTE) ---
             $venta = DB::table('pro_ventas as v')
                 ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
                 ->select(
@@ -306,11 +409,6 @@ class AdminPagosController extends Controller
                     ->all();
             }
 
-            $monto = (float) ($ps->ps_monto_comprobante ?? 0);
-            $fecha = $ps->ps_fecha_comprobante ?: now();
-
-            DB::beginTransaction();
-
             // 2) Detalle de pago (1 registro por comprobante)
             $detId = DB::table('pro_detalle_pagos')->insertGetId([
                 'det_pago_pago_id'             => $venta->pago_id,
@@ -323,7 +421,7 @@ class AdminPagosController extends Controller
                 'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
                 'det_pago_tipo_pago'           => 'PAGO_UNICO',
                 'det_pago_estado'              => 'VALIDO',
-                'det_pago_observaciones'       => $data['observaciones'] ?? $ps->ps_concepto,
+                'det_pago_observaciones'       => $observaciones,
                 'det_pago_usuario_registro'    => auth()->id(),
                 'created_at'                   => now(),
                 'updated_at'                   => now(),
@@ -373,7 +471,7 @@ class AdminPagosController extends Controller
             // 7) PS -> APROBADO (usando tus columnas reales)
             DB::table('pro_pagos_subidos')->where('ps_id', $ps->ps_id)->update([
                 'ps_estado'         => 'APROBADO',
-                'ps_notas_revision' => $data['observaciones'] ?? null,
+                'ps_notas_revision' => $observaciones,
                 'ps_revisado_por'   => auth()->id(),
                 'ps_revisado_en'    => now(),
                 'updated_at'        => now(),

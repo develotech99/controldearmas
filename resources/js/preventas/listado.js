@@ -30,6 +30,13 @@ function initTable() {
                 className: 'text-right'
             },
             {
+                data: 'monto_pagado',
+                render: function (data) {
+                    return `<span class="font-bold text-blue-600">Q${parseFloat(data || 0).toFixed(2)}</span>`;
+                },
+                className: 'text-right'
+            },
+            {
                 data: 'estado',
                 render: function (data) {
                     let color = 'bg-gray-100 text-gray-800';

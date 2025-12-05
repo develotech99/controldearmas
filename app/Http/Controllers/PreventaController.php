@@ -64,11 +64,30 @@ class PreventaController extends Controller
                 ]);
             }
 
+            // 3. Registrar pago pendiente de validación si hay monto > 0
+            if ($request->monto_pagado > 0) {
+                DB::table('pro_pagos_subidos')->insert([
+                    'ps_venta_id'               => null, // No hay venta aún
+                    'ps_preventa_id'            => $preventa->prev_id,
+                    'ps_cliente_user_id'        => $cliente->cliente_user_id ?? null, // Si tiene usuario
+                    'ps_monto_comprobante'      => $request->monto_pagado,
+                    'ps_fecha_comprobante'      => now(),
+                    'ps_referencia'             => 'PRE-' . $preventa->prev_id,
+                    'ps_concepto'               => 'Abono Preventa #' . $preventa->prev_id,
+                    'ps_estado'                 => 'PENDIENTE_VALIDACION',
+                    'ps_banco_id'               => null, // Se puede agregar si el front lo envía
+                    'ps_imagen_path'            => null,
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Preventa registrada correctamente',
+                'preventa_id' => $preventa->prev_id, // Return ID for printing
                 'data' => $preventa
             ]);
 
