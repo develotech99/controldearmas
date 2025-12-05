@@ -69,6 +69,62 @@ function initTable() {
 
 async function loadTable() {
     const search = document.getElementById('searchCliente').value;
+
+    try {
+        const response = await fetch(`/api/clientes/estado-cuenta?search=${encodeURIComponent(search)}`);
+        const result = await response.json();
+
+        dataTable.clear();
+        dataTable.rows.add(result.data);
+        dataTable.draw();
+
+        // Calculate Totals
+        let totalSaldo = 0;
+        let totalDeudas = 0;
+        let totalPendiente = 0;
+
+        result.data.forEach(c => {
+            totalSaldo += parseFloat(c.saldo_favor || 0);
+            totalDeudas += parseFloat(c.total_deuda || 0);
+            totalPendiente += parseFloat(c.total_pendiente || 0);
+        });
+
+        // Update Cards with Animation
+        animateValue("totalSaldoFavor", totalSaldo);
+        animateValue("totalDeudas", totalDeudas);
+        animateValue("totalPendiente", totalPendiente);
+
+    } catch (error) {
+        console.error('Error loading data:', error);
+        Swal.fire('Error', 'No se pudieron cargar los datos', 'error');
+    }
+}
+
+function animateValue(id, value) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    const start = 0;
+    const duration = 1000;
+    let startTimestamp = null;
+
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const current = progress * value;
+        element.textContent = `Q${current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+// Make global for onclick
+window.verDetalle = async function (id, nombre) {
+    currentClienteId = id;
+    document.getElementById('modalTitle').textContent = `Detalle de Cuenta: ${nombre}`;
+
+    const modal = document.getElementById('modalDetalle');
     modal.classList.remove('hidden');
 
     // Reset tabs

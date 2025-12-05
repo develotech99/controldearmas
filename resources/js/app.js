@@ -1,4 +1,6 @@
 import './bootstrap';
+import '../css/app.css';
+import '../css/datatables-tailwind.css';
 
 import Alpine from 'alpinejs';
 import Swal from 'sweetalert2';
