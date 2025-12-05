@@ -672,7 +672,30 @@ const renderMovimientos = (rows = []) => {
 
         const tipo = r.cja_tipo || "—";
         const ref = r.cja_no_referencia || "—";
-        const metodo = r.metodo || "—";
+
+        // ⭐ LÓGICA PAGO MIXTO
+        let metodo = r.metodo || "—";
+        let esMixto = false;
+        let desgloseMixto = "";
+
+        if (tipo === 'VENTA' && r.cja_id_venta) {
+            const venta = ventaDetalles.get(Number(r.cja_id_venta));
+            if (venta && venta.pagos_realizados && venta.pagos_realizados.length > 1) {
+                esMixto = true;
+                // Construir resumen de pagos
+                desgloseMixto = venta.pagos_realizados.map(p =>
+                    `<div class="text-xs text-gray-500">• ${p.metodo}: ${fmtQ(p.monto)}</div>`
+                ).join('');
+
+                // Si el método actual es parte de un mixto, lo indicamos
+                metodo = `
+                    <div class="flex flex-col">
+                        <span class="font-medium text-gray-800">${r.metodo}</span>
+                        <span class="text-[10px] text-blue-600 bg-blue-50 px-1 rounded w-fit mt-0.5">Parte de Pago Mixto</span>
+                    </div>
+                `;
+            }
+        }
 
         const esIn = ["VENTA", "DEPOSITO", "AJUSTE_POS"].includes(tipo);
         const monto = `<span class="${esIn ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}">${fmtQ(r.cja_monto)}</span>`;
@@ -797,6 +820,8 @@ const renderMovimientos = (rows = []) => {
             : est === "ANULADA"
                 ? `<span class="text-xs text-rose-600 font-medium"><i class="fas fa-times-circle mr-1"></i>Rechazado</span>`
                 : `<span class="text-xs text-gray-400">${est}</span>`;
+
+
 
         // ⭐ RETORNAR ARRAY CON TODAS LAS COLUMNAS
         return [
@@ -968,7 +993,6 @@ document.addEventListener("click", (e) => {
         ConfirmarValidacionMovimiento(cjaId, tipo, monto, ref, descripcion, 'rechazar');
     }
 });
-
 
 
 document.getElementById("btnFiltrarMovs")?.addEventListener("click", CargarMovimientos);

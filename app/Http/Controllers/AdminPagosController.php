@@ -14,6 +14,11 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class AdminPagosController extends Controller
 {
+    public function historial()
+    {
+        return view('pagos.historial');
+    }
+
     public function stats(Request $request)
     {
         try {

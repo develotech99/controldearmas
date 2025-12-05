@@ -293,6 +293,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PagosController::class, 'index'])->name('mis.pagos');
         Route::get('subir', [PagosController::class, 'index2'])->name('subir.pago');
         Route::get('admin', [PagosController::class, 'index3'])->name('admin.pagos');
+    Route::get('historial', [AdminPagosController::class, 'historial'])->name('admin.pagos.historial');
         Route::get('obtener/mispagos', [PagosController::class, 'MisFacturasPendientes'])->name('misfacturas.pendientes');
         Route::post('cuotas/pagar', [PagosController::class, 'pagarCuotas']);
     });
