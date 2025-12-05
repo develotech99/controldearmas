@@ -2362,7 +2362,7 @@ public function procesarVenta(Request $request): JsonResponse
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
             'descuento_monto' => 'nullable|numeric|min:0',
             'total' => 'required|numeric|min:0',
-            'metodo_pago' => 'required|in:1,2,3,4,5,6',
+            // 'metodo_pago' => 'required|in:1,2,3,4,5,6', // SE VALIDA MANUALMENTE
             'productos' => 'required|array|min:1',
             'productos.*.producto_id' => 'required|exists:pro_productos,producto_id',
             'productos.*.cantidad' => 'required|integer|min:1',
@@ -2375,12 +2375,33 @@ public function procesarVenta(Request $request): JsonResponse
             'productos.*.lotes_seleccionados' => 'nullable|array',
             'productos.*.lotes_seleccionados.*.lote_id' => 'nullable|exists:pro_lotes,lote_id',
             'productos.*.lotes_seleccionados.*.cantidad' => 'nullable|integer|min:1',
-            'pago' => 'required|array',
+            // 'pago' => 'required|array', // SE VALIDA MANUALMENTE
             'reserva_id' => 'nullable|exists:pro_ventas,ven_id',
         ]);
 
         DB::beginTransaction();
 
+        // VALIDACIÓN MANUAL DE PAGO (Soporte Saldo a Favor)
+        $saldoFavorUsado = floatval($request->saldo_favor_usado ?? 0);
+        $totalVenta = floatval($request->total);
+        $montoRestante = round($totalVenta - $saldoFavorUsado, 2);
+
+        if ($montoRestante > 0.01) {
+            if (!$request->metodo_pago || !in_array($request->metodo_pago, [1, 2, 3, 4, 5, 6])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe seleccionar un método de pago válido para el saldo restante.',
+                    'errors' => ['metodo_pago' => ['Requerido']]
+                ], 422);
+            }
+            if (!$request->pago || !is_array($request->pago)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Faltan los detalles del pago.',
+                    'errors' => ['pago' => ['Requerido']]
+                ], 422);
+            }
+        }
       
         
         $productosValidados = [];

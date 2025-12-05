@@ -3982,7 +3982,8 @@ async function procesarVentaFinal() {
         // 1. DATOS GENERALES DE LA VENTA
         const clienteId = document.getElementById("clienteSelect").value;
         const fechaVenta = document.getElementById("fechaVenta").value;
-        const metodoPago = document.querySelector('input[name="metodoPago"]:checked').value;
+        const metodoPagoInput = document.querySelector('input[name="metodoPago"]:checked');
+        const metodoPago = metodoPagoInput ? metodoPagoInput.value : null;
         const descuento = parseFloat(document.getElementById("descuentoModal").value) || 0;
 
         // Obtener empresa seleccionada si existe
@@ -4012,6 +4013,8 @@ async function procesarVentaFinal() {
         if (checkSaldo && checkSaldo.checked) {
             saldoFavorUsado = parseFloat(document.getElementById('inputSaldoUsar').value) || 0;
         }
+
+        const montoRestante = Math.max(0, total - saldoFavorUsado);
 
         // 2. DATOS DE VENTA
         const datosVenta = {
@@ -4052,70 +4055,82 @@ async function procesarVentaFinal() {
         };
 
         // 3. DATOS ESPECÍFICOS SEGÚN MÉTODO DE PAGO
-        switch (metodoPago) {
-            case "1": // Efectivo
-                datosVenta.pago = {
-                    tipo: "efectivo",
-                    monto: total.toFixed(2)
-                };
-                break;
+        // Solo si hay monto restante por pagar
+        if (montoRestante > 0.01) {
+            if (!metodoPago) {
+                Swal.close();
+                Swal.fire('Error', 'Debe seleccionar un método de pago para el saldo restante', 'error');
+                return;
+            }
 
-            case "2": // Tarjeta de crédito
-            case "3": // Tarjeta de débito  
-            case "4": // Transferencia
-            case "5": // Cheque
-                const numeroAutorizacion = document.getElementById("numeroAutorizacion").value.trim();
-                const bancoId = document.getElementById("selectBanco").value;
+            switch (metodoPago) {
+                case "1": // Efectivo
+                    datosVenta.pago = [{
+                        tipo: "efectivo",
+                        monto: montoRestante.toFixed(2)
+                    }];
+                    break;
 
-                datosVenta.pago = {
-                    tipo: metodoPago === "2" ? "tarjeta_credito" :
-                        metodoPago === "3" ? "tarjeta_debito" :
-                            metodoPago === "4" ? "transferencia" : "cheque",
-                    monto: total.toFixed(2),
-                    numero_autorizacion: numeroAutorizacion,
-                    banco_id: bancoId
-                };
-                break;
+                case "2": // Tarjeta de crédito
+                case "3": // Tarjeta de débito  
+                case "4": // Transferencia
+                case "5": // Cheque
+                    const numeroAutorizacion = document.getElementById("numeroAutorizacion").value.trim();
+                    const bancoId = document.getElementById("selectBanco").value;
 
-            case "6": // Pagos/Cuotas
-                const abonoInicial = parseFloat(document.getElementById("abonoInicial").value) || 0;
-                const metodoAbono = document.querySelector('input[name="metodoAbono"]:checked')?.value || "efectivo";
+                    datosVenta.pago = [{
+                        tipo: metodoPago === "2" ? "tarjeta_credito" :
+                            metodoPago === "3" ? "tarjeta_debito" :
+                                metodoPago === "4" ? "transferencia" : "cheque",
+                        monto: montoRestante.toFixed(2),
+                        numero_autorizacion: numeroAutorizacion,
+                        banco_id: bancoId
+                    }];
+                    break;
 
-                // Recopilar cuotas
-                const cuotasInputs = document.querySelectorAll("#cuotasLista .cuota-input");
-                const cuotas = Array.from(cuotasInputs).map((input, index) => ({
-                    numero_cuota: index + 1,
-                    monto: parseFloat(input.value) || 0,
-                    fecha_vencimiento: null // Se calculará en el backend
-                }));
+                case "6": // Pagos/Cuotas
+                    const abonoInicial = parseFloat(document.getElementById("abonoInicial").value) || 0;
+                    const metodoAbono = document.querySelector('input[name="metodoAbono"]:checked')?.value || "efectivo";
 
-                datosVenta.pago = {
-                    tipo: "cuotas",
-                    abono_inicial: abonoInicial.toFixed(2),
-                    metodo_abono: metodoAbono,
-                    total_cuotas: cuotas.reduce((sum, c) => sum + c.monto, 0).toFixed(2),
-                    cantidad_cuotas: cuotas.length,
-                    cuotas: cuotas
-                };
+                    // Recopilar cuotas
+                    const cuotasInputs = document.querySelectorAll("#cuotasLista .cuota-input");
+                    const cuotas = Array.from(cuotasInputs).map((input, index) => ({
+                        numero_cuota: index + 1,
+                        monto: parseFloat(input.value) || 0,
+                        fecha_vencimiento: null // Se calculará en el backend
+                    }));
 
-                // Si el abono es por transferencia, agregar datos bancarios
-                if (metodoAbono === "transferencia") {
-                    const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
-                    const bancoIdAbono = document.getElementById("selectBanco").value;
+                    datosVenta.pago = [{
+                        tipo: "cuotas",
+                        abono_inicial: abonoInicial.toFixed(2),
+                        metodo_abono: metodoAbono,
+                        total_cuotas: cuotas.reduce((sum, c) => sum + c.monto, 0).toFixed(2),
+                        cantidad_cuotas: cuotas.length,
+                        cuotas: cuotas,
+                        // Agregar datos de banco si es transferencia
+                        banco_abono: metodoAbono === 'transferencia' ? document.getElementById("selectBanco").value : null,
+                        autorizacion_abono: metodoAbono === 'transferencia' ? document.getElementById("numeroAutorizacion").value : null
+                    }];
 
-                    datosVenta.pago.numero_autorizacion_abono = numeroAutorizacionAbono;
-                    datosVenta.pago.banco_id_abono = bancoIdAbono;
-                }
-                // Si el abono es por transferencia, agregar datos bancarios
-                if (metodoAbono === "cheque") {
-                    const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
-                    const bancoIdAbono = document.getElementById("selectBanco").value;
-
-                    datosVenta.pago.numero_autorizacion_abono = numeroAutorizacionAbono;
-                    datosVenta.pago.banco_id_abono = bancoIdAbono;
-                }
-                break;
-
+                    // Si el abono es por transferencia, agregar datos bancarios (redundante pero mantenemos lógica anterior por si acaso)
+                    if (metodoAbono === "transferencia") {
+                        const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
+                        const bancoIdAbono = document.getElementById("selectBanco").value;
+                        datosVenta.pago[0].numero_autorizacion_abono = numeroAutorizacionAbono;
+                        datosVenta.pago[0].banco_id_abono = bancoIdAbono;
+                    }
+                    // Si el abono es por cheque
+                    if (metodoAbono === "cheque") {
+                        const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
+                        const bancoIdAbono = document.getElementById("selectBanco").value;
+                        datosVenta.pago[0].numero_autorizacion_abono = numeroAutorizacionAbono;
+                        datosVenta.pago[0].banco_id_abono = bancoIdAbono;
+                    }
+                    break;
+            }
+        } else {
+            // Pago total con saldo a favor
+            datosVenta.pago = [];
         }
 
         ('Datos de venta a enviar:', datosVenta);
