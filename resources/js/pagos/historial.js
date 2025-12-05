@@ -107,7 +107,7 @@ const CargarHistorial = async () => {
             from, to, metodo_id: metodoId, tipo, situacion, q
         });
 
-        const url = `/admin/pagos/movimientos?${params.toString()}`;
+        const url = `/pagos/movimientos?${params.toString()}`;
         const resp = await fetch(url);
 
         if (!resp.ok) throw new Error("Error en la petición");

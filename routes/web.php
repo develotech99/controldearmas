@@ -294,6 +294,7 @@ Route::middleware('auth')->group(function () {
         Route::get('subir', [PagosController::class, 'index2'])->name('subir.pago');
         Route::get('admin', [PagosController::class, 'index3'])->name('admin.pagos');
     Route::get('historial', [AdminPagosController::class, 'historial'])->name('admin.pagos.historial');
+        Route::get('movimientos', [AdminPagosController::class, 'movimientos'])->name('pagos.movimientos'); // New route
         Route::get('obtener/mispagos', [PagosController::class, 'MisFacturasPendientes'])->name('misfacturas.pendientes');
         Route::post('cuotas/pagar', [PagosController::class, 'pagarCuotas']);
     });
@@ -378,7 +379,7 @@ Route::middleware('auth')->group(function () {
         Route::get('pendientes', [AdminPagosController::class, 'pendientes']);
         Route::post('aprobar', [AdminPagosController::class, 'aprobar']);
         Route::post('rechazar', [AdminPagosController::class, 'rechazar']);
-        Route::get('movimientos', [AdminPagosController::class, 'movimientos']);
+        // Route::get('movimientos', [AdminPagosController::class, 'movimientos']); // Moved to 'pagos' group
         Route::post('egresos', [AdminPagosController::class, 'registrarEgreso']);
         Route::post('conciliar', [AdminPagosController::class, 'conciliarAutomatico']);
         Route::post('movimientos/{id}/validar', [AdminPagosController::class, 'validarMovimiento']);
