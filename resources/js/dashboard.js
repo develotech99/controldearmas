@@ -276,40 +276,39 @@ class DashboardManager {
                 }
             });
         });
+    }
 
+    /**
+     * Iniciar actualización automática cada 5 minutos
+     */
+    iniciarActualizacionAutomatica() {
+        this.refreshInterval = setInterval(() => {
+            console.log('Actualizando dashboard automáticamente...');
+            this.cargarEstadisticas();
+        }, 300000); // 5 minutos
+    }
 
-
-        /**
-         * Iniciar actualización automática cada 5 minutos
-         */
-        iniciarActualizacionAutomatica() {
-            this.refreshInterval = setInterval(() => {
-                console.log('Actualizando dashboard automáticamente...');
-                this.cargarEstadisticas();
-            }, 300000); // 5 minutos
+    /**
+     * Detener actualización automática
+     */
+    detenerActualizacionAutomatica() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
         }
+    }
 
-        /**
-         * Detener actualización automática
-         */
-        detenerActualizacionAutomatica() {
-            if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
-                this.refreshInterval = null;
-            }
-        }
+    /**
+     * Mostrar error
+     */
+    mostrarError(mensaje) {
+        console.error(mensaje);
 
-        /**
-         * Mostrar error
-         */
-        mostrarError(mensaje) {
-            console.error(mensaje);
+        // Mostrar en contenedores
+        const ventasContainer = document.getElementById('ventas-recientes-container');
+        const stockContainer = document.getElementById('alertas-stock-container');
 
-            // Mostrar en contenedores
-            const ventasContainer = document.getElementById('ventas-recientes-container');
-            const stockContainer = document.getElementById('alertas-stock-container');
-
-            const errorHTML = `
+        const errorHTML = `
             <div class="text-center py-12">
                 <div class="text-red-500 text-4xl mb-4">⚠️</div>
                 <p class="text-slate-600">${mensaje}</p>
@@ -320,19 +319,19 @@ class DashboardManager {
             </div>
         `;
 
-            if (ventasContainer) ventasContainer.innerHTML = errorHTML;
-            if (stockContainer) stockContainer.innerHTML = errorHTML;
-        }
+        if (ventasContainer) ventasContainer.innerHTML = errorHTML;
+        if (stockContainer) stockContainer.innerHTML = errorHTML;
     }
+}
 
 // Inicializar al cargar el DOM
-document.addEventListener('DOMContentLoaded', function() {
-        window.dashboardManager = new DashboardManager();
-    });
+document.addEventListener('DOMContentLoaded', function () {
+    window.dashboardManager = new DashboardManager();
+});
 
 // Limpiar al salir
-window.addEventListener('beforeunload', function() {
-        if (window.dashboardManager) {
-            window.dashboardManager.detenerActualizacionAutomatica();
-        }
-    });
+window.addEventListener('beforeunload', function () {
+    if (window.dashboardManager) {
+        window.dashboardManager.detenerActualizacionAutomatica();
+    }
+});
