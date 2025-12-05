@@ -1171,6 +1171,34 @@ const seleccionarVenta = (venta) => {
     recalcularTotales();
 };
 
+const buscarVenta = async () => {
+    const ventaId = busquedaVenta?.value?.trim();
+    if (!ventaId) {
+        Swal.fire({ icon: 'warning', title: 'Ingrese ID de venta', text: 'Por favor ingrese el ID de la venta a buscar.' });
+        return;
+    }
+
+    setBtnLoading(btnBuscarVenta, true);
+
+    try {
+        const res = await fetch(`/api/ventas/${ventaId}`, {
+            headers: { 'X-CSRF-TOKEN': token }
+        });
+        const json = await res.json();
+
+        if (!res.ok || !json.success) {
+            throw new Error(json.message || 'Venta no encontrada');
+        }
+
+        seleccionarVenta(json.data);
+    } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'No se pudo buscar la venta' });
+    } finally {
+        setBtnLoading(btnBuscarVenta, false);
+    }
+};
+
+
 btnBuscarVenta?.addEventListener('click', buscarVenta);
 busquedaVenta?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {

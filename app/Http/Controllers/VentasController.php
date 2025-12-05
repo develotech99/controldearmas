@@ -363,73 +363,92 @@ public function guardarCliente(Request $request)
 }
 
 
-    public function obtenerVentasPendientes()
+    public function obtenerVentasPendientes(Request $request)
     {
         try {
-            $ventas = ProVenta::with(['cliente', 'vendedor', 'detalleVentas.producto'])
-                ->whereIn('ven_situacion', ['PENDIENTE', 'AUTORIZADA', 'EDITABLE'])
-                ->orderBy('ven_fecha', 'desc')
-                ->get();
+            $fechaDesde = $request->query('fecha_desde');
+            $fechaHasta = $request->query('fecha_hasta');
+            $vendedorId = $request->query('vendedor_id');
+            $clienteId = $request->query('cliente_id');
 
-            $ventasProcesadas = $ventas->map(function ($venta) {
-                $detalles = $venta->detalleVentas->map(function ($det) use ($venta) {
-                    $series = [];
-                    $lotes = [];
+            $query = DB::table('pro_ventas as v')
+                ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->whereIn('v.ven_situacion', ['PENDIENTE', 'EDITABLE', 'AUTORIZADA'])
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_total_vendido',
+                    'v.ven_situacion',
+                    'c.cliente_nombre1',
+                    'c.cliente_apellido1',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre',
+                    'u.user_primer_apellido'
+                );
 
-                    if ($det->producto) {
-                        if ($det->producto->producto_requiere_serie) {
-                            $series = DB::table('pro_movimientos')
-                                ->join('pro_series_productos', 'pro_movimientos.mov_serie_id', '=', 'pro_series_productos.serie_id')
-                                ->where('mov_documento_referencia', 'VENTA-' . $venta->ven_id)
-                                ->where('mov_producto_id', $det->det_producto_id)
-                                ->select('pro_series_productos.serie_id as id', 'pro_series_productos.serie_numero_serie as numero')
-                                ->get()
-                                ->map(function($s) { return ['id' => $s->id, 'numero' => $s->numero]; })
-                                ->toArray();
-                        }
-                        
-                        // Logic for lots
-                        $lotes = DB::table('pro_movimientos')
-                            ->join('pro_lotes', 'pro_movimientos.mov_lote_id', '=', 'pro_lotes.lote_id')
-                            ->where('mov_documento_referencia', 'VENTA-' . $venta->ven_id)
-                            ->where('mov_producto_id', $det->det_producto_id)
-                            ->select('pro_lotes.lote_id as id', 'pro_lotes.lote_codigo as codigo')
-                            ->get()
-                            ->map(function($l) { return ['id' => $l->id, 'codigo' => $l->codigo]; })
-                            ->toArray();
-                    }
+            if ($fechaDesde) {
+                $query->whereDate('v.ven_fecha', '>=', $fechaDesde);
+            }
 
-                    return [
-                        'det_id' => $det->det_id,
-                        'producto_id' => $det->det_producto_id,
-                        'producto_nombre' => $det->producto->producto_nombre ?? 'Desconocido',
-                        'cantidad' => $det->det_cantidad,
-                        'precio_venta' => $det->det_precio,
-                        'subtotal' => $det->det_cantidad * $det->det_precio,
-                        'series' => $series,
-                        'lotes' => $lotes
-                    ];
+            if ($fechaHasta) {
+                $query->whereDate('v.ven_fecha', '<=', $fechaHasta);
+            }
+
+            if ($vendedorId) {
+                $query->where('v.ven_user', $vendedorId);
+            }
+
+            if ($clienteId) {
+                $query->where('v.ven_cliente', $clienteId);
+            }
+
+            $ventas = $query->orderBy('v.ven_fecha', 'desc')->get();
+
+            // Transform data for frontend
+            $data = $ventas->map(function ($venta) {
+                $detalles = DB::table('pro_detalle_ventas as d')
+                    ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                    ->where('d.det_ven_id', $venta->ven_id)
+                    ->select('d.det_id', 'd.det_producto_id', 'p.producto_nombre', 'd.det_cantidad')
+                    ->get();
+
+                // Fetch series/lotes if needed
+                $detalles->transform(function ($det) use ($venta) {
+                    $det->series = DB::table('pro_movimientos as m')
+                        ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                        ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                        ->where('m.mov_producto_id', $det->det_producto_id)
+                        ->pluck('s.serie_numero_serie')
+                        ->toArray();
+                    
+                    $det->lotes = []; 
+
+                    return $det;
                 });
+
+                $clienteNombre = trim("{$venta->cliente_nombre1} {$venta->cliente_apellido1}");
+                $vendedorNombre = trim("{$venta->user_primer_nombre} {$venta->user_primer_apellido}");
 
                 return [
                     'ven_id' => $venta->ven_id,
                     'ven_fecha' => $venta->ven_fecha,
+                    'cliente' => $clienteNombre,
+                    'empresa' => $venta->cliente_nom_empresa,
+                    'vendedor' => $vendedorNombre ?: 'Sin asignar',
                     'ven_total_vendido' => $venta->ven_total_vendido,
                     'ven_situacion' => $venta->ven_situacion,
-                    'ven_observaciones' => $venta->ven_observaciones,
-                    'cliente' => $venta->cliente ? trim($venta->cliente->cliente_nombre1 . ' ' . $venta->cliente->cliente_apellido1) : 'Consumidor Final',
-                    'empresa' => $venta->cliente ? $venta->cliente->cliente_nom_empresa : '',
-                    'vendedor' => $venta->vendedor ? ($venta->vendedor->user_primer_nombre ?? $venta->vendedor->name) : 'Sistema',
-                    'total_items' => $detalles->sum('cantidad'),
-                    'productos_resumen' => $detalles->pluck('producto_nombre')->unique()->take(3)->join(', ') . ($detalles->unique('producto_nombre')->count() > 3 ? '...' : ''),
+                    'total_items' => $detalles->sum('det_cantidad'),
+                    'productos_resumen' => $detalles->pluck('producto_nombre')->join(', '),
                     'detalles' => $detalles
                 ];
             });
 
-            return response()->json($ventasProcesadas);
+            return response()->json(['success' => true, 'data' => $data]);
+
         } catch (\Exception $e) {
-            Log::error('Error en obtenerVentasPendientes: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error fetching pending sales: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -3022,9 +3041,79 @@ public function procesarVenta(Request $request): JsonResponse
 
 
 
-    public function show(Ventas $ventas)
+    public function show($id)
     {
-        //
+        try {
+            $venta = DB::table('pro_ventas as v')
+                ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->where('v.ven_id', $id)
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_total_vendido',
+                    'v.ven_situacion',
+                    'v.ven_observaciones',
+                    'c.cliente_nit',
+                    'c.cliente_nombre1',
+                    'c.cliente_apellido1',
+                    'c.cliente_direccion',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre',
+                    'u.user_primer_apellido'
+                )
+                ->first();
+
+            if (!$venta) {
+                return response()->json(['success' => false, 'message' => 'Venta no encontrada'], 404);
+            }
+
+            $detalles = DB::table('pro_detalle_ventas as d')
+                ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                ->where('d.det_ven_id', $venta->ven_id)
+                ->select('d.det_id', 'd.det_producto_id', 'p.producto_nombre', 'd.det_cantidad', 'd.det_precio', 'd.det_descuento')
+                ->get();
+
+            $detalles->transform(function ($det) use ($venta) {
+                $det->series = DB::table('pro_movimientos as m')
+                    ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                    ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                    ->where('m.mov_producto_id', $det->det_producto_id)
+                    ->pluck('s.serie_numero_serie')
+                    ->toArray();
+                
+                // Lotes logic if applicable
+                $det->lotes = []; 
+
+                return $det;
+            });
+
+            $clienteNombre = trim("{$venta->cliente_nombre1} {$venta->cliente_apellido1}");
+            $vendedorNombre = trim("{$venta->user_primer_nombre} {$venta->user_primer_apellido}");
+
+            $data = [
+                'ven_id' => $venta->ven_id,
+                'ven_fecha' => $venta->ven_fecha,
+                'cliente_nit' => $venta->cliente_nit,
+                'cliente_nombre1' => $venta->cliente_nombre1,
+                'cliente_apellido1' => $venta->cliente_apellido1,
+                'cliente_direccion' => $venta->cliente_direccion,
+                'cliente' => $clienteNombre,
+                'empresa' => $venta->cliente_nom_empresa,
+                'vendedor' => $vendedorNombre ?: 'Sin asignar',
+                'ven_total_vendido' => $venta->ven_total_vendido,
+                'ven_situacion' => $venta->ven_situacion,
+                'total_items' => $detalles->sum('det_cantidad'),
+                'productos_resumen' => $detalles->pluck('producto_nombre')->join(', '),
+                'detalles' => $detalles
+            ];
+
+            return response()->json(['success' => true, 'data' => $data]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching sale details: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -3046,94 +3135,9 @@ public function procesarVenta(Request $request): JsonResponse
     /**
      * Remove the specified resource from storage.
      */
-    public function obtenerVentasPendientes(Request $request)
+    public function destroy(Ventas $ventas)
     {
-        try {
-            $fechaDesde = $request->query('fecha_desde');
-            $fechaHasta = $request->query('fecha_hasta');
-            $vendedorId = $request->query('vendedor_id');
-            $clienteId = $request->query('cliente_id');
-
-            $query = DB::table('pro_ventas as v')
-                ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
-                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
-                ->whereIn('v.ven_situacion', ['PENDIENTE', 'EDITABLE', 'AUTORIZADA']) // Adjust statuses as needed
-                ->select(
-                    'v.ven_id',
-                    'v.ven_fecha',
-                    'v.ven_total_vendido',
-                    'v.ven_situacion',
-                    'c.cliente_nombre1',
-                    'c.cliente_apellido1',
-                    'c.cliente_nom_empresa',
-                    'u.user_primer_nombre',
-                    'u.user_primer_apellido'
-                );
-
-            if ($fechaDesde) {
-                $query->whereDate('v.ven_fecha', '>=', $fechaDesde);
-            }
-
-            if ($fechaHasta) {
-                $query->whereDate('v.ven_fecha', '<=', $fechaHasta);
-            }
-
-            if ($vendedorId) {
-                $query->where('v.ven_user', $vendedorId);
-            }
-
-            if ($clienteId) {
-                $query->where('v.ven_cliente', $clienteId);
-            }
-
-            $ventas = $query->orderBy('v.ven_fecha', 'desc')->get();
-
-            // Transform data for frontend
-            $data = $ventas->map(function ($venta) {
-                $detalles = DB::table('pro_detalle_ventas as d')
-                    ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
-                    ->where('d.det_ven_id', $venta->ven_id)
-                    ->select('d.det_id', 'd.det_producto_id', 'p.producto_nombre', 'd.det_cantidad')
-                    ->get();
-
-                // Fetch series/lotes if needed (simplified for summary)
-                $detalles->transform(function ($det) use ($venta) {
-                    $det->series = DB::table('pro_movimientos as m')
-                        ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
-                        ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id) // Or RESERVA depending on flow
-                        ->where('m.mov_producto_id', $det->det_producto_id)
-                        ->pluck('s.serie_numero_serie')
-                        ->toArray();
-                    
-                    // Lotes logic if applicable
-                    $det->lotes = []; 
-
-                    return $det;
-                });
-
-                $clienteNombre = trim("{$venta->cliente_nombre1} {$venta->cliente_apellido1}");
-                $vendedorNombre = trim("{$venta->user_primer_nombre} {$venta->user_primer_apellido}");
-
-                return [
-                    'ven_id' => $venta->ven_id,
-                    'ven_fecha' => $venta->ven_fecha,
-                    'cliente' => $clienteNombre,
-                    'empresa' => $venta->cliente_nom_empresa,
-                    'vendedor' => $vendedorNombre ?: 'Sin asignar',
-                    'ven_total_vendido' => $venta->ven_total_vendido,
-                    'ven_situacion' => $venta->ven_situacion,
-                    'total_items' => $detalles->sum('det_cantidad'),
-                    'productos_resumen' => $detalles->pluck('producto_nombre')->join(', '),
-                    'detalles' => $detalles
-                ];
-            });
-
-            return response()->json(['success' => true, 'data' => $data]);
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching pending sales: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        //
     }
     public function listarReservas(Request $request)
     {
