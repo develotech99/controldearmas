@@ -30,28 +30,63 @@
                         <div id="cliente-seleccionado" class="mt-2 text-sm text-green-600 font-semibold hidden"></div>
                     </div>
 
-                    <!-- Producto -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="producto_busqueda">
-                            Producto
-                        </label>
-                        <div class="relative">
-                            <input type="text" id="producto_busqueda" 
-                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Buscar producto..." autocomplete="off">
-                            <input type="hidden" id="producto_id" name="producto_id">
-                            <div id="resultados-productos" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></div>
+                    <!-- Sección Agregar Producto -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
+                        <h3 class="text-sm font-bold text-gray-700 mb-2">Agregar Producto</h3>
+                        
+                        <!-- Producto -->
+                        <div class="mb-2">
+                            <div class="relative">
+                                <input type="text" id="producto_busqueda" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    placeholder="Buscar producto..." autocomplete="off">
+                                <input type="hidden" id="producto_id">
+                                <input type="hidden" id="producto_precio">
+                                <div id="resultados-productos" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></div>
+                            </div>
+                            <div id="producto-seleccionado" class="mt-1 text-xs text-green-600 font-semibold hidden"></div>
                         </div>
-                        <div id="producto-seleccionado" class="mt-2 text-sm text-green-600 font-semibold hidden"></div>
+
+                        <div class="flex gap-2">
+                            <div class="w-1/2">
+                                <input type="number" id="cantidad" min="1" value="1" placeholder="Cant."
+                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            </div>
+                            <div class="w-1/2">
+                                <button type="button" id="btn-agregar"
+                                    class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 text-sm">
+                                    + Agregar
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Cantidad -->
+                    <!-- Carrito -->
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cantidad">
-                            Cantidad
-                        </label>
-                        <input type="number" id="cantidad" name="cantidad" min="1" value="1"
-                            class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Productos en Preventa</label>
+                        <div class="border rounded-lg overflow-hidden">
+                            <table class="min-w-full leading-normal">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Producto</th>
+                                        <th class="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Cant.</th>
+                                        <th class="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                                        <th class="px-3 py-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="carrito-body">
+                                    <!-- Items -->
+                                </tbody>
+                                <tfoot class="bg-gray-50 font-bold">
+                                    <tr>
+                                        <td colspan="2" class="px-3 py-2 text-right text-sm">Total:</td>
+                                        <td class="px-3 py-2 text-right text-sm" id="carrito-total">Q0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div id="carrito-empty" class="text-center text-gray-500 text-sm py-2">Carrito vacío</div>
                     </div>
 
                     <!-- Monto Pagado (Anticipo) -->
@@ -77,7 +112,7 @@
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="observaciones">
                             Observaciones
                         </label>
-                        <textarea id="observaciones" name="observaciones" rows="3"
+                        <textarea id="observaciones" name="observaciones" rows="2"
                             class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
 

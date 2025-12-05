@@ -11,26 +11,26 @@ class Preventa extends Model
 
     protected $fillable = [
         'prev_cliente_id',
-        'prev_producto_id',
-        'prev_cantidad',
-        'prev_monto_pagado',
         'prev_fecha',
+        'prev_total',
+        'prev_monto_pagado',
         'prev_observaciones',
         'prev_estado'
     ];
 
     protected $casts = [
         'prev_fecha' => 'datetime',
+        'prev_total' => 'decimal:2',
         'prev_monto_pagado' => 'decimal:2'
     ];
 
     public function cliente()
     {
-        return $this->belongsTo(Cliente::class, 'prev_cliente_id', 'cliente_id');
+        return $this->belongsTo(Clientes::class, 'prev_cliente_id', 'cliente_id');
     }
 
-    public function producto()
+    public function detalles()
     {
-        return $this->belongsTo(Producto::class, 'prev_producto_id', 'producto_id');
+        return $this->hasMany(PreventaDetalle::class, 'prev_id', 'prev_id');
     }
 }

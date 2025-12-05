@@ -1,222 +1,312 @@
-import Swal from 'sweetalert2';
-
 document.addEventListener('DOMContentLoaded', function () {
-    initPreventas();
-});
+    // Variables globales
+    let carrito = [];
+    let clienteSeleccionado = null;
+    let productoSeleccionado = null;
 
-function initPreventas() {
-    setupClienteSearch();
-    setupProductoSearch();
-    setupFormSubmit();
-    loadPendientes();
-}
+    // Elementos del DOM
+    const inputCliente = document.getElementById('cliente_busqueda');
+    const inputClienteId = document.getElementById('cliente_id');
+    const divResultadosClientes = document.getElementById('resultados-clientes');
+    const divClienteSeleccionado = document.getElementById('cliente-seleccionado');
 
-function setupClienteSearch() {
-    const input = document.getElementById('cliente_busqueda');
-    const resultsDiv = document.getElementById('resultados-clientes');
-    const hiddenId = document.getElementById('cliente_id');
-    const selectedDiv = document.getElementById('cliente-seleccionado');
+    const inputProducto = document.getElementById('producto_busqueda');
+    const inputProductoId = document.getElementById('producto_id');
+    const inputProductoPrecio = document.getElementById('producto_precio');
+    const divResultadosProductos = document.getElementById('resultados-productos');
+    const divProductoSeleccionado = document.getElementById('producto-seleccionado');
+    const inputCantidad = document.getElementById('cantidad');
+    const btnAgregar = document.getElementById('btn-agregar');
 
-    let timeout = null;
+    const tbodyCarrito = document.getElementById('carrito-body');
+    const tfootTotal = document.getElementById('carrito-total');
+    const divCarritoEmpty = document.getElementById('carrito-empty');
 
-    input.addEventListener('input', function () {
-        clearTimeout(timeout);
-        const query = this.value;
+    const formPreventa = document.getElementById('form-preventa');
+    const tablaPreventas = document.getElementById('tabla-preventas-body');
 
+    // --- Lógica de Búsqueda de Clientes ---
+    inputCliente.addEventListener('input', debounce(async (e) => {
+        const query = e.target.value;
         if (query.length < 2) {
-            resultsDiv.classList.add('hidden');
+            divResultadosClientes.classList.add('hidden');
             return;
         }
 
-        timeout = setTimeout(() => {
-            fetch(`/clientes/buscar?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    resultsDiv.innerHTML = '';
-                    if (data.length > 0) {
-                        data.forEach(cliente => {
-                            const div = document.createElement('div');
-                            div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
-                            div.textContent = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1} (${cliente.cliente_nit || 'S/N'})`;
-                            div.onclick = () => {
-                                input.value = '';
-                                hiddenId.value = cliente.cliente_id;
-                                selectedDiv.textContent = `Cliente: ${cliente.cliente_nombre1} ${cliente.cliente_apellido1}`;
-                                selectedDiv.classList.remove('hidden');
-                                resultsDiv.classList.add('hidden');
-                            };
-                            resultsDiv.appendChild(div);
-                        });
-                        resultsDiv.classList.remove('hidden');
-                    } else {
-                        resultsDiv.classList.add('hidden');
-                    }
-                });
-        }, 300);
-    });
-
-    // Close results when clicking outside
-    document.addEventListener('click', function (e) {
-        if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
-            resultsDiv.classList.add('hidden');
+        try {
+            const response = await fetch(`/clientes/buscar?q=${query}`);
+            const data = await response.json();
+            mostrarResultadosClientes(data);
+        } catch (error) {
+            console.error('Error buscando clientes:', error);
         }
-    });
-}
+    }, 300));
 
-function setupProductoSearch() {
-    const input = document.getElementById('producto_busqueda');
-    const resultsDiv = document.getElementById('resultados-productos');
-    const hiddenId = document.getElementById('producto_id');
-    const selectedDiv = document.getElementById('producto-seleccionado');
-
-    let timeout = null;
-
-    input.addEventListener('input', function () {
-        clearTimeout(timeout);
-        const query = this.value;
-
-        if (query.length < 2) {
-            resultsDiv.classList.add('hidden');
+    function mostrarResultadosClientes(clientes) {
+        divResultadosClientes.innerHTML = '';
+        if (clientes.length === 0) {
+            divResultadosClientes.classList.add('hidden');
             return;
         }
 
-        timeout = setTimeout(() => {
-            // Using existing product search endpoint or creating a new one?
-            // Assuming we can use /ventas/buscar-productos or similar.
-            // Let's use the one from VentasController if available, or create a specific one.
-            // For now, let's assume /inventario/buscar exists or similar.
-            // Checking routes... Route::get('/inventario/buscar', ...) might not exist.
-            // Let's use /ventas/buscar-productos if it exists, or check routes.
-            // Actually, let's use a new endpoint or existing one.
-            // I'll assume /tipoarma/search for now as a placeholder or check routes.
-            // Better: I'll use a generic search.
+        clientes.forEach(cliente => {
+            const div = document.createElement('div');
+            div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
+            div.innerHTML = `
+                <div class="font-bold text-sm">${cliente.cliente_nombre1} ${cliente.cliente_apellido1}</div>
+                <div class="text-xs text-gray-500">NIT: ${cliente.cliente_nit || 'N/A'}</div>
+            `;
+            div.addEventListener('click', () => seleccionarCliente(cliente));
+            divResultadosClientes.appendChild(div);
+        });
+        divResultadosClientes.classList.remove('hidden');
+    }
 
-            fetch(`/ventas/buscar-productos?busqueda=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    resultsDiv.innerHTML = '';
-                    if (data.length > 0) {
-                        data.forEach(prod => {
-                            const div = document.createElement('div');
-                            div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
-                            div.textContent = `${prod.producto_nombre} (${prod.pro_codigo_sku || 'S/C'}) - Q${prod.precio_venta}`;
-                            div.onclick = () => {
-                                input.value = '';
-                                hiddenId.value = prod.producto_id;
-                                selectedDiv.textContent = `Producto: ${prod.producto_nombre}`;
-                                selectedDiv.classList.remove('hidden');
-                                resultsDiv.classList.add('hidden');
-                            };
-                            resultsDiv.appendChild(div);
-                        });
-                        resultsDiv.classList.remove('hidden');
-                    } else {
-                        resultsDiv.classList.add('hidden');
-                    }
-                });
-        }, 300);
-    });
+    function seleccionarCliente(cliente) {
+        clienteSeleccionado = cliente;
+        inputClienteId.value = cliente.cliente_id;
+        inputCliente.value = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1}`;
+        divClienteSeleccionado.textContent = `Cliente seleccionado: ${cliente.cliente_nombre1} ${cliente.cliente_apellido1} (NIT: ${cliente.cliente_nit || 'N/A'})`;
+        divClienteSeleccionado.classList.remove('hidden');
+        divResultadosClientes.classList.add('hidden');
+    }
 
-    document.addEventListener('click', function (e) {
-        if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
-            resultsDiv.classList.add('hidden');
+    // --- Lógica de Búsqueda de Productos ---
+    inputProducto.addEventListener('input', debounce(async (e) => {
+        const query = e.target.value;
+        if (query.length < 2) {
+            divResultadosProductos.classList.add('hidden');
+            return;
         }
+
+        try {
+            const response = await fetch(`/ventas/buscar-productos?q=${query}`);
+            const data = await response.json();
+            mostrarResultadosProductos(data);
+        } catch (error) {
+            console.error('Error buscando productos:', error);
+        }
+    }, 300));
+
+    function mostrarResultadosProductos(productos) {
+        divResultadosProductos.innerHTML = '';
+        if (productos.length === 0) {
+            divResultadosProductos.classList.add('hidden');
+            return;
+        }
+
+        productos.forEach(producto => {
+            const div = document.createElement('div');
+            div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
+            div.innerHTML = `
+                <div class="font-bold text-sm">${producto.producto_nombre}</div>
+                <div class="text-xs text-gray-500">Precio: Q${parseFloat(producto.producto_precio_venta).toFixed(2)}</div>
+            `;
+            div.addEventListener('click', () => seleccionarProducto(producto));
+            divResultadosProductos.appendChild(div);
+        });
+        divResultadosProductos.classList.remove('hidden');
+    }
+
+    function seleccionarProducto(producto) {
+        productoSeleccionado = producto;
+        inputProductoId.value = producto.producto_id;
+        inputProductoPrecio.value = producto.producto_precio_venta;
+        inputProducto.value = producto.producto_nombre;
+        divProductoSeleccionado.textContent = `Producto: ${producto.producto_nombre} - Precio: Q${parseFloat(producto.producto_precio_venta).toFixed(2)}`;
+        divProductoSeleccionado.classList.remove('hidden');
+        divResultadosProductos.classList.add('hidden');
+        inputCantidad.focus();
+    }
+
+    // --- Lógica del Carrito ---
+    btnAgregar.addEventListener('click', () => {
+        if (!productoSeleccionado) {
+            Swal.fire('Error', 'Seleccione un producto primero', 'warning');
+            return;
+        }
+
+        const cantidad = parseInt(inputCantidad.value);
+        if (isNaN(cantidad) || cantidad < 1) {
+            Swal.fire('Error', 'Ingrese una cantidad válida', 'warning');
+            return;
+        }
+
+        const precio = parseFloat(productoSeleccionado.producto_precio_venta);
+
+        // Verificar si ya existe en el carrito
+        const index = carrito.findIndex(item => item.producto_id === productoSeleccionado.producto_id);
+
+        if (index !== -1) {
+            carrito[index].cantidad += cantidad;
+            carrito[index].subtotal = carrito[index].cantidad * precio;
+        } else {
+            carrito.push({
+                producto_id: productoSeleccionado.producto_id,
+                nombre: productoSeleccionado.producto_nombre,
+                cantidad: cantidad,
+                precio: precio,
+                subtotal: cantidad * precio
+            });
+        }
+
+        renderCarrito();
+        limpiarSeleccionProducto();
     });
-}
 
-function setupFormSubmit() {
-    const form = document.getElementById('form-preventa');
+    function limpiarSeleccionProducto() {
+        productoSeleccionado = null;
+        inputProducto.value = '';
+        inputProductoId.value = '';
+        inputProductoPrecio.value = '';
+        inputCantidad.value = '1';
+        divProductoSeleccionado.classList.add('hidden');
+        divResultadosProductos.classList.add('hidden');
+    }
 
-    form.addEventListener('submit', function (e) {
+    function renderCarrito() {
+        tbodyCarrito.innerHTML = '';
+        let total = 0;
+
+        if (carrito.length === 0) {
+            divCarritoEmpty.classList.remove('hidden');
+            tfootTotal.textContent = 'Q0.00';
+            return;
+        }
+
+        divCarritoEmpty.classList.add('hidden');
+
+        carrito.forEach((item, index) => {
+            total += item.subtotal;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-3 py-2 text-sm text-gray-700">
+                    <div class="font-medium">${item.nombre}</div>
+                    <div class="text-xs text-gray-500">Q${item.precio.toFixed(2)} c/u</div>
+                </td>
+                <td class="px-3 py-2 text-center text-sm text-gray-700">${item.cantidad}</td>
+                <td class="px-3 py-2 text-right text-sm font-bold text-gray-700">Q${item.subtotal.toFixed(2)}</td>
+                <td class="px-3 py-2 text-center">
+                    <button type="button" class="text-red-500 hover:text-red-700" onclick="eliminarDelCarrito(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbodyCarrito.appendChild(row);
+        });
+
+        tfootTotal.textContent = `Q${total.toFixed(2)}`;
+    }
+
+    window.eliminarDelCarrito = function (index) {
+        carrito.splice(index, 1);
+        renderCarrito();
+    };
+
+
+    // --- Envío del Formulario ---
+    formPreventa.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        if (!data.cliente_id || !data.producto_id) {
-            Swal.fire('Error', 'Debe seleccionar un cliente y un producto', 'error');
+        if (!inputClienteId.value) {
+            Swal.fire('Error', 'Seleccione un cliente', 'warning');
             return;
         }
 
-        fetch('/preventas', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify(data)
-        })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    Swal.fire('Éxito', 'Preventa registrada correctamente', 'success');
-                    form.reset();
-                    document.getElementById('cliente-seleccionado').classList.add('hidden');
-                    document.getElementById('producto-seleccionado').classList.add('hidden');
-                    document.getElementById('cliente_id').value = '';
-                    document.getElementById('producto_id').value = '';
-                    loadPendientes();
-                } else {
-                    Swal.fire('Error', result.message || 'Error al guardar', 'error');
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                Swal.fire('Error', 'Ocurrió un error inesperado', 'error');
+        if (carrito.length === 0) {
+            Swal.fire('Error', 'Agregue al menos un producto al carrito', 'warning');
+            return;
+        }
+
+        const formData = new FormData(formPreventa);
+        const data = {
+            cliente_id: formData.get('cliente_id'),
+            monto_pagado: formData.get('monto_pagado'),
+            fecha: formData.get('fecha'),
+            observaciones: formData.get('observaciones'),
+            productos: carrito
+        };
+
+        try {
+            const response = await fetch('/preventas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
             });
-    });
-}
 
-function loadPendientes() {
-    const tbody = document.getElementById('tabla-preventas');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Cargando...</td></tr>';
+            const result = await response.json();
 
-    fetch('/preventas/pendientes')
-        .then(response => response.json())
-        .then(result => {
             if (result.success) {
-                const preventas = result.data;
-                tbody.innerHTML = '';
-
-                if (preventas.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay preventas pendientes</td></tr>';
-                    return;
-                }
-
-                preventas.forEach(p => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            ${new Date(p.prev_fecha).toLocaleDateString()}
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-no-wrap font-semibold">
-                                ${p.cliente.cliente_nombre1} ${p.cliente.cliente_apellido1}
-                            </p>
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-no-wrap">
-                                ${p.producto.producto_nombre}
-                            </p>
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
-                            ${p.prev_cantidad}
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right font-mono">
-                            Q${parseFloat(p.prev_monto_pagado).toFixed(2)}
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
-                            <button class="text-blue-600 hover:text-blue-900 font-semibold" onclick="alert('Funcionalidad de convertir a venta pendiente')">
-                                Facturar
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                Swal.fire('Éxito', 'Preventa registrada correctamente', 'success');
+                formPreventa.reset();
+                carrito = [];
+                renderCarrito();
+                divClienteSeleccionado.classList.add('hidden');
+                clienteSeleccionado = null;
+                cargarPreventasPendientes();
+            } else {
+                Swal.fire('Error', result.message, 'error');
             }
-        })
-        .catch(error => {
-            console.error(error);
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar datos</td></tr>';
+        } catch (error) {
+            console.error('Error:', error);
+            Swal.fire('Error', 'Ocurrió un error al procesar la solicitud', 'error');
+        }
+    });
+
+    // --- Cargar Preventas Pendientes ---
+    async function cargarPreventasPendientes() {
+        try {
+            const response = await fetch('/preventas/pendientes');
+            const result = await response.json();
+
+            if (result.success) {
+                renderTablaPreventas(result.data);
+            }
+        } catch (error) {
+            console.error('Error cargando preventas:', error);
+        }
+    }
+
+    function renderTablaPreventas(preventas) {
+        tablaPreventas.innerHTML = '';
+        preventas.forEach(prev => {
+            // Calcular total si no viene (aunque ahora debería venir)
+            const total = prev.prev_total || 0;
+            const productosStr = prev.detalles ? prev.detalles.map(d => `${d.det_cantidad}x ${d.producto?.producto_nombre}`).join(', ') : 'Sin detalles';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(prev.prev_fecha).toLocaleDateString()}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${prev.cliente?.cliente_nombre1} ${prev.cliente?.cliente_apellido1}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    <div class="max-w-xs truncate" title="${productosStr}">${productosStr}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">Q${parseFloat(total).toFixed(2)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold">Q${parseFloat(prev.prev_monto_pagado).toFixed(2)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 mr-2" onclick="facturarPreventa(${prev.prev_id})">Facturar</button>
+                </td>
+            `;
+            tablaPreventas.appendChild(row);
         });
-}
+    }
+
+    // Utils
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Init
+    cargarPreventasPendientes();
+});

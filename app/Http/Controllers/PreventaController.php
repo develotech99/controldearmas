@@ -22,24 +22,41 @@ class PreventaController extends Controller
     {
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
-            'producto_id' => 'required|exists:pro_productos,producto_id',
-            'cantidad' => 'required|integer|min:1',
+            'fecha' => 'required|date',
             'monto_pagado' => 'required|numeric|min:0',
-            'fecha' => 'required|date'
+            'productos' => 'required|array|min:1',
+            'productos.*.producto_id' => 'required|exists:pro_productos,producto_id',
+            'productos.*.cantidad' => 'required|integer|min:1',
+            'productos.*.precio' => 'required|numeric|min:0',
         ]);
 
         try {
             DB::beginTransaction();
 
+            // Calculate total
+            $total = 0;
+            foreach ($request->productos as $prod) {
+                $total += $prod['cantidad'] * $prod['precio'];
+            }
+
             $preventa = Preventa::create([
                 'prev_cliente_id' => $request->cliente_id,
-                'prev_producto_id' => $request->producto_id,
-                'prev_cantidad' => $request->cantidad,
-                'prev_monto_pagado' => $request->monto_pagado,
                 'prev_fecha' => $request->fecha,
+                'prev_total' => $total,
+                'prev_monto_pagado' => $request->monto_pagado,
                 'prev_observaciones' => $request->observaciones,
                 'prev_estado' => 'PENDIENTE'
             ]);
+
+            foreach ($request->productos as $prod) {
+                \App\Models\PreventaDetalle::create([
+                    'prev_id' => $preventa->prev_id,
+                    'producto_id' => $prod['producto_id'],
+                    'det_cantidad' => $prod['cantidad'],
+                    'det_precio_unitario' => $prod['precio'],
+                    'det_subtotal' => $prod['cantidad'] * $prod['precio']
+                ]);
+            }
 
             DB::commit();
 
@@ -60,7 +77,7 @@ class PreventaController extends Controller
 
     public function getPendientes(Request $request)
     {
-        $query = Preventa::with(['cliente', 'producto'])
+        $query = Preventa::with(['cliente', 'detalles.producto'])
             ->where('prev_estado', 'PENDIENTE');
 
         if ($request->cliente_id) {
