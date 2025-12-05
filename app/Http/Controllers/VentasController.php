@@ -205,6 +205,7 @@ class VentasController extends Controller
                 'producto_requiere_stock'
             )
             ->orderBy('producto_nombre')
+            ->groupBy('producto_id')
             ->get();
 
         // Series + LOTES (igual que series, pero para pro_lotes)
