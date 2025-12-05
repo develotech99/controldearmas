@@ -578,6 +578,8 @@ class ClientesManager {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${emp.emp_nombre}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_nit || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_direccion || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_nom_vendedor || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${emp.emp_cel_vendedor || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     ${emp.emp_licencia_compraventa ? `<a href="/storage/${emp.emp_licencia_compraventa}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-pdf"></i> Ver</a>` : '-'}
                     ${emp.emp_licencia_vencimiento ? `<br><span class="text-xs text-gray-400">Vence: ${emp.emp_licencia_vencimiento}</span>` : ''}
