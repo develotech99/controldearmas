@@ -1020,6 +1020,16 @@ class ReportesManager {
                 if (!confirmSinFactura) return;
             }
 
+            // Mostrar loader global para feedback inmediato
+            Swal.fire({
+                title: 'Autorizando venta...',
+                html: 'Por favor espere mientras se procesa la solicitud.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
             this.showLoading('ventas');
 
             const response = await fetch('/ventas/autorizar', {

@@ -9,7 +9,7 @@ class ProDetalleVenta extends Model
 {
     protected $table = 'pro_detalle_ventas';
     protected $primaryKey = 'det_id';
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $fillable = [
         'det_ven_id',
