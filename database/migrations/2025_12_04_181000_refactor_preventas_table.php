@@ -10,6 +10,11 @@ return new class extends Migration
     {
         // 1. Rename existing table to backup if it exists
         if (Schema::hasTable('pro_preventas')) {
+            // Fix for production: Drop backup table if it already exists (user authorized data loss for this table)
+            if (Schema::hasTable('pro_preventas_backup')) {
+                Schema::drop('pro_preventas_backup');
+            }
+
             Schema::table('pro_preventas', function (Blueprint $table) {
                 $table->dropForeign('pro_preventas_prev_cliente_id_foreign');
             });
