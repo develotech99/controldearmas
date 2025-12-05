@@ -23,96 +23,128 @@
         </div>
     </nav>
 
-    <div class="flex">
-        <!-- Sidebar Filters (Desktop) -->
-        <aside class="hidden lg:block w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)] p-6 overflow-y-auto fixed left-0 top-16 bottom-0 z-20">
-            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Filtros Avanzados</h2>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Header & Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="md:col-span-3">
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">Historial de Movimientos</h1>
+                <p class="text-gray-500 text-sm">Consulta detallada de todas las transacciones, pagos y movimientos de caja.</p>
+            </div>
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+                <div class="p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 truncate">Total en Pantalla</p>
+                        <p class="text-2xl font-bold text-emerald-600" id="statTotalIngresos">Q 0.00</p>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-lg">
+                        <i class="fas fa-wallet text-emerald-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8" x-data="{ showFilters: true }">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+                <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fas fa-filter text-gray-400"></i> Filtros de Búsqueda
+                </h3>
+                <button @click="showFilters = !showFilters" class="text-gray-400 hover:text-gray-600 text-sm">
+                    <span x-show="showFilters">Ocultar</span>
+                    <span x-show="!showFilters">Mostrar</span>
+                </button>
+            </div>
             
-            <form id="filterForm" class="space-y-6">
-                <!-- Rango de Fechas -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Rango de Fechas</label>
-                    <div class="space-y-2">
-                        <input type="date" id="filterFechaDesde" name="from" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                        <input type="date" id="filterFechaHasta" name="to" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            <div x-show="showFilters" class="p-6">
+                <form id="filterForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Rango de Fechas -->
+                    <div class="col-span-1 md:col-span-2 lg:col-span-1">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Desde</label>
+                        <input type="date" id="filterFechaDesde" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                     </div>
-                </div>
+                    <div class="col-span-1 md:col-span-2 lg:col-span-1">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Hasta</label>
+                        <input type="date" id="filterFechaHasta" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    </div>
 
-                <!-- Método de Pago -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Método de Pago</label>
-                    <select id="filterMetodo" name="metodo_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                        <option value="">Todos</option>
-                        <!-- Se llenará dinámicamente -->
-                    </select>
-                </div>
-
-                <!-- Botones -->
-                <div class="pt-4 border-t border-gray-200 space-y-2">
-                    <button type="button" id="btnAplicarFiltros" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Aplicar Filtros
-                    </button>
-                    <button type="button" id="btnLimpiarFiltros" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Limpiar
-                    </button>
-                </div>
-            </form>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 lg:ml-64 p-8">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-emerald-100 rounded-md p-3">
-                                <i class="fas fa-money-bill-wave text-emerald-600 text-xl"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Ingresos</dt>
-                                    <dd class="text-lg font-bold text-gray-900" id="statTotalIngresos">Q 0.00</dd>
-                                </dl>
+                    <!-- Búsqueda General -->
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Buscar</label>
+                        <div class="relative">
+                            <input type="text" id="filterBusqueda" placeholder="Referencia, Cliente, Observación..." class="block w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-gray-400"></i>
                             </div>
                         </div>
                     </div>
-                </div>
-                <!-- Más stats aquí si se desea -->
-            </div>
 
-            <!-- Table -->
-            <div class="bg-white shadow rounded-lg overflow-hidden">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Movimientos Registrados</h3>
-                    <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Buscar referencia, cliente..." class="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400"></i>
-                        </div>
+                    <!-- Método de Pago -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Método de Pago</label>
+                        <select id="filterMetodo" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            <option value="">Todos</option>
+                        </select>
                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table id="tablaHistorial" class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción / Cliente</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref.</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Método</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <!-- DataTables -->
-                        </tbody>
-                    </table>
-                </div>
+
+                    <!-- Tipo de Movimiento -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Tipo</label>
+                        <select id="filterTipo" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            <option value="">Todos</option>
+                            <option value="VENTA">Venta</option>
+                            <option value="DEPOSITO">Depósito</option>
+                            <option value="EGRESO">Egreso</option>
+                            <option value="AJUSTE_POS">Ajuste Positivo</option>
+                            <option value="AJUSTE_NEG">Ajuste Negativo</option>
+                        </select>
+                    </div>
+
+                    <!-- Situación -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Estado</label>
+                        <select id="filterSituacion" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            <option value="">Todos</option>
+                            <option value="ACTIVO">Activo</option>
+                            <option value="ANULADO">Anulado</option>
+                        </select>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="flex items-end gap-3">
+                        <button type="button" id="btnAplicarFiltros" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex justify-center items-center gap-2">
+                            <i class="fas fa-sync-alt"></i> Filtrar
+                        </button>
+                        <button type="button" id="btnLimpiarFiltros" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm" title="Limpiar Filtros">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                    </div>
+                </form>
             </div>
-        </main>
+        </div>
+
+        <!-- Table Card -->
+        <div class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table id="tablaHistorial" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Descripción / Cliente</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref.</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Método</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Monto</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <!-- DataTables -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Detalle Venta/Factura (MEGA GUI) -->

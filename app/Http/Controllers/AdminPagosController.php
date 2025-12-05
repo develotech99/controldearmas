@@ -575,12 +575,15 @@ class AdminPagosController extends Controller
      public function movimientos(Request $request)
      {
          try {
-             $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
-             $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
-             $metodoId = $request->query('metodo_id');
-     
-             $q = DB::table('cja_historial as h')
-                 ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
+            $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
+            $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
+            $metodoId = $request->query('metodo_id');
+            $tipo = $request->query('tipo');
+            $situacion = $request->query('situacion');
+            $qParam = trim($request->query('q', ''));
+
+            $q = DB::table('cja_historial as h')
+                ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
                 ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'h.cja_id_venta')
                 ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
                 // Joins for Debt Payments (using cja_id_import as deuda_id)
@@ -588,80 +591,92 @@ class AdminPagosController extends Controller
                 ->leftJoin('pro_clientes as dc_c', 'dc_c.cliente_id', '=', 'dc.cliente_id')
                 ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
                 ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'h.cja_usuario')
-                 ->select(
-                     'h.cja_id',
-                     'h.cja_fecha',
-                     'h.cja_tipo',
-                     'h.cja_no_referencia',
-                     'h.cja_observaciones',
-                     'h.cja_monto',
-                     'h.cja_situacion',
-                     'h.cja_id_venta',
-                     'm.metpago_descripcion as metodo',
-                     
-                     // ⭐ Cliente
-                     DB::raw("
-                        CASE
-                            WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
-                                CONCAT(
-                                    c.cliente_nom_empresa, 
-                                    ' | ', 
-                                    TRIM(CONCAT_WS(' ', 
-                                        COALESCE(c.cliente_nombre1, ''), 
-                                        COALESCE(c.cliente_apellido1, '')
-                                    ))
-                                )
-                            WHEN c.cliente_id IS NOT NULL THEN 
-                                TRIM(CONCAT_WS(' ', 
-                                    COALESCE(c.cliente_nombre1, ''),
-                                    COALESCE(c.cliente_nombre2, ''),
-                                    COALESCE(c.cliente_apellido1, ''),
-                                    COALESCE(c.cliente_apellido2, '')
-                                ))
-                            -- Logic for PAGO_DEUDA using cja_id_import as deuda_id
-                            WHEN h.cja_tipo = 'PAGO_DEUDA' AND dc.cliente_id IS NOT NULL THEN
-                                TRIM(CONCAT_WS(' ', 
-                                    COALESCE(dc_c.cliente_nombre1, ''),
-                                    COALESCE(dc_c.cliente_nombre2, ''),
-                                    COALESCE(dc_c.cliente_apellido1, ''),
-                                    COALESCE(dc_c.cliente_apellido2, '')
-                                ))
-                            ELSE NULL
-                        END as cliente_nombre
-                     "),
-                     DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
-                     'c.cliente_tipo',
-                     'c.cliente_nit',
-                     
-                     // ⭐ Vendedor
-                     DB::raw("
-                         TRIM(CONCAT_WS(' ',
-                             COALESCE(vendedor.user_primer_nombre, ''),
-                             COALESCE(vendedor.user_segundo_nombre, ''),
-                             COALESCE(vendedor.user_primer_apellido, ''),
-                             COALESCE(vendedor.user_segundo_apellido, '')
-                         )) as vendedor_nombre
-                     "),
-                     'v.ven_user as vendedor_id',
-                     
-                     // ⭐ Usuario que registró el movimiento
-                     DB::raw("
-                         TRIM(CONCAT_WS(' ',
-                             COALESCE(usuario_registro.user_primer_nombre, ''),
-                             COALESCE(usuario_registro.user_segundo_nombre, ''),
-                             COALESCE(usuario_registro.user_primer_apellido, ''),
-                             COALESCE(usuario_registro.user_segundo_apellido, '')
-                         )) as usuario_registro_nombre
-                     "),
-                     'h.cja_usuario as usuario_registro_id',
-                     
-                     // ⭐ Total de la venta (si aplica)
-                     'v.ven_total_vendido as venta_total'
-                 )
-                 ->whereDate('h.cja_fecha', '>=', $from)
-                 ->whereDate('h.cja_fecha', '<=', $to)
-                 ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
-                 ->orderBy('h.cja_fecha', 'desc');
+                ->select(
+                    'h.cja_id',
+                    'h.cja_fecha',
+                    'h.cja_tipo',
+                    'h.cja_no_referencia',
+                    'h.cja_observaciones',
+                    'h.cja_monto',
+                    'h.cja_situacion',
+                    'h.cja_id_venta',
+                    'm.metpago_descripcion as metodo',
+                    
+                    // ⭐ Cliente
+                    DB::raw("
+                       CASE
+                           WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
+                               CONCAT(
+                                   c.cliente_nom_empresa, 
+                                   ' | ', 
+                                   TRIM(CONCAT_WS(' ', 
+                                       COALESCE(c.cliente_nombre1, ''), 
+                                       COALESCE(c.cliente_apellido1, '')
+                                   ))
+                               )
+                           WHEN c.cliente_id IS NOT NULL THEN 
+                               TRIM(CONCAT_WS(' ', 
+                                   COALESCE(c.cliente_nombre1, ''),
+                                   COALESCE(c.cliente_nombre2, ''),
+                                   COALESCE(c.cliente_apellido1, ''),
+                                   COALESCE(c.cliente_apellido2, '')
+                               ))
+                           -- Logic for PAGO_DEUDA using cja_id_import as deuda_id
+                           WHEN h.cja_tipo = 'PAGO_DEUDA' AND dc.cliente_id IS NOT NULL THEN
+                               TRIM(CONCAT_WS(' ', 
+                                   COALESCE(dc_c.cliente_nombre1, ''),
+                                   COALESCE(dc_c.cliente_nombre2, ''),
+                                   COALESCE(dc_c.cliente_apellido1, ''),
+                                   COALESCE(dc_c.cliente_apellido2, '')
+                               ))
+                           ELSE NULL
+                       END as cliente_nombre
+                    "),
+                    DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
+                    'c.cliente_tipo',
+                    'c.cliente_nit',
+                    
+                    // ⭐ Vendedor
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(vendedor.user_primer_nombre, ''),
+                            COALESCE(vendedor.user_segundo_nombre, ''),
+                            COALESCE(vendedor.user_primer_apellido, ''),
+                            COALESCE(vendedor.user_segundo_apellido, '')
+                        )) as vendedor_nombre
+                    "),
+                    'v.ven_user as vendedor_id',
+                    
+                    // ⭐ Usuario que registró el movimiento
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(usuario_registro.user_primer_nombre, ''),
+                            COALESCE(usuario_registro.user_segundo_nombre, ''),
+                            COALESCE(usuario_registro.user_primer_apellido, ''),
+                            COALESCE(usuario_registro.user_segundo_apellido, '')
+                        )) as usuario_registro_nombre
+                    "),
+                    'h.cja_usuario as usuario_registro_id',
+                    
+                    // ⭐ Total de la venta (si aplica)
+                    'v.ven_total_vendido as venta_total'
+                )
+                ->whereDate('h.cja_fecha', '>=', $from)
+                ->whereDate('h.cja_fecha', '<=', $to)
+                ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
+                ->when($tipo, fn($qq) => $qq->where('h.cja_tipo', $tipo))
+                ->when($situacion, fn($qq) => $qq->where('h.cja_situacion', $situacion))
+                ->when($qParam, function ($qq) use ($qParam) {
+                    $qq->where(function ($sub) use ($qParam) {
+                        $sub->where('h.cja_no_referencia', 'like', "%{$qParam}%")
+                            ->orWhere('h.cja_observaciones', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nombre1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_apellido1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nom_empresa', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nit', 'like', "%{$qParam}%");
+                    });
+                })
+                ->orderBy('h.cja_fecha', 'desc');
      
              $rows = $q->get();
      

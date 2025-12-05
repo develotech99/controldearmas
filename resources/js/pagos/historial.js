@@ -17,15 +17,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    document.getElementById("filterFechaDesde").valueAsDate = firstDay;
-    document.getElementById("filterFechaHasta").valueAsDate = lastDay;
+    const inputDesde = document.getElementById("filterFechaDesde");
+    const inputHasta = document.getElementById("filterFechaHasta");
+
+    if (inputDesde) inputDesde.valueAsDate = firstDay;
+    if (inputHasta) inputHasta.valueAsDate = lastDay;
 
     // 3. Cargar Datos Iniciales
     await CargarHistorial();
 
     // 4. Event Listeners Filtros
-    document.getElementById("btnAplicarFiltros").addEventListener("click", CargarHistorial);
-    document.getElementById("btnLimpiarFiltros").addEventListener("click", LimpiarFiltros);
+    const btnAplicar = document.getElementById("btnAplicarFiltros");
+    if (btnAplicar) btnAplicar.addEventListener("click", CargarHistorial);
+
+    const btnLimpiar = document.getElementById("btnLimpiarFiltros");
+    if (btnLimpiar) btnLimpiar.addEventListener("click", LimpiarFiltros);
+
+    // Enter en buscador
+    const inputBusqueda = document.getElementById("filterBusqueda");
+    if (inputBusqueda) {
+        inputBusqueda.addEventListener("keyup", (e) => {
+            if (e.key === "Enter") CargarHistorial();
+        });
+    }
 
     // 5. Event Listeners Modal
     document.addEventListener("click", (e) => {
@@ -50,25 +64,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 const CargarMetodosPago = async () => {
     try {
-        const resp = await fetch("/metodos-pago/obtener"); // Ajustar ruta si es diferente
-        // Si no tienes ruta directa, podrías usar la de stats o hardcodear si es necesario, 
-        // pero idealmente deberías tener un endpoint.
-        // Asumiremos que existe o lo sacamos de stats.
-        // Si no, usaremos un fallback.
-
         // Fallback: Usar stats para sacar métodos
         const respStats = await fetch("/admin/pagos/stats");
         if (respStats.ok) {
             const json = await respStats.json();
             if (json.codigo === 1 && json.data.saldos) {
                 const select = document.getElementById("filterMetodo");
-                json.data.saldos.forEach(m => {
-                    metodosPagoMap.set(m.metodo_id, m.metodo);
-                    const opt = document.createElement("option");
-                    opt.value = m.metodo_id;
-                    opt.textContent = m.metodo;
-                    select.appendChild(opt);
-                });
+                if (select) {
+                    json.data.saldos.forEach(m => {
+                        metodosPagoMap.set(m.metodo_id, m.metodo);
+                        const opt = document.createElement("option");
+                        opt.value = m.metodo_id;
+                        opt.textContent = m.metodo;
+                        select.appendChild(opt);
+                    });
+                }
             }
         }
     } catch (e) {
@@ -77,17 +87,27 @@ const CargarMetodosPago = async () => {
 };
 
 const CargarHistorial = async () => {
-    const from = document.getElementById("filterFechaDesde").value;
-    const to = document.getElementById("filterFechaHasta").value;
-    const metodoId = document.getElementById("filterMetodo").value;
+    const from = document.getElementById("filterFechaDesde")?.value || "";
+    const to = document.getElementById("filterFechaHasta")?.value || "";
+    const metodoId = document.getElementById("filterMetodo")?.value || "";
+    const tipo = document.getElementById("filterTipo")?.value || "";
+    const situacion = document.getElementById("filterSituacion")?.value || "";
+    const q = document.getElementById("filterBusqueda")?.value || "";
 
     const btn = document.getElementById("btnAplicarFiltros");
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando...';
-    btn.disabled = true;
+    let originalText = "";
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando...';
+        btn.disabled = true;
+    }
 
     try {
-        const url = `/admin/pagos/movimientos?from=${from}&to=${to}&metodo_id=${metodoId}`;
+        const params = new URLSearchParams({
+            from, to, metodo_id: metodoId, tipo, situacion, q
+        });
+
+        const url = `/admin/pagos/movimientos?${params.toString()}`;
         const resp = await fetch(url);
 
         if (!resp.ok) throw new Error("Error en la petición");
@@ -95,7 +115,8 @@ const CargarHistorial = async () => {
         const json = await resp.json();
         if (json.codigo === 1) {
             renderTabla(json.data.movimientos);
-            document.getElementById("statTotalIngresos").textContent = fmtQ(json.data.total);
+            const statTotal = document.getElementById("statTotalIngresos");
+            if (statTotal) statTotal.textContent = fmtQ(json.data.total);
         } else {
             Swal.fire("Error", json.mensaje || "No se pudieron cargar los datos", "error");
         }
@@ -104,8 +125,10 @@ const CargarHistorial = async () => {
         console.error(e);
         Swal.fire("Error", "Ocurrió un error al cargar el historial", "error");
     } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     }
 };
 
@@ -114,9 +137,22 @@ const LimpiarFiltros = () => {
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    document.getElementById("filterFechaDesde").valueAsDate = firstDay;
-    document.getElementById("filterFechaHasta").valueAsDate = lastDay;
-    document.getElementById("filterMetodo").value = "";
+    const iDesde = document.getElementById("filterFechaDesde");
+    const iHasta = document.getElementById("filterFechaHasta");
+    if (iDesde) iDesde.valueAsDate = firstDay;
+    if (iHasta) iHasta.valueAsDate = lastDay;
+
+    const iMetodo = document.getElementById("filterMetodo");
+    if (iMetodo) iMetodo.value = "";
+
+    const iTipo = document.getElementById("filterTipo");
+    if (iTipo) iTipo.value = "";
+
+    const iSit = document.getElementById("filterSituacion");
+    if (iSit) iSit.value = "";
+
+    const iBus = document.getElementById("filterBusqueda");
+    if (iBus) iBus.value = "";
 
     CargarHistorial();
 };
@@ -131,33 +167,22 @@ const renderTabla = (rows) => {
     }
 
     const tbody = document.querySelector("#tablaHistorial tbody");
+    if (!tbody) return;
+
     tbody.innerHTML = "";
     ventaDetalles.clear(); // Limpiar cache de detalles
 
     // Pre-procesar datos para el mapa de detalles
     rows.forEach(r => {
         if (r.cja_id_venta) {
-            // Guardamos info enriquecida para el modal
-            // Nota: El endpoint 'movimientos' ya trae info enriquecida en 'productos', 'cliente', etc.
-            // Necesitamos reconstruir un objeto 'venta' completo para el modal.
-            // Como 'movimientos' trae info parcial, idealmente deberíamos hacer fetch del detalle completo al abrir modal,
-            // O si el endpoint 'movimientos' trae suficiente info, usarla.
-            // El endpoint 'movimientos' actual trae 'productos' (resumen) y 'venta_total'.
-            // Faltaría el historial de pagos detallado de ESA venta.
-            // Para el modal Mega GUI, haremos un fetch adicional si falta info, o usaremos lo que hay.
-
-            // Guardamos lo que tenemos
             ventaDetalles.set(Number(r.cja_id_venta), {
                 venta_id: r.cja_id_venta,
-                fecha: r.cja_fecha, // Fecha del movimiento, no necesariamente de la venta, pero sirve de ref
+                fecha: r.cja_fecha,
                 cliente: r.cliente || {},
                 vendedor: r.vendedor || {},
                 concepto: r.productos ? r.productos.concepto : (r.cja_observaciones || "—"),
                 items_count: r.productos ? r.productos.items_count : 0,
                 monto_total: r.venta_total || 0,
-                // Faltan: pagado, pendiente, pagos_realizados, situacion.
-                // Estos los tendremos que obtener on-demand o asumir.
-                // Para simplificar, usaremos un endpoint auxiliar para obtener el detalle FULL de la venta al abrir el modal.
             });
         }
     });
@@ -173,6 +198,8 @@ const renderTabla = (rows) => {
         if (r.cja_tipo === 'VENTA') tipoBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700">VENTA</span>`;
         if (r.cja_tipo === 'DEPOSITO') tipoBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-700">DEPÓSITO</span>`;
         if (r.cja_tipo === 'EGRESO') tipoBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-rose-100 text-rose-700">EGRESO</span>`;
+        if (r.cja_tipo === 'AJUSTE_POS') tipoBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-indigo-100 text-indigo-700">AJUSTE POS</span>`;
+        if (r.cja_tipo === 'AJUSTE_NEG') tipoBadge = `<span class="px-2 py-1 rounded text-xs font-bold bg-orange-100 text-orange-700">AJUSTE NEG</span>`;
 
         // Descripción
         let desc = r.cja_observaciones || "—";
@@ -186,15 +213,8 @@ const renderTabla = (rows) => {
             `;
         }
 
-        // Método (Lógica Mixta)
+        // Método
         let metodo = r.metodo || "—";
-        // Aquí la lógica mixta es más compleja porque 'movimientos' es una lista plana de transacciones.
-        // Si queremos mostrar "Parte de Pago Mixto", necesitamos saber si esta venta tuvo otros pagos.
-        // El endpoint actual NO devuelve esa info por defecto row a row.
-        // Sin embargo, el usuario pidió explícitamente esta validación.
-        // Opción: Al abrir el modal se ve el detalle. En la tabla, si es VENTA, asumimos que el método registrado es el principal de ESE movimiento.
-        // Si queremos mostrar el desglose AQUÍ, necesitaríamos agrupar o tener data extra.
-        // Por ahora, mostraremos el método del movimiento.
 
         // Monto
         const esIngreso = ["VENTA", "DEPOSITO", "AJUSTE_POS", "PAGO_DEUDA"].includes(r.cja_tipo);
@@ -231,29 +251,23 @@ const renderTabla = (rows) => {
     });
 
     const tableEl = document.getElementById("tablaHistorial");
-    dataTableInstance = new DataTable(tableEl, {
-        data: {
-            headings: ["Fecha", "Tipo", "Descripción / Cliente", "Ref.", "Método", "Monto", "Estado", "Acciones"],
-            data: newRows
-        },
-        perPage: 10,
-        perPageSelect: [10, 25, 50, 100],
-        labels: {
-            placeholder: "Buscar...",
-            perPage: "{select} registros por página",
-            noRows: "No se encontraron registros",
-            info: "Mostrando {start} a {end} de {rows} registros",
-        },
-        searchable: false, // Usamos nuestro propio buscador si queremos, o el de DT. DT busca en el HTML renderizado.
-        // Si usamos server-side filtering (nuestro input), desactivamos el de DT o lo ocultamos.
-        // En este caso, hemos puesto un input externo '#searchInput'.
-        // Podemos conectarlo a DT:
-    });
-
-    // Conectar buscador externo
-    document.getElementById("searchInput").addEventListener("keyup", (e) => {
-        dataTableInstance.search(e.target.value);
-    });
+    if (tableEl) {
+        dataTableInstance = new DataTable(tableEl, {
+            data: {
+                headings: ["Fecha", "Tipo", "Descripción / Cliente", "Ref.", "Método", "Monto", "Estado", "Acciones"],
+                data: newRows
+            },
+            perPage: 10,
+            perPageSelect: [10, 25, 50, 100],
+            labels: {
+                placeholder: "Filtrar en tabla...",
+                perPage: "{select} registros",
+                noRows: "No se encontraron registros",
+                info: "{start}-{end} de {rows}",
+            },
+            searchable: false,
+        });
+    }
 };
 
 // ======================= MEGA GUI LOGIC =======================
@@ -268,15 +282,13 @@ const mostrarDetalleCompleto = async (ventaId) => {
 
     try {
         // 2. Fetch detalle completo de la venta
-        // Usaremos el endpoint de obtener venta por ID que creamos en tareas anteriores
-        // GET /api/ventas/{id}
         const resp = await fetch(`/api/ventas/${ventaId}`);
         if (!resp.ok) throw new Error("Error cargando detalle de venta");
 
         const json = await resp.json();
         if (!json.data) throw new Error("No data");
 
-        const venta = json.data; // Asumimos que trae toda la estructura necesaria
+        const venta = json.data;
 
         // 3. Popular Modal
 
@@ -331,9 +343,6 @@ const mostrarDetalleCompleto = async (ventaId) => {
 
         // Financiero
         const total = Number(venta.ven_total_vendido || 0);
-        // Necesitamos saber cuánto se ha pagado.
-        // Si el endpoint trae 'pagos' o 'pago_master', usamos eso.
-        // Asumiremos que trae 'pagos' (lista de historial) y calculamos.
         let pagado = 0;
         let pagosList = [];
 
@@ -342,12 +351,7 @@ const mostrarDetalleCompleto = async (ventaId) => {
             pagado = pagosList.reduce((acc, p) => acc + Number(p.monto || 0), 0);
         } else if (venta.pago_master) {
             pagado = Number(venta.pago_master.pago_monto_pagado || 0);
-            // Si hay historial en otra prop
         }
-
-        // Si no tenemos la lista de pagos en el endpoint de venta, tendríamos que buscarla.
-        // Pero asumamos que el endpoint /api/ventas/{id} fue hecho robusto o lo ajustaremos.
-        // Por ahora, usaremos lo que venga.
 
         const pendiente = Math.max(0, total - pagado);
 
