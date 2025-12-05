@@ -195,8 +195,7 @@ function actualizarRestante() {
     let restante = totalVenta - saldoUsar;
     if (restante < 0) restante = 0;
 
-    let restante = totalVenta - saldoUsar;
-    if (restante < 0) restante = 0;
+
 
     montoRestante.innerHTML = `<span class="font-bold text-red-600">Q${restante.toFixed(2)}</span>`;
 

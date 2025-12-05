@@ -954,10 +954,38 @@ class ReportesManager {
             const { isConfirmed, isDenied } = await Swal.fire({
                 title: 'Autorizar Venta',
                 html: `
-                    <p class="mb-4">¿Cómo deseas procesar esta venta?</p>
-                    <div class="text-sm text-gray-600 mb-4">
-                        <p><strong>Cliente:</strong> ${venta.cliente}</p>
-                        <p><strong>Total:</strong> ${this.formatCurrency(venta.ven_total_vendido)}</p>
+                    <div class="text-left">
+                        <p class="mb-4 text-gray-700">¿Cómo deseas procesar esta venta?</p>
+                        
+                        <div class="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
+                            <div class="text-sm text-gray-600">
+                                <p><strong class="text-gray-800">Cliente:</strong> ${venta.cliente}</p>
+                                <p><strong class="text-gray-800">Total:</strong> ${this.formatCurrency(venta.ven_total_vendido)}</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-start p-2 hover:bg-gray-50 rounded">
+                                <i class="fas fa-file-invoice-dollar text-green-600 mt-1 mr-2"></i>
+                                <div>
+                                    <span class="font-bold text-gray-800">Autorizar y Facturar</span>
+                                    <p class="text-gray-500 text-xs mt-1">
+                                        Envía la venta al módulo de facturación para generar la factura electrónica (FEL).
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start p-2 hover:bg-gray-50 rounded">
+                                <i class="fas fa-clipboard-check text-gray-600 mt-1 mr-2"></i>
+                                <div>
+                                    <span class="font-bold text-gray-800">Autorizar sin Facturar</span>
+                                    <p class="text-gray-500 text-xs mt-1">
+                                        Finaliza la venta solo para control de inventario y caja. 
+                                        <span class="text-red-500 font-medium">No genera factura electrónica.</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `,
                 icon: 'question',
@@ -969,7 +997,8 @@ class ReportesManager {
                 confirmButtonText: '<i class="fas fa-file-invoice mr-2"></i>Autorizar y Facturar',
                 denyButtonText: '<i class="fas fa-check mr-2"></i>Autorizar sin Facturar',
                 cancelButtonText: 'Cancelar',
-                reverseButtons: true
+                reverseButtons: true,
+                width: '32em'
             });
 
             if (!isConfirmed && !isDenied) return;

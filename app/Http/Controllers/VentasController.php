@@ -459,7 +459,7 @@ public function guardarCliente(Request $request)
 
         try {
             DB::transaction(function () use ($venId, $tipo) {
-                $venta = ProVenta::with('detalleVentas.producto')->findOrFail($venId);
+                $venta = \App\Models\ProVenta::with('detalleVentas.producto')->findOrFail($venId);
 
                 if (!in_array($venta->ven_situacion, ['PENDIENTE', 'EDITABLE'])) {
                     throw new \Exception('La venta no está en estado PENDIENTE ni EDITABLE.');
