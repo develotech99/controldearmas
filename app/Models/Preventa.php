@@ -11,6 +11,7 @@ class Preventa extends Model
 
     protected $fillable = [
         'prev_cliente_id',
+        'prev_empresa_id',
         'prev_fecha',
         'prev_total',
         'prev_monto_pagado',

@@ -552,7 +552,11 @@ class ClientesController extends Controller
                 $query->where('cliente_nombre1', 'LIKE', "%$term%")
                     ->orWhere('cliente_apellido1', 'LIKE', "%$term%")
                     ->orWhere('cliente_nit', 'LIKE', "%$term%")
-                    ->orWhere('cliente_nom_empresa', 'LIKE', "%$term%");
+                    ->orWhere('cliente_nom_empresa', 'LIKE', "%$term%")
+                    ->orWhereHas('empresas', function ($q) use ($term) {
+                        $q->where('emp_nombre', 'LIKE', "%$term%")
+                          ->orWhere('emp_nit', 'LIKE', "%$term%");
+                    });
             })
             ->with('empresas') // Eager load companies
             ->limit(20)

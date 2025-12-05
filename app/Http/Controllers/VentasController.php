@@ -54,7 +54,12 @@ class VentasController extends Controller
         $clientes = Clientes::with(['empresas', 'saldo'])
             ->where('cliente_situacion', 1)
             ->when($nit, function ($q) use ($nit) {
-                $q->where('cliente_nit', $nit);
+                $q->where(function ($query) use ($nit) {
+                    $query->where('cliente_nit', $nit)
+                          ->orWhereHas('empresas', function ($q2) use ($nit) {
+                              $q2->where('emp_nit', $nit);
+                          });
+                });
             })
             ->when($dpi, function ($q) use ($dpi) {
                 $q->where('cliente_dpi', $dpi);

@@ -8,6 +8,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const inputClienteId = document.getElementById('cliente_id');
     const divResultadosClientes = document.getElementById('resultados-clientes');
     const divClienteSeleccionado = document.getElementById('cliente-seleccionado');
+    const divEmpresaSelect = document.getElementById('div-empresa-select');
+    const selectEmpresa = document.getElementById('empresa_id');
+
+    // Elementos del DOM - Filtros
+    const selectCategoria = document.getElementById('categoria');
+    const selectSubcategoria = document.getElementById('subcategoria');
+    const selectMarca = document.getElementById('marca');
+    const selectModelo = document.getElementById('modelo');
+    const selectCalibre = document.getElementById('calibre');
 
     // Elementos del DOM - Productos
     const inputProducto = document.getElementById('producto_busqueda');
@@ -30,6 +39,80 @@ document.addEventListener('DOMContentLoaded', function () {
     // Elementos del DOM - Otros
     const inputFecha = document.getElementById('fecha');
     const inputObservaciones = document.getElementById('observaciones');
+
+    // --- Lógica de Filtros ---
+    selectCategoria?.addEventListener('change', async function () {
+        const categoriaId = this.value;
+        resetSelects(['subcategoria', 'marca', 'modelo', 'calibre']);
+
+        if (categoriaId) {
+            await cargarOpciones(`/api/ventas/subcategorias/${categoriaId}`, selectSubcategoria, 'subcategoria_id', 'subcategoria_nombre');
+        }
+        buscarProductos();
+    });
+
+    selectSubcategoria?.addEventListener('change', async function () {
+        const subcategoriaId = this.value;
+        resetSelects(['marca', 'modelo', 'calibre']);
+
+        if (subcategoriaId) {
+            await cargarOpciones(`/api/ventas/marcas/${subcategoriaId}`, selectMarca, 'marca_id', 'marca_descripcion');
+        }
+        buscarProductos();
+    });
+
+    selectMarca?.addEventListener('change', async function () {
+        const marcaId = this.value;
+        resetSelects(['modelo', 'calibre']);
+
+        if (marcaId) {
+            await cargarOpciones(`/api/ventas/modelos/${marcaId}`, selectModelo, 'modelo_id', 'modelo_descripcion');
+        }
+        buscarProductos();
+    });
+
+    selectModelo?.addEventListener('change', async function () {
+        const modeloId = this.value;
+        resetSelects(['calibre']);
+
+        if (modeloId) {
+            await cargarOpciones(`/api/ventas/calibres/${modeloId}`, selectCalibre, 'calibre_id', 'calibre_nombre');
+        }
+        buscarProductos();
+    });
+
+    selectCalibre?.addEventListener('change', buscarProductos);
+
+    async function cargarOpciones(url, selectElement, valueKey, textKey) {
+        try {
+            selectElement.disabled = true;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            selectElement.innerHTML = '<option value="">Seleccionar...</option>';
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item[valueKey];
+                option.textContent = item[textKey];
+                selectElement.appendChild(option);
+            });
+
+            selectElement.disabled = false;
+        } catch (error) {
+            console.error('Error cargando opciones:', error);
+            selectElement.disabled = false;
+        }
+    }
+
+    function resetSelects(ids) {
+        ids.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.innerHTML = '<option value="">Seleccionar...</option>';
+                select.disabled = true;
+            }
+        });
+    }
 
     // --- Lógica de Búsqueda de Clientes ---
     inputCliente.addEventListener('input', debounce(async (e) => {
@@ -58,8 +141,15 @@ document.addEventListener('DOMContentLoaded', function () {
         clientes.forEach(cliente => {
             const div = document.createElement('div');
             div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
+
+            // Mostrar info de empresa si existe
+            let nombreMostrar = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1}`;
+            if (cliente.cliente_nom_empresa) {
+                nombreMostrar += ` (${cliente.cliente_nom_empresa})`;
+            }
+
             div.innerHTML = `
-                <div class="font-bold text-sm text-gray-800">${cliente.cliente_nombre1} ${cliente.cliente_apellido1}</div>
+                <div class="font-bold text-sm text-gray-800">${nombreMostrar}</div>
                 <div class="text-xs text-gray-500">NIT: ${cliente.cliente_nit || 'N/A'}</div>
             `;
             div.addEventListener('click', () => seleccionarCliente(cliente));
@@ -74,10 +164,15 @@ document.addEventListener('DOMContentLoaded', function () {
         inputCliente.value = ''; // Limpiar input para mostrar selección abajo
         divResultadosClientes.classList.add('hidden');
 
+        let nombreMostrar = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1}`;
+        if (cliente.cliente_nom_empresa) {
+            nombreMostrar += ` <span class="text-xs text-gray-500">(${cliente.cliente_nom_empresa})</span>`;
+        }
+
         divClienteSeleccionado.innerHTML = `
             <div class="flex justify-between items-center">
                 <div>
-                    <div class="font-bold">${cliente.cliente_nombre1} ${cliente.cliente_apellido1}</div>
+                    <div class="font-bold">${nombreMostrar}</div>
                     <div class="text-xs">NIT: ${cliente.cliente_nit || 'N/A'}</div>
                 </div>
                 <button type="button" class="text-red-500 hover:text-red-700" id="btn-quitar-cliente">
@@ -88,40 +183,74 @@ document.addEventListener('DOMContentLoaded', function () {
         divClienteSeleccionado.classList.remove('hidden');
         inputCliente.classList.add('hidden');
 
+        // Manejo de Empresas
+        selectEmpresa.innerHTML = '<option value="">Seleccionar empresa...</option>';
+        if (cliente.empresas && cliente.empresas.length > 0) {
+            cliente.empresas.forEach(empresa => {
+                const option = document.createElement('option');
+                option.value = empresa.emp_id;
+                option.textContent = `${empresa.emp_nombre} (NIT: ${empresa.emp_nit})`;
+                selectEmpresa.appendChild(option);
+            });
+            divEmpresaSelect.classList.remove('hidden');
+        } else {
+            divEmpresaSelect.classList.add('hidden');
+        }
+
         document.getElementById('btn-quitar-cliente').addEventListener('click', () => {
             clienteSeleccionado = null;
             inputClienteId.value = '';
             divClienteSeleccionado.classList.add('hidden');
             inputCliente.classList.remove('hidden');
             inputCliente.focus();
+            divEmpresaSelect.classList.add('hidden');
+            selectEmpresa.value = '';
         });
     }
 
     // --- Lógica de Búsqueda de Productos ---
-    inputProducto.addEventListener('input', debounce(async (e) => {
-        const query = e.target.value;
-        if (query.length < 2) {
-            // Si está vacío, limpiar grid o mostrar mensaje inicial
-            if (query.length === 0) {
-                gridProductos.innerHTML = `
-                    <div class="col-span-full text-center text-gray-500 py-8">
-                        <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
-                        <p>Busca productos para agregar a la preventa</p>
-                    </div>
-                `;
-                contadorResultados.textContent = 'Resultados de búsqueda';
-            }
+    inputProducto.addEventListener('input', debounce(buscarProductos, 300));
+
+    async function buscarProductos() {
+        const query = inputProducto.value;
+        const categoria = selectCategoria?.value || '';
+        const subcategoria = selectSubcategoria?.value || '';
+        const marca = selectMarca?.value || '';
+        const modelo = selectModelo?.value || '';
+        const calibre = selectCalibre?.value || '';
+
+        // Si no hay filtros ni búsqueda, mostrar mensaje inicial
+        if (!query && !categoria && !subcategoria && !marca && !modelo && !calibre) {
+            gridProductos.innerHTML = `
+                <div class="col-span-full text-center text-gray-500 py-8">
+                    <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
+                    <p>Busca productos para agregar a la preventa</p>
+                </div>
+            `;
+            contadorResultados.textContent = 'Resultados de búsqueda';
             return;
         }
 
+        // Construir URL con parámetros
+        const params = new URLSearchParams();
+        if (query) params.append('busqueda', query);
+        if (categoria) params.append('categoria_id', categoria);
+        if (subcategoria) params.append('subcategoria_id', subcategoria);
+        if (marca) params.append('marca_id', marca);
+        if (modelo) params.append('modelo_id', modelo);
+        if (calibre) params.append('calibre_id', calibre);
+
         try {
-            const response = await fetch(`/ventas/buscar-productos?q=${query}`);
+            gridProductos.innerHTML = '<div class="col-span-full text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i></div>';
+
+            const response = await fetch(`/api/ventas/buscar-productos?${params.toString()}`);
             const data = await response.json();
             renderProductos(data);
         } catch (error) {
             console.error('Error buscando productos:', error);
+            gridProductos.innerHTML = '<div class="col-span-full text-center text-red-500 py-8">Error al buscar productos</div>';
         }
-    }, 300));
+    }
 
     function renderProductos(productos) {
         gridProductos.innerHTML = '';
@@ -140,17 +269,28 @@ document.addEventListener('DOMContentLoaded', function () {
             const card = document.createElement('div');
             card.className = 'bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col justify-between h-full';
 
-            // Imagen (placeholder si no hay)
-            const imagenUrl = producto.producto_imagen ? `/storage/${producto.producto_imagen}` : 'https://via.placeholder.com/150?text=No+Image';
+            // Imagen
+            let imagenUrl = 'https://via.placeholder.com/150?text=No+Image';
+            if (producto.foto_url) {
+                // Si la URL ya empieza con http o /, usarla tal cual, si no, agregar /storage/
+                if (producto.foto_url.startsWith('http') || producto.foto_url.startsWith('/')) {
+                    imagenUrl = producto.foto_url;
+                } else {
+                    imagenUrl = `/storage/${producto.foto_url}`;
+                }
+            }
+
+            // Precio
+            const precio = parseFloat(producto.precio_venta) || 0;
 
             card.innerHTML = `
                 <div class="mb-3">
                     <div class="h-32 w-full bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                        <img src="${imagenUrl}" alt="${producto.producto_nombre}" class="h-full object-contain">
+                        <img src="${imagenUrl}" alt="${producto.producto_nombre}" class="h-full object-contain" onerror="this.src='https://via.placeholder.com/150?text=Error+Image'">
                     </div>
                     <h3 class="font-bold text-gray-800 text-sm mb-1 line-clamp-2" title="${producto.producto_nombre}">${producto.producto_nombre}</h3>
                     <div class="text-xs text-gray-500 mb-2">Stock: ${producto.stock_cantidad_total}</div>
-                    <div class="text-lg font-bold text-blue-600">Q${parseFloat(producto.producto_precio_venta).toFixed(2)}</div>
+                    <div class="text-lg font-bold text-blue-600">Q${precio.toFixed(2)}</div>
                 </div>
                 <button class="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold py-2 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 btn-agregar-carrito">
                     <i class="fas fa-cart-plus"></i> Agregar
@@ -165,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Lógica del Carrito ---
     function agregarAlCarrito(producto) {
         const index = carrito.findIndex(item => item.producto_id === producto.producto_id);
+        const precio = parseFloat(producto.precio_venta) || 0;
 
         if (index !== -1) {
             carrito[index].cantidad++;
@@ -174,9 +315,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 producto_id: producto.producto_id,
                 nombre: producto.producto_nombre,
                 cantidad: 1,
-                precio: parseFloat(producto.producto_precio_venta),
-                subtotal: parseFloat(producto.producto_precio_venta),
-                imagen: producto.producto_imagen
+                precio: precio,
+                subtotal: precio,
+                imagen: producto.foto_url
             });
         }
 
@@ -296,6 +437,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const data = {
             cliente_id: inputClienteId.value,
+            empresa_id: selectEmpresa.value || null, // Enviar empresa seleccionada
             monto_pagado: inputMontoPagado.value,
             fecha: inputFecha.value,
             observaciones: inputObservaciones.value,

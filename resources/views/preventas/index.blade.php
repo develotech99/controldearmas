@@ -8,6 +8,64 @@
         <!-- Sidebar: Cliente y Filtros -->
         <div class="lg:col-span-1 lg:sticky lg:top-4 lg:self-start flex flex-col gap-6">
             
+            <!-- Filtros de Producto -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">
+                    <i class="fas fa-filter mr-2"></i>Filtros de Producto
+                </h2>
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="categoria" class="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
+                        <select id="categoria" name="categoria"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Seleccionar...</option>
+                            @foreach ($categorias as $categoria)
+                                <option value="{{ $categoria->categoria_id }}">
+                                    {{ $categoria->categoria_nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="subcategoria" class="block text-sm font-medium text-gray-700 mb-2">Subcategoría</label>
+                        <select id="subcategoria" name="subcategoria"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled>
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="marca" class="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                        <select id="marca" name="marca"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled>
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="modelo" class="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
+                        <select id="modelo" name="modelo"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled>
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="calibre" class="block text-sm font-medium text-gray-700 mb-2">Calibre</label>
+                        <select id="calibre" name="calibre"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled>
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Cliente -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-semibold mb-4">
@@ -21,6 +79,15 @@
                     <div id="resultados-clientes" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></div>
                 </div>
                 <div id="cliente-seleccionado" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-semibold hidden"></div>
+                
+                <!-- Selector de Empresa (Oculto por defecto) -->
+                <div id="div-empresa-select" class="hidden mt-4">
+                    <label for="empresa_id" class="block text-sm font-medium text-gray-700 mb-1">Empresa / Sucursal</label>
+                    <select id="empresa_id" name="empresa_id"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Seleccionar empresa...</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Datos de Preventa -->

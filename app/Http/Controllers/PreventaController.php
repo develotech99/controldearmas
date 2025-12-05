@@ -15,7 +15,12 @@ class PreventaController extends Controller
 {
     public function index()
     {
-        return view('preventas.index');
+        $categorias = DB::table('pro_categorias')
+            ->where('categoria_situacion', 1)
+            ->orderBy('categoria_nombre')
+            ->get();
+
+        return view('preventas.index', compact('categorias'));
     }
 
     public function store(Request $request)
@@ -41,6 +46,7 @@ class PreventaController extends Controller
 
             $preventa = Preventa::create([
                 'prev_cliente_id' => $request->cliente_id,
+                'prev_empresa_id' => $request->empresa_id, // Save company ID
                 'prev_fecha' => $request->fecha,
                 'prev_total' => $total,
                 'prev_monto_pagado' => $request->monto_pagado,
