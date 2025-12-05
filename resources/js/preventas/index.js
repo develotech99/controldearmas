@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
 
-            const response = await fetch(`/api/ventas/productos?${params.toString()}`);
+            const response = await fetch(`/api/ventas/buscar-productos?${params.toString()}`);
             const data = await response.json();
             renderProductos(data);
         } catch (error) {
