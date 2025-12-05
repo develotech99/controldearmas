@@ -3819,8 +3819,21 @@ function validarMetodoPago() {
     const numeroAutorizacion = document.getElementById("numeroAutorizacion")?.value.trim() || '';
     const selecBanco = document.getElementById("selectBanco")?.value.trim() || '';
 
+    const checkSaldoFavor = document.getElementById('checkSaldoFavor');
+    const montoRestanteElem = document.getElementById('montoRestantePagar');
+
+    // Si usa saldo a favor y cubre todo el monto
+    if (checkSaldoFavor && checkSaldoFavor.checked) {
+        const montoRestanteText = montoRestanteElem ? montoRestanteElem.textContent.replace('Q', '').trim() : '0';
+        const montoRestante = parseFloat(montoRestanteText) || 0;
+
+        if (montoRestante <= 0.01) {
+            return { valido: true, errores: [] };
+        }
+    }
+
     if (!metodoPago) {
-        errores.push("Debe seleccionar un método de pago");
+        errores.push("Debe seleccionar un método de pago para el saldo restante");
         return { valido: false, errores };
     }
 
