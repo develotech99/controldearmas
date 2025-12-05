@@ -195,7 +195,25 @@ function actualizarRestante() {
     let restante = totalVenta - saldoUsar;
     if (restante < 0) restante = 0;
 
-    montoRestante.textContent = `Q${restante.toFixed(2)}`;
+    let restante = totalVenta - saldoUsar;
+    if (restante < 0) restante = 0;
+
+    montoRestante.innerHTML = `<span class="font-bold text-red-600">Q${restante.toFixed(2)}</span>`;
+
+    // Mensaje explicativo si hay restante
+    const infoRestante = document.getElementById('infoSaldoRestante');
+    if (restante > 0.01) {
+        if (!document.getElementById('mensajeRestanteExplicativo')) {
+            const msg = document.createElement('div');
+            msg.id = 'mensajeRestanteExplicativo';
+            msg.className = 'text-xs text-gray-600 mt-1 italic';
+            msg.innerHTML = '<i class="fas fa-info-circle mr-1"></i>El monto restante debe ser cubierto con otro método de pago.';
+            infoRestante.appendChild(msg);
+        }
+    } else {
+        const msg = document.getElementById('mensajeRestanteExplicativo');
+        if (msg) msg.remove();
+    }
 
     // Lógica de visibilidad de métodos de pago
     if (restante <= 0.01) {
@@ -2947,6 +2965,9 @@ function calcularTotales() {
     }
 
     document.getElementById("totalModal").textContent = `Q${total.toFixed(2)}`;
+
+    // ✅ NUEVO: Actualizar saldo a favor si está activo
+    actualizarRestante();
 }
 function actualizarContadorCarrito() {
     const contador = carritoProductos.reduce((sum, p) => sum + p.cantidad, 0);
