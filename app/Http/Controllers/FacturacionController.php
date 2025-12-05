@@ -537,7 +537,7 @@ public function verFacturaCambiaria($id)
                      }
                      
                      if ($allInvoiced) {
-                         $venta->update(['ven_situacion' => 'FACTURADA']);
+                         $venta->update(['ven_situacion' => 'COMPLETADA']);
                      } else {
                          if ($venta->ven_situacion !== 'AUTORIZADA') {
                              $venta->update(['ven_situacion' => 'AUTORIZADA']);
