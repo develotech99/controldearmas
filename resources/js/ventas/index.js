@@ -8,71 +8,89 @@ async function clientesParticulares() {
     const nit = document.getElementById("nitClientes").value.trim();
     const dpi = document.getElementById("dpiClientes").value.trim();
     const select = document.getElementById("clienteSelect");
+    const loader = document.getElementById("loaderCliente");
+    const btn = document.getElementById("btnBuscarCliente");
 
     const params = new URLSearchParams();
     if (nit) params.append("nit", nit);
     if (dpi) params.append("dpi", dpi);
 
-    const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
-    const data = await res.json();
-    console.log('Resultados búsqueda clientes:', data);
+    if (loader) loader.classList.remove("hidden");
+    if (btn) btn.disabled = true;
 
-    // Siempre limpiamos el select
-    select.innerHTML = "";
+    try {
+        const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
+        const data = await res.json();
+        console.log('Resultados búsqueda clientes:', data);
 
-    if (data.length > 0) {
-        Swal.fire({
-            title: "Cliente Encontrado",
-            text: `Se ${data.length === 1 ? "encontró" : "encontraron"} ${data.length} cliente(s).`,
-            icon: "success",
-            confirmButtonText: "Aceptar",
-        });
+        // Siempre limpiamos el select
+        select.innerHTML = "";
 
-        // SOLO mostramos los resultados, sin "Seleccionar..."
-        data.forEach((c) => {
-            // ✅ NUEVO: Construir nombre completo del cliente
-            const nombreCliente = [
-                c.cliente_nombre1,
-                c.cliente_nombre2,
-                c.cliente_apellido1,
-                c.cliente_apellido2,
-            ]
-                .filter(Boolean)
-                .join(" ");
-
-            // ✅ NUEVO: Si es cliente tipo 3 (empresa), mostrar nombre de empresa primero
-            let nombreMostrar = '';
-            if (c.cliente_tipo == 3 && c.cliente_nom_empresa) {
-                // Formato: "EMPRESA XYZ - Nombre Cliente — NIT: 123"
-                nombreMostrar = `Empresa: ${c.cliente_nom_empresa} - ${nombreCliente}`;
-            } else {
-                // Formato normal: "Nombre Cliente — NIT: 123"
-                nombreMostrar = nombreCliente;
-            }
-
-            // Codificar empresas como JSON seguro para HTML
-            const empresasJson = JSON.stringify(c.empresas || []).replace(/"/g, '&quot;');
-            const saldoFavor = c.saldo ? parseFloat(c.saldo.saldo_monto) : 0;
-
-            select.innerHTML += `
-                <option value="${c.cliente_id}" data-empresas="${empresasJson}" data-saldo="${saldoFavor}">
-                    ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
-                </option>`;
-        });
-
-        // Si hay resultados, seleccionamos el primero y disparamos el evento
         if (data.length > 0) {
-            select.selectedIndex = 0;
-            select.dispatchEvent(new Event('change'));
+            Swal.fire({
+                title: "Cliente Encontrado",
+                text: `Se ${data.length === 1 ? "encontró" : "encontraron"} ${data.length} cliente(s).`,
+                icon: "success",
+                confirmButtonText: "Aceptar",
+            });
+
+            // SOLO mostramos los resultados, sin "Seleccionar..."
+            data.forEach((c) => {
+                // ✅ NUEVO: Construir nombre completo del cliente
+                const nombreCliente = [
+                    c.cliente_nombre1,
+                    c.cliente_nombre2,
+                    c.cliente_apellido1,
+                    c.cliente_apellido2,
+                ]
+                    .filter(Boolean)
+                    .join(" ");
+
+                // ✅ NUEVO: Si es cliente tipo 3 (empresa), mostrar nombre de empresa primero
+                let nombreMostrar = '';
+                if (c.cliente_tipo == 3 && c.cliente_nom_empresa) {
+                    // Formato: "EMPRESA XYZ - Nombre Cliente — NIT: 123"
+                    nombreMostrar = `Empresa: ${c.cliente_nom_empresa} - ${nombreCliente}`;
+                } else {
+                    // Formato normal: "Nombre Cliente — NIT: 123"
+                    nombreMostrar = nombreCliente;
+                }
+
+                // Codificar empresas como JSON seguro para HTML
+                const empresasJson = JSON.stringify(c.empresas || []).replace(/"/g, '&quot;');
+                const saldoFavor = c.saldo ? parseFloat(c.saldo.saldo_monto) : 0;
+
+                select.innerHTML += `
+                    <option value="${c.cliente_id}" data-empresas="${empresasJson}" data-saldo="${saldoFavor}">
+                        ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
+                    </option>`;
+            });
+
+            // Si hay resultados, seleccionamos el primero y disparamos el evento
+            if (data.length > 0) {
+                select.selectedIndex = 0;
+                select.dispatchEvent(new Event('change'));
+            }
+        } else {
+            Swal.fire({
+                title: "Cliente No Encontrado",
+                text: "No se encontró el cliente con los datos proporcionados.",
+                icon: "error",
+                confirmButtonText: "Aceptar",
+            });
+            select.innerHTML = '<option value="">Cliente no encontrado</option>';
         }
-    } else {
+    } catch (error) {
+        console.error("Error buscando cliente:", error);
         Swal.fire({
-            title: "Cliente No Encontrado",
-            text: "No se encontró el cliente con los datos proporcionados.",
+            title: "Error",
+            text: "Ocurrió un error al buscar el cliente.",
             icon: "error",
             confirmButtonText: "Aceptar",
         });
-        select.innerHTML = '<option value="">Cliente no encontrado</option>';
+    } finally {
+        if (loader) loader.classList.add("hidden");
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -913,11 +931,15 @@ document
 
 async function buscarProductosTexto(busqueda) {
     const resultados = document.getElementById("resultadosBusqueda");
+    const loader = document.getElementById("loaderBusqueda");
 
     if (busqueda.length < 2) {
         resultados.classList.add("hidden");
         return;
     }
+
+    if (loader) loader.classList.remove("hidden");
+
     try {
         const response = await fetch(
             `/api/ventas/buscar-productos?busqueda=${encodeURIComponent(
@@ -932,6 +954,8 @@ async function buscarProductosTexto(busqueda) {
         resultados.innerHTML =
             '<div class="p-4 text-red-500">Error al buscar productos</div>';
         resultados.classList.remove("hidden");
+    } finally {
+        if (loader) loader.classList.add("hidden");
     }
 }
 

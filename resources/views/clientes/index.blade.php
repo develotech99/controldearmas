@@ -141,10 +141,15 @@
                 <label for="search-clientes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Buscar
                 </label>
-                <input type="text" 
-                       id="search-clientes" 
-                       placeholder="Nombre, DPI, NIT, Empresa..."
-                       class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
+                <div class="relative">
+                    <input type="text" 
+                           id="search-clientes" 
+                           placeholder="Nombre, DPI, NIT, Empresa..."
+                           class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md pr-10">
+                    <div id="loader-clientes" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                    </div>
+                </div>
             </div>
             <div>
                 <label for="tipo-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

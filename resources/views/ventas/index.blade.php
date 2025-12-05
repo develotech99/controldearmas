@@ -4,6 +4,15 @@
 
 @section('content')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate">
+            Punto de Venta
+        </h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Realiza ventas, gestiona el carrito y procesa pagos de manera eficiente.
+        </p>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-1 lg:sticky lg:top-4 lg:self-start flex flex-col gap-6">
 
@@ -87,8 +96,10 @@
                     <div class="flex justify-center gap-4 mt-2">
 
                         <button id="btnBuscarCliente"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 hover:text-white transition-all duration-300">
-                            <i class="bi bi-search mr-2"></i>Buscar
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 hover:text-white transition-all duration-300 flex items-center">
+                            <i class="bi bi-search mr-2"></i>
+                            <span>Buscar</span>
+                            <div id="loaderCliente" class="hidden ml-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                         </button>
                         <button type="button" id="btnLimpiarBusqueda"
                             class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 hover:text-gray-900 transition-all duration-300">
@@ -156,6 +167,11 @@
 
                         <div class="absolute left-4 top-1/2 transform -translate-y-1/2">
                             <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        
+                        <!-- Loader Buscador -->
+                        <div id="loaderBusqueda" class="absolute right-4 top-1/2 transform -translate-y-1/2 hidden">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                         </div>
                     </div>
 

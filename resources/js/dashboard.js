@@ -266,6 +266,7 @@ class DashboardManager {
      * Configurar acciones rápidas
      */
     configurarAccionesRapidas() {
+        // Navegación de botones
         const botones = document.querySelectorAll('button[data-href]');
         botones.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -273,6 +274,64 @@ class DashboardManager {
                 if (url) {
                     window.location.href = url;
                 }
+            });
+        });
+
+        // Lógica del Manual de Sistema
+        this.configurarManual();
+    }
+
+    /**
+     * Configurar Manual de Sistema
+     */
+    configurarManual() {
+        const modal = document.getElementById('modalManual');
+        const btnAbrir = document.getElementById('btn-abrir-manual');
+        const btnCerrar = document.getElementById('btn-cerrar-manual');
+        const btnEntendido = document.getElementById('btn-entendido-manual');
+        const backdrop = document.getElementById('modalManualBackdrop');
+
+        if (!modal || !btnAbrir) return;
+
+        // Abrir modal
+        btnAbrir.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+
+        // Cerrar modal
+        const cerrarModal = () => {
+            modal.classList.add('hidden');
+        };
+
+        if (btnCerrar) btnCerrar.addEventListener('click', cerrarModal);
+        if (btnEntendido) btnEntendido.addEventListener('click', cerrarModal);
+        if (backdrop) backdrop.addEventListener('click', cerrarModal);
+
+        // Navegación del manual
+        const navButtons = document.querySelectorAll('#manual-nav button');
+        const contents = document.querySelectorAll('#manual-content > div');
+
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const step = btn.dataset.step;
+
+                // Actualizar botones
+                navButtons.forEach(b => {
+                    if (b.dataset.step === step) {
+                        b.className = 'w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+                    } else {
+                        b.className = 'w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white';
+                    }
+                });
+
+                // Actualizar contenido
+                contents.forEach(content => {
+                    if (content.dataset.content === step) {
+                        content.classList.remove('hidden');
+                    } else {
+                        content.classList.add('hidden');
+                    }
+                });
             });
         });
     }

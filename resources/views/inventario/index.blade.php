@@ -117,8 +117,13 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar producto</label>
-                    <input type="text" id="search-productos" placeholder="Nombre, SKU o código de barra..."
-                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <div class="relative">
+                        <input type="text" id="search-productos" placeholder="Nombre, SKU o código de barra..."
+                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm pr-10">
+                        <div id="loader-busqueda" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoría</label>
