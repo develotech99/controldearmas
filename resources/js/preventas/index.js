@@ -2,28 +2,34 @@ document.addEventListener('DOMContentLoaded', function () {
     // Variables globales
     let carrito = [];
     let clienteSeleccionado = null;
-    let productoSeleccionado = null;
 
-    // Elementos del DOM
+    // Elementos del DOM - Cliente
     const inputCliente = document.getElementById('cliente_busqueda');
     const inputClienteId = document.getElementById('cliente_id');
     const divResultadosClientes = document.getElementById('resultados-clientes');
     const divClienteSeleccionado = document.getElementById('cliente-seleccionado');
 
+    // Elementos del DOM - Productos
     const inputProducto = document.getElementById('producto_busqueda');
-    const inputProductoId = document.getElementById('producto_id');
-    const inputProductoPrecio = document.getElementById('producto_precio');
-    const divResultadosProductos = document.getElementById('resultados-productos');
-    const divProductoSeleccionado = document.getElementById('producto-seleccionado');
-    const inputCantidad = document.getElementById('cantidad');
-    const btnAgregar = document.getElementById('btn-agregar');
+    const gridProductos = document.getElementById('grid-productos');
+    const contadorResultados = document.getElementById('contador-resultados');
 
-    const tbodyCarrito = document.getElementById('carrito-body');
-    const tfootTotal = document.getElementById('carrito-total');
-    const divCarritoEmpty = document.getElementById('carrito-empty');
+    // Elementos del DOM - Carrito
+    const btnAbrirCarrito = document.getElementById('btn-abrir-carrito');
+    const btnCerrarCarrito = document.getElementById('btn-cerrar-carrito');
+    const modalCarrito = document.getElementById('modal-carrito');
+    const panelCarrito = document.getElementById('panel-carrito');
+    const overlayCarrito = document.getElementById('overlay-carrito');
+    const listaCarrito = document.getElementById('lista-carrito');
+    const carritoVacio = document.getElementById('carrito-vacio');
+    const contadorCarrito = document.getElementById('contador-carrito');
+    const spanTotal = document.getElementById('carrito-total');
+    const inputMontoPagado = document.getElementById('monto_pagado');
+    const btnProcesar = document.getElementById('btn-procesar');
 
-    const formPreventa = document.getElementById('form-preventa');
-    const tablaPreventas = document.getElementById('tabla-preventas-body');
+    // Elementos del DOM - Otros
+    const inputFecha = document.getElementById('fecha');
+    const inputObservaciones = document.getElementById('observaciones');
 
     // --- Lógica de Búsqueda de Clientes ---
     inputCliente.addEventListener('input', debounce(async (e) => {
@@ -53,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const div = document.createElement('div');
             div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
             div.innerHTML = `
-                <div class="font-bold text-sm">${cliente.cliente_nombre1} ${cliente.cliente_apellido1}</div>
+                <div class="font-bold text-sm text-gray-800">${cliente.cliente_nombre1} ${cliente.cliente_apellido1}</div>
                 <div class="text-xs text-gray-500">NIT: ${cliente.cliente_nit || 'N/A'}</div>
             `;
             div.addEventListener('click', () => seleccionarCliente(cliente));
@@ -65,165 +71,234 @@ document.addEventListener('DOMContentLoaded', function () {
     function seleccionarCliente(cliente) {
         clienteSeleccionado = cliente;
         inputClienteId.value = cliente.cliente_id;
-        inputCliente.value = `${cliente.cliente_nombre1} ${cliente.cliente_apellido1}`;
-        divClienteSeleccionado.textContent = `Cliente seleccionado: ${cliente.cliente_nombre1} ${cliente.cliente_apellido1} (NIT: ${cliente.cliente_nit || 'N/A'})`;
-        divClienteSeleccionado.classList.remove('hidden');
+        inputCliente.value = ''; // Limpiar input para mostrar selección abajo
         divResultadosClientes.classList.add('hidden');
+
+        divClienteSeleccionado.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div>
+                    <div class="font-bold">${cliente.cliente_nombre1} ${cliente.cliente_apellido1}</div>
+                    <div class="text-xs">NIT: ${cliente.cliente_nit || 'N/A'}</div>
+                </div>
+                <button type="button" class="text-red-500 hover:text-red-700" id="btn-quitar-cliente">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        divClienteSeleccionado.classList.remove('hidden');
+        inputCliente.classList.add('hidden');
+
+        document.getElementById('btn-quitar-cliente').addEventListener('click', () => {
+            clienteSeleccionado = null;
+            inputClienteId.value = '';
+            divClienteSeleccionado.classList.add('hidden');
+            inputCliente.classList.remove('hidden');
+            inputCliente.focus();
+        });
     }
 
     // --- Lógica de Búsqueda de Productos ---
     inputProducto.addEventListener('input', debounce(async (e) => {
         const query = e.target.value;
         if (query.length < 2) {
-            divResultadosProductos.classList.add('hidden');
+            // Si está vacío, limpiar grid o mostrar mensaje inicial
+            if (query.length === 0) {
+                gridProductos.innerHTML = `
+                    <div class="col-span-full text-center text-gray-500 py-8">
+                        <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
+                        <p>Busca productos para agregar a la preventa</p>
+                    </div>
+                `;
+                contadorResultados.textContent = 'Resultados de búsqueda';
+            }
             return;
         }
 
         try {
             const response = await fetch(`/ventas/buscar-productos?q=${query}`);
             const data = await response.json();
-            mostrarResultadosProductos(data);
+            renderProductos(data);
         } catch (error) {
             console.error('Error buscando productos:', error);
         }
     }, 300));
 
-    function mostrarResultadosProductos(productos) {
-        divResultadosProductos.innerHTML = '';
+    function renderProductos(productos) {
+        gridProductos.innerHTML = '';
+        contadorResultados.textContent = `Mostrando ${productos.length} resultados`;
+
         if (productos.length === 0) {
-            divResultadosProductos.classList.add('hidden');
+            gridProductos.innerHTML = `
+                <div class="col-span-full text-center text-gray-500 py-8">
+                    <p>No se encontraron productos</p>
+                </div>
+            `;
             return;
         }
 
         productos.forEach(producto => {
-            const div = document.createElement('div');
-            div.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0';
-            div.innerHTML = `
-                <div class="font-bold text-sm">${producto.producto_nombre}</div>
-                <div class="text-xs text-gray-500">Precio: Q${parseFloat(producto.producto_precio_venta).toFixed(2)}</div>
-            `;
-            div.addEventListener('click', () => seleccionarProducto(producto));
-            divResultadosProductos.appendChild(div);
-        });
-        divResultadosProductos.classList.remove('hidden');
-    }
+            const card = document.createElement('div');
+            card.className = 'bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col justify-between h-full';
 
-    function seleccionarProducto(producto) {
-        productoSeleccionado = producto;
-        inputProductoId.value = producto.producto_id;
-        inputProductoPrecio.value = producto.producto_precio_venta;
-        inputProducto.value = producto.producto_nombre;
-        divProductoSeleccionado.textContent = `Producto: ${producto.producto_nombre} - Precio: Q${parseFloat(producto.producto_precio_venta).toFixed(2)}`;
-        divProductoSeleccionado.classList.remove('hidden');
-        divResultadosProductos.classList.add('hidden');
-        inputCantidad.focus();
+            // Imagen (placeholder si no hay)
+            const imagenUrl = producto.producto_imagen ? `/storage/${producto.producto_imagen}` : 'https://via.placeholder.com/150?text=No+Image';
+
+            card.innerHTML = `
+                <div class="mb-3">
+                    <div class="h-32 w-full bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                        <img src="${imagenUrl}" alt="${producto.producto_nombre}" class="h-full object-contain">
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-sm mb-1 line-clamp-2" title="${producto.producto_nombre}">${producto.producto_nombre}</h3>
+                    <div class="text-xs text-gray-500 mb-2">Stock: ${producto.stock_cantidad_total}</div>
+                    <div class="text-lg font-bold text-blue-600">Q${parseFloat(producto.producto_precio_venta).toFixed(2)}</div>
+                </div>
+                <button class="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold py-2 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 btn-agregar-carrito">
+                    <i class="fas fa-cart-plus"></i> Agregar
+                </button>
+            `;
+
+            card.querySelector('.btn-agregar-carrito').addEventListener('click', () => agregarAlCarrito(producto));
+            gridProductos.appendChild(card);
+        });
     }
 
     // --- Lógica del Carrito ---
-    btnAgregar.addEventListener('click', () => {
-        if (!productoSeleccionado) {
-            Swal.fire('Error', 'Seleccione un producto primero', 'warning');
-            return;
-        }
-
-        const cantidad = parseInt(inputCantidad.value);
-        if (isNaN(cantidad) || cantidad < 1) {
-            Swal.fire('Error', 'Ingrese una cantidad válida', 'warning');
-            return;
-        }
-
-        const precio = parseFloat(productoSeleccionado.producto_precio_venta);
-
-        // Verificar si ya existe en el carrito
-        const index = carrito.findIndex(item => item.producto_id === productoSeleccionado.producto_id);
+    function agregarAlCarrito(producto) {
+        const index = carrito.findIndex(item => item.producto_id === producto.producto_id);
 
         if (index !== -1) {
-            carrito[index].cantidad += cantidad;
-            carrito[index].subtotal = carrito[index].cantidad * precio;
+            carrito[index].cantidad++;
+            carrito[index].subtotal = carrito[index].cantidad * carrito[index].precio;
         } else {
             carrito.push({
-                producto_id: productoSeleccionado.producto_id,
-                nombre: productoSeleccionado.producto_nombre,
-                cantidad: cantidad,
-                precio: precio,
-                subtotal: cantidad * precio
+                producto_id: producto.producto_id,
+                nombre: producto.producto_nombre,
+                cantidad: 1,
+                precio: parseFloat(producto.producto_precio_venta),
+                subtotal: parseFloat(producto.producto_precio_venta),
+                imagen: producto.producto_imagen
             });
         }
 
         renderCarrito();
-        limpiarSeleccionProducto();
-    });
-
-    function limpiarSeleccionProducto() {
-        productoSeleccionado = null;
-        inputProducto.value = '';
-        inputProductoId.value = '';
-        inputProductoPrecio.value = '';
-        inputCantidad.value = '1';
-        divProductoSeleccionado.classList.add('hidden');
-        divResultadosProductos.classList.add('hidden');
+        abrirCarrito();
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Producto agregado',
+            showConfirmButton: false,
+            timer: 1500
+        });
     }
 
     function renderCarrito() {
-        tbodyCarrito.innerHTML = '';
+        listaCarrito.innerHTML = '';
         let total = 0;
+        let cantidadTotal = 0;
 
         if (carrito.length === 0) {
-            divCarritoEmpty.classList.remove('hidden');
-            tfootTotal.textContent = 'Q0.00';
+            carritoVacio.classList.remove('hidden');
+            contadorCarrito.textContent = '0';
+            contadorCarrito.classList.add('hidden');
+            spanTotal.textContent = 'Q0.00';
             return;
         }
 
-        divCarritoEmpty.classList.add('hidden');
+        carritoVacio.classList.add('hidden');
+        contadorCarrito.classList.remove('hidden');
 
         carrito.forEach((item, index) => {
             total += item.subtotal;
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-3 py-2 text-sm text-gray-700">
-                    <div class="font-medium">${item.nombre}</div>
-                    <div class="text-xs text-gray-500">Q${item.precio.toFixed(2)} c/u</div>
-                </td>
-                <td class="px-3 py-2 text-center text-sm text-gray-700">${item.cantidad}</td>
-                <td class="px-3 py-2 text-right text-sm font-bold text-gray-700">Q${item.subtotal.toFixed(2)}</td>
-                <td class="px-3 py-2 text-center">
-                    <button type="button" class="text-red-500 hover:text-red-700" onclick="eliminarDelCarrito(${index})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
+            cantidadTotal += item.cantidad;
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100';
+
+            itemDiv.innerHTML = `
+                <div class="flex-1">
+                    <h4 class="font-semibold text-sm text-gray-800 line-clamp-1">${item.nombre}</h4>
+                    <div class="text-xs text-gray-500 mb-2">Q${item.precio.toFixed(2)} c/u</div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <button class="w-6 h-6 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 flex items-center justify-center text-xs" onclick="cambiarCantidad(${index}, -1)">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <span class="text-sm font-medium w-6 text-center">${item.cantidad}</span>
+                            <button class="w-6 h-6 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 flex items-center justify-center text-xs" onclick="cambiarCantidad(${index}, 1)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="font-bold text-gray-800">Q${item.subtotal.toFixed(2)}</div>
+                    </div>
+                </div>
+                <button class="text-red-400 hover:text-red-600 self-start" onclick="eliminarDelCarrito(${index})">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
             `;
-            tbodyCarrito.appendChild(row);
+            listaCarrito.appendChild(itemDiv);
         });
 
-        tfootTotal.textContent = `Q${total.toFixed(2)}`;
+        contadorCarrito.textContent = cantidadTotal;
+        spanTotal.textContent = `Q${total.toFixed(2)}`;
     }
+
+    window.cambiarCantidad = function (index, delta) {
+        const item = carrito[index];
+        const nuevaCantidad = item.cantidad + delta;
+
+        if (nuevaCantidad < 1) {
+            eliminarDelCarrito(index);
+            return;
+        }
+
+        item.cantidad = nuevaCantidad;
+        item.subtotal = item.cantidad * item.precio;
+        renderCarrito();
+    };
 
     window.eliminarDelCarrito = function (index) {
         carrito.splice(index, 1);
         renderCarrito();
     };
 
+    // --- Modal Carrito UI ---
+    function abrirCarrito() {
+        modalCarrito.classList.remove('hidden');
+        setTimeout(() => {
+            panelCarrito.classList.remove('translate-x-full');
+        }, 10);
+    }
 
-    // --- Envío del Formulario ---
-    formPreventa.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    function cerrarCarrito() {
+        panelCarrito.classList.add('translate-x-full');
+        setTimeout(() => {
+            modalCarrito.classList.add('hidden');
+        }, 300);
+    }
 
-        if (!inputClienteId.value) {
-            Swal.fire('Error', 'Seleccione un cliente', 'warning');
+    btnAbrirCarrito.addEventListener('click', abrirCarrito);
+    btnCerrarCarrito.addEventListener('click', cerrarCarrito);
+    overlayCarrito.addEventListener('click', cerrarCarrito);
+
+    // --- Procesar Preventa ---
+    btnProcesar.addEventListener('click', async () => {
+        if (!clienteSeleccionado) {
+            Swal.fire('Error', 'Debe seleccionar un cliente', 'warning');
             return;
         }
 
         if (carrito.length === 0) {
-            Swal.fire('Error', 'Agregue al menos un producto al carrito', 'warning');
+            Swal.fire('Error', 'El carrito está vacío', 'warning');
             return;
         }
 
-        const formData = new FormData(formPreventa);
         const data = {
-            cliente_id: formData.get('cliente_id'),
-            monto_pagado: formData.get('monto_pagado'),
-            fecha: formData.get('fecha'),
-            observaciones: formData.get('observaciones'),
+            cliente_id: inputClienteId.value,
+            monto_pagado: inputMontoPagado.value,
+            fecha: inputFecha.value,
+            observaciones: inputObservaciones.value,
             productos: carrito
         };
 
@@ -240,13 +315,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const result = await response.json();
 
             if (result.success) {
-                Swal.fire('Éxito', 'Preventa registrada correctamente', 'success');
-                formPreventa.reset();
-                carrito = [];
-                renderCarrito();
-                divClienteSeleccionado.classList.add('hidden');
-                clienteSeleccionado = null;
-                cargarPreventasPendientes();
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: 'Preventa registrada correctamente',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar'
+                }).then(() => {
+                    location.reload(); // Recargar para limpiar todo
+                });
             } else {
                 Swal.fire('Error', result.message, 'error');
             }
@@ -255,44 +331,6 @@ document.addEventListener('DOMContentLoaded', function () {
             Swal.fire('Error', 'Ocurrió un error al procesar la solicitud', 'error');
         }
     });
-
-    // --- Cargar Preventas Pendientes ---
-    async function cargarPreventasPendientes() {
-        try {
-            const response = await fetch('/preventas/pendientes');
-            const result = await response.json();
-
-            if (result.success) {
-                renderTablaPreventas(result.data);
-            }
-        } catch (error) {
-            console.error('Error cargando preventas:', error);
-        }
-    }
-
-    function renderTablaPreventas(preventas) {
-        tablaPreventas.innerHTML = '';
-        preventas.forEach(prev => {
-            // Calcular total si no viene (aunque ahora debería venir)
-            const total = prev.prev_total || 0;
-            const productosStr = prev.detalles ? prev.detalles.map(d => `${d.det_cantidad}x ${d.producto?.producto_nombre}`).join(', ') : 'Sin detalles';
-
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(prev.prev_fecha).toLocaleDateString()}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${prev.cliente?.cliente_nombre1} ${prev.cliente?.cliente_apellido1}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    <div class="max-w-xs truncate" title="${productosStr}">${productosStr}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">Q${parseFloat(total).toFixed(2)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold">Q${parseFloat(prev.prev_monto_pagado).toFixed(2)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-900 mr-2" onclick="facturarPreventa(${prev.prev_id})">Facturar</button>
-                </td>
-            `;
-            tablaPreventas.appendChild(row);
-        });
-    }
 
     // Utils
     function debounce(func, wait) {
@@ -306,7 +344,4 @@ document.addEventListener('DOMContentLoaded', function () {
             timeout = setTimeout(later, wait);
         };
     }
-
-    // Init
-    cargarPreventasPendientes();
 });

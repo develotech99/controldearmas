@@ -1,169 +1,135 @@
 @extends('layouts.app')
 
+@section('title', 'Gestión de Preventas')
+
 @section('content')
-<div class="container mx-auto px-4 py-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Módulo de Preventas</h1>
-    </div>
-
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Formulario de Nueva Preventa -->
-        <div class="lg:col-span-1">
+        <!-- Sidebar: Cliente y Filtros -->
+        <div class="lg:col-span-1 lg:sticky lg:top-4 lg:self-start flex flex-col gap-6">
+            
+            <!-- Cliente -->
             <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">Nueva Preventa</h2>
-                
-                <form id="form-preventa">
-                    @csrf
-                    
-                    <!-- Cliente -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cliente_busqueda">
-                            Cliente
-                        </label>
-                        <div class="relative">
-                            <input type="text" id="cliente_busqueda" 
-                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Buscar cliente..." autocomplete="off">
-                            <input type="hidden" id="cliente_id" name="cliente_id">
-                            <div id="resultados-clientes" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></div>
-                        </div>
-                        <div id="cliente-seleccionado" class="mt-2 text-sm text-green-600 font-semibold hidden"></div>
+                <h2 class="text-xl font-semibold mb-4">
+                    <i class="fas fa-user mr-2"></i>Cliente
+                </h2>
+                <div class="relative">
+                    <input type="text" id="cliente_busqueda" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Buscar cliente por nombre o NIT..." autocomplete="off">
+                    <input type="hidden" id="cliente_id">
+                    <div id="resultados-clientes" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></div>
+                </div>
+                <div id="cliente-seleccionado" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-semibold hidden"></div>
+            </div>
+
+            <!-- Datos de Preventa -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>Datos Preventa
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                        <input type="date" id="fecha" value="{{ date('Y-m-d') }}"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
-
-                    <!-- Sección Agregar Producto -->
-                    <div class="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
-                        <h3 class="text-sm font-bold text-gray-700 mb-2">Agregar Producto</h3>
-                        
-                        <!-- Producto -->
-                        <div class="mb-2">
-                            <div class="relative">
-                                <input type="text" id="producto_busqueda" 
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    placeholder="Buscar producto..." autocomplete="off">
-                                <input type="hidden" id="producto_id">
-                                <input type="hidden" id="producto_precio">
-                                <div id="resultados-productos" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></div>
-                            </div>
-                            <div id="producto-seleccionado" class="mt-1 text-xs text-green-600 font-semibold hidden"></div>
-                        </div>
-
-                        <div class="flex gap-2">
-                            <div class="w-1/2">
-                                <input type="number" id="cantidad" min="1" value="1" placeholder="Cant."
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                            </div>
-                            <div class="w-1/2">
-                                <button type="button" id="btn-agregar"
-                                    class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 text-sm">
-                                    + Agregar
-                                </button>
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                        <textarea id="observaciones" rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
-
-                    <!-- Carrito -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Productos en Preventa</label>
-                        <div class="border rounded-lg overflow-hidden">
-                            <table class="min-w-full leading-normal">
-                                <thead class="bg-gray-100">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Producto</th>
-                                        <th class="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Cant.</th>
-                                        <th class="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
-                                        <th class="px-3 py-2"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="carrito-body">
-                                    <!-- Items -->
-                                </tbody>
-                                <tfoot class="bg-gray-50 font-bold">
-                                    <tr>
-                                        <td colspan="2" class="px-3 py-2 text-right text-sm">Total:</td>
-                                        <td class="px-3 py-2 text-right text-sm" id="carrito-total">Q0.00</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        <div id="carrito-empty" class="text-center text-gray-500 text-sm py-2">Carrito vacío</div>
-                    </div>
-
-                    <!-- Monto Pagado (Anticipo) -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="monto_pagado">
-                            Monto Anticipo (Q)
-                        </label>
-                        <input type="number" id="monto_pagado" name="monto_pagado" min="0" step="0.01" value="0.00"
-                            class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-
-                    <!-- Fecha -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="fecha">
-                            Fecha
-                        </label>
-                        <input type="date" id="fecha" name="fecha" value="{{ date('Y-m-d') }}"
-                            class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-
-                    <!-- Observaciones -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="observaciones">
-                            Observaciones
-                        </label>
-                        <textarea id="observaciones" name="observaciones" rows="2"
-                            class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    </div>
-
-                    <button type="submit" 
-                        class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
-                        Registrar Preventa
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
 
-        <!-- Listado de Preventas Pendientes -->
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">Preventas Pendientes</h2>
-                
-                <div class="overflow-x-auto">
-                    <table class="min-w-full leading-normal">
-                        <thead>
-                            <tr>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    Fecha
-                                </th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    Cliente
-                                </th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    Producto
-                                </th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    Cant.
-                                </th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    Anticipo
-                                </th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                    Acciones
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-preventas">
-                            <!-- Datos cargados vía JS -->
-                        </tbody>
-                    </table>
+        <!-- Main: Buscador y Grid de Productos -->
+        <div class="lg:col-span-2 flex flex-col h-full">
+            <!-- Buscador -->
+            <div class="flex-shrink-0 mb-6">
+                <div class="relative">
+                    <input type="text" id="producto_busqueda" placeholder="Buscar productos..."
+                        class="w-full px-4 py-3 pl-12 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg"
+                        autocomplete="off">
+                    <div class="absolute left-4 top-1/2 transform -translate-y-1/2">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid de Productos -->
+            <div class="flex-1 flex flex-col min-h-0 bg-white rounded-lg shadow-sm border">
+                <div class="flex-shrink-0 px-6 py-4 border-b bg-gray-50">
+                    <span id="contador-resultados" class="text-sm text-gray-600">Resultados de búsqueda</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div id="grid-productos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Productos renderizados aquí -->
+                        <div class="col-span-full text-center text-gray-500 py-8">
+                            <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
+                            <p>Busca productos para agregar a la preventa</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-@push('scripts')
-    @vite(['resources/js/preventas/index.js'])
-@endpush
+    <!-- Botón Flotante Carrito -->
+    <button id="btn-abrir-carrito"
+        class="fixed top-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 z-40 transition-transform transform hover:scale-110">
+        <i class="fas fa-shopping-cart text-xl"></i>
+        <span id="contador-carrito"
+            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+    </button>
+
+    <!-- Modal Carrito (Slide-over) -->
+    <div id="modal-carrito" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 transition-opacity" id="overlay-carrito"></div>
+        <div id="panel-carrito"
+            class="absolute right-0 top-0 h-full w-full sm:w-96 bg-white shadow-xl transform transition-transform duration-300 translate-x-full">
+            <div class="flex flex-col h-full">
+                <!-- Header -->
+                <div class="bg-blue-600 text-white p-4 flex items-center justify-between flex-shrink-0">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        Carrito Preventa
+                    </h2>
+                    <button id="btn-cerrar-carrito" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Lista de Items -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-4" id="lista-carrito">
+                    <!-- Items del carrito -->
+                    <div id="carrito-vacio" class="text-center py-8 text-gray-500">
+                        <i class="fas fa-shopping-cart text-4xl mb-2 opacity-30"></i>
+                        <p>Tu carrito está vacío</p>
+                    </div>
+                </div>
+
+                <!-- Footer: Totales y Acción -->
+                <div class="border-t bg-gray-50 p-4 flex-shrink-0 space-y-4">
+                    <div class="flex justify-between text-lg font-bold">
+                        <span>Total:</span>
+                        <span id="carrito-total" class="text-blue-600">Q0.00</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Monto Anticipo (Q)</label>
+                        <input type="number" id="monto_pagado" min="0" step="0.01" value="0.00"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-green-600">
+                    </div>
+
+                    <button id="btn-procesar" type="button"
+                        class="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md">
+                        <i class="fas fa-check mr-2"></i>Registrar Preventa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
+
+@vite('resources/js/preventas/index.js')
