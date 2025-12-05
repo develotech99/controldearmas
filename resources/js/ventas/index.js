@@ -3421,32 +3421,7 @@ function validarCuotas() {
     return errores;  // Devolvemos el arreglo de errores
 }
 
-// Repartir según total y cantidad actual
-// Repartir según total y cantidad actual
-function updateCuotasFromTotal() {
-    const cont = document.getElementById("cuotasContainer");
-    if (!cont || cont.classList.contains("hidden")) return; // solo si método 6
 
-    const total = getTotalVenta();
-
-    // Restar abono del total
-    const abono = Math.min(
-        total,
-        Math.max(0, Number(document.getElementById("abonoInicial")?.value || 0))
-    );
-    const saldo = Math.max(0, total - abono);
-
-    // Si hay abono, permite 1 cuota; si no, mínimo 2
-    const minCuotas = abono > 0 ? 1 : 2;
-    const n = Math.max(minCuotas, Math.min(36, Number(document.getElementById("cuotasNumero")?.value || 2)));
-
-    // (opcional) mostrar saldo si tienes #saldoCuotas en el HTML
-    const saldoEl = document.getElementById("saldoCuotas");
-    if (saldoEl) saldoEl.textContent = `Q${saldo.toFixed(2)}`;
-
-    // Repartir SOLO el saldo
-    renderCuotas(repartirEnCuotas(saldo, n));
-}
 
 document.getElementById("abonoInicial")?.addEventListener("input", () => {
     const total = getTotalVenta();
