@@ -841,7 +841,7 @@ class ReportesManager {
                     <div class="text-xs truncate max-w-xs" title="${resumenProductos}">
                         ${resumenProductos}
                     </div>
-                    <button onclick='reportesManager.verDetalleVenta(${JSON.stringify(venta)})'
+                    <button onclick='reportesManager.verDetalleVenta(${venta.ven_id})'
                             class="text-blue-600 hover:text-blue-800 text-xs mt-1 underline">
                         Ver Detalle Completo
                     </button>
