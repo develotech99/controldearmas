@@ -10,7 +10,19 @@ return new class extends Migration
     {
         // 1. Rename existing table to backup if it exists
         if (Schema::hasTable('pro_preventas')) {
+            Schema::table('pro_preventas', function (Blueprint $table) {
+                $table->dropForeign('pro_preventas_prev_cliente_id_foreign');
+            });
             Schema::rename('pro_preventas', 'pro_preventas_backup');
+        } elseif (Schema::hasTable('pro_preventas_backup')) {
+            // If table was already renamed but migration failed later, ensure FK is gone
+            try {
+                Schema::table('pro_preventas_backup', function (Blueprint $table) {
+                    $table->dropForeign('pro_preventas_prev_cliente_id_foreign');
+                });
+            } catch (\Throwable $e) {
+                // Ignore if FK doesn't exist on backup
+            }
         }
 
         // 2. Create new Header table
