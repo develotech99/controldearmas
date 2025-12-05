@@ -34,4 +34,9 @@ class Preventa extends Model
     {
         return $this->hasMany(PreventaDetalle::class, 'prev_id', 'prev_id');
     }
+
+    public function empresa()
+    {
+        return $this->belongsTo(ClienteEmpresa::class, 'prev_empresa_id', 'emp_id');
+    }
 }

@@ -414,6 +414,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/vista-cambiaria', [FacturacionController::class, 'verFacturaCambiaria'])
             ->name('facturacion.vista.cambiaria');
     });
+    // Listado de Preventas
+    Route::get('/preventas/listado', [PreventaController::class, 'listado'])->name('preventas.listado');
+    Route::get('/api/preventas/listado', [PreventaController::class, 'apiListado']);
+    Route::delete('/api/preventas/{id}', [PreventaController::class, 'destroy']);
+    Route::get('/api/preventas/{id}', [PreventaController::class, 'show']);
+
     // Estado de Cuenta Clientes
     Route::get('/clientes/estado-cuenta', [EstadoCuentaController::class, 'index'])->name('clientes.estado_cuenta');
     Route::get('/api/clientes/estado-cuenta', [EstadoCuentaController::class, 'listar']);

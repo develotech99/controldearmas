@@ -97,4 +97,68 @@ class PreventaController extends Controller
             'data' => $preventas
         ]);
     }
+
+    public function listado()
+    {
+        return view('preventas.listado');
+    }
+
+    public function apiListado(Request $request)
+    {
+        $preventas = Preventa::with(['cliente', 'empresa'])
+            ->select('pro_preventas.*')
+            ->orderBy('prev_fecha', 'desc')
+            ->get();
+
+        // Transform data for DataTable
+        $data = $preventas->map(function ($p) {
+            $nombreCliente = $p->cliente ? "{$p->cliente->cliente_nombre1} {$p->cliente->cliente_apellido1}" : 'N/A';
+            if ($p->empresa) {
+                $nombreCliente .= " - {$p->empresa->emp_nombre}";
+            } elseif ($p->cliente && $p->cliente->cliente_nom_empresa) {
+                $nombreCliente .= " - {$p->cliente->cliente_nom_empresa}";
+            }
+
+            return [
+                'prev_id' => $p->prev_id,
+                'fecha' => $p->prev_fecha->format('d/m/Y'),
+                'cliente' => $nombreCliente,
+                'total' => $p->prev_total,
+                'estado' => $p->prev_estado,
+                'observaciones' => $p->prev_observaciones,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function show($id)
+    {
+        $preventa = Preventa::with(['cliente', 'empresa', 'detalles.producto'])
+            ->findOrFail($id);
+            
+        return response()->json($preventa);
+    }
+
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $preventa = Preventa::findOrFail($id);
+            
+            // Delete details first
+            $preventa->detalles()->delete();
+            
+            // Delete header
+            $preventa->delete();
+            
+            DB::commit();
+            
+            return response()->json(['success' => true, 'message' => 'Preventa eliminada correctamente']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);
+        }
+    }
 }
