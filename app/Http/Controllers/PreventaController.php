@@ -143,6 +143,7 @@ class PreventaController extends Controller
                 'fecha' => $p->prev_fecha->format('d/m/Y'),
                 'cliente' => $nombreCliente,
                 'total' => $p->prev_total,
+                'monto_pagado' => $p->prev_monto_pagado, // Add this field
                 'estado' => $p->prev_estado,
                 'observaciones' => $p->prev_observaciones,
             ];
