@@ -878,14 +878,17 @@ class ReportesManager {
                         </button>
                     ` : ''}
                     
+                    ${(venta.ven_situacion === 'PENDIENTE' || venta.ven_situacion === 'EDITABLE') ? `
                     <button onclick='reportesManager.autorizarVentaClick(${JSON.stringify(venta)})'
                             class="text-green-600 hover:text-green-900 mr-2" 
                             title="Autorizar">
                         <i class="fas fa-check-circle text-lg"></i>
                     </button>
-                    <button onclick="reportesManager.cancelarVentaClick(${venta.ven_id})"
+                    ` : ''}
+
+                    <button onclick='reportesManager.cancelarVentaClick(${JSON.stringify(venta)})'
                             class="text-red-600 hover:text-red-900" 
-                            title="Rechazar">
+                            title="Rechazar / Anular">
                         <i class="fas fa-times-circle text-lg"></i>
                     </button>
                 </td>
@@ -1183,12 +1186,64 @@ class ReportesManager {
     /**
      * Cancelar una venta pendiente
      */
-    async cancelarVentaClick(ventaId) {
+    async cancelarVentaClick(venta) {
+        const ventaId = venta.ven_id;
+        const situacion = venta.ven_situacion;
+
+        // 1. Bloquear si ya está facturada
+        if (situacion === 'COMPLETADA' || situacion === 'FACTURADA') {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se puede anular',
+                html: `
+                    <div class="text-left">
+                        <p class="mb-2">Esta venta ya ha sido <strong>FACTURADA</strong>.</p>
+                        <p class="text-sm text-gray-600">
+                            Para anularla, primero debes anular la factura correspondiente en el módulo de Facturación.
+                        </p>
+                    </div>
+                `,
+                confirmButtonColor: '#3b82f6'
+            });
+            return;
+        }
+
+        // 2. Advertencia especial si está autorizada (pero no facturada)
+        let advertenciaHtml = '';
+        let confirmBtnText = '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta';
+
+        if (situacion === 'AUTORIZADA' || situacion === 'ACTIVA') {
+            advertenciaHtml = `
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700 font-bold">
+                                ¡Atención! Esta venta ya fue autorizada.
+                            </p>
+                            <p class="text-sm text-yellow-700 mt-1">
+                                Al anularla:
+                                <ul class="list-disc list-inside ml-2 mt-1">
+                                    <li>Se eliminará el registro de caja.</li>
+                                    <li>El stock reservado regresará a disponibilidad.</li>
+                                    <li>Se revertirán los cambios en series/lotes.</li>
+                                </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            confirmBtnText = '<i class="fas fa-exclamation-triangle mr-2"></i>Sí, revertir y anular';
+        }
+
         try {
             // Solicitar motivo de cancelación
             const { value: motivo } = await Swal.fire({
                 title: '¿Cancelar esta venta?',
                 html: `
+                ${advertenciaHtml}
                 <p class="text-sm text-gray-600 mb-3">Esta acción no se puede deshacer.</p>
                 <textarea 
                     id="motivo-cancelacion" 
@@ -1200,7 +1255,7 @@ class ReportesManager {
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta',
+                confirmButtonText: confirmBtnText,
                 cancelButtonText: '<i class="fas fa-arrow-left mr-2"></i>No, volver',
                 preConfirm: () => {
                     return document.getElementById('motivo-cancelacion')?.value.trim() || 'Cancelación sin motivo especificado';
