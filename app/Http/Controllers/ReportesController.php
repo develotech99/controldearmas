@@ -301,7 +301,7 @@ public function buscarClientes(Request $request): JsonResponse
                 ->leftJoin('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
                 ->where('dv.det_situacion', 'ACTIVO')
                 ->select([
                     'p.producto_id',
@@ -608,10 +608,10 @@ public function buscarClientes(Request $request): JsonResponse
     {
         try {
             $ventasQuery = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('ven_situacion', 'ACTIVA');
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
 
            $ventasQuery = DB::table('pro_ventas')
-    ->where('ven_situacion', 'ACTIVA');
+    ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
 
             $totalVentas = $ventasQuery->count();
 
@@ -620,7 +620,7 @@ public function buscarClientes(Request $request): JsonResponse
 
             $productosVendidos = ProDetalleVenta::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
                 $q->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                    ->where('ven_situacion', 'ACTIVA');
+                    ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
             })->where('det_situacion', 'ACTIVO')
                 ->sum('det_cantidad') ?? 0;
 
@@ -654,7 +654,7 @@ public function buscarClientes(Request $request): JsonResponse
             $ventas = DB::table('pro_ventas')
                 ->selectRaw('DATE(ven_fecha) as fecha, COUNT(*) as total_ventas, COALESCE(SUM(ven_total_vendido), 0) as monto_total')
                 ->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('ven_situacion', 1)
+                ->whereIn('ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
                 ->groupBy(DB::raw('DATE(ven_fecha)'))
                 ->orderBy('fecha')
                 ->get();
@@ -690,7 +690,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(dv.det_cantidad * dv.det_precio), 0) as total_ingresos
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
                 ->where('dv.det_situacion', 'ACTIVO')
                 ->groupBy('p.producto_id', 'p.producto_nombre')
                 ->orderBy('total_vendido', 'desc')
@@ -728,7 +728,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(v.ven_total_vendido), 0) as monto_total
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
                 ->groupBy('u.user_id', 'u.user_primer_nombre', 'u.user_primer_apellido')
                 ->orderBy('monto_total', 'desc')
                 ->get();
@@ -766,7 +766,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(dp.det_pago_monto), 0) as monto_total
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
                 ->where('dp.det_pago_estado', 'VALIDO')
                 ->groupBy('mp.metpago_id', 'mp.metpago_descripcion')
                 ->orderBy('monto_total', 'desc')
@@ -1079,7 +1079,7 @@ public function buscarClientes(Request $request): JsonResponse
                     'dv.det_cantidad as cantidad'
                 ])
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', ['ACTIVA', 'AUTORIZADA', 1, '1']) // ✅ FIX: Incluir todos los estados válidos
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'AUTORIZADA', 1, '1', 'COMPLETADA', 'FACTURADA']) // ✅ FIX: Incluir todos los estados válidos
                 ->whereIn('dv.det_situacion', ['ACTIVO', 'AUTORIZADA', 1, '1'])
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%MUNICION%')

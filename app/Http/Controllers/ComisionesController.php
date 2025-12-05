@@ -19,7 +19,7 @@ class ComisionesController extends Controller
         // Obtener solo vendedores que han realizado ventas (tienen comisiones)
         $vendedores = User::with('rol')
             ->whereHas('comisiones.venta', function($query) {
-                $query->where('ven_situacion', 'ACTIVA');
+                $query->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
             })
             ->whereHas('comisiones', function($query) {
                 $query->where('porc_vend_situacion', 'ACTIVO');
@@ -121,7 +121,7 @@ class ComisionesController extends Controller
                 ->join('users as u', 'pv.porc_vend_user_id', '=', 'u.user_id')
                 ->join('pro_ventas as v', 'pv.porc_vend_ven_id', '=', 'v.ven_id')
                 ->where('pv.porc_vend_situacion', 'ACTIVO')
-                ->where('v.ven_situacion', 'ACTIVA');
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
 
             // Filtros
             if ($vendedor_id) {
