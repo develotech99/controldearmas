@@ -950,6 +950,7 @@ class ReportesManager {
     }
 
     async autorizarVentaClick(venta) {
+        let seriesArray = []; // Initialize empty to avoid ReferenceError
         try {
             const { isConfirmed, isDenied } = await Swal.fire({
                 title: 'Autorizar Venta',
@@ -1135,7 +1136,7 @@ class ReportesManager {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ ven_id: ventaData.ven_id, licencias: formValues })
+                        body: JSON.stringify({ ven_id: venta.ven_id, licencias: formValues })
                     });
 
                     const updateResult = await updateResponse.json();
