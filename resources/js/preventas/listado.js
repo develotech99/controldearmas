@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
 function initTable() {
     dataTable = new DataTable('#tablaPreventas', {
         responsive: true,
+        scrollX: true,
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
         },
