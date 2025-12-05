@@ -403,7 +403,7 @@ public function guardarCliente(Request $request)
                 $query->where('v.ven_cliente', $clienteId);
             }
 
-            $ventas = $query->orderBy('v.ven_fecha', 'desc')->get();
+            $ventas = $query->groupBy('v.ven_id')->orderBy('v.ven_fecha', 'desc')->get();
 
             // Transform data for frontend
             $data = $ventas->map(function ($venta) {
