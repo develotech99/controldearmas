@@ -51,7 +51,7 @@
                         <td>{{ $venta->cliente->nombre_completo ?? 'Cliente no encontrado' }}</td>
                         <td>{{ isset($venta->vendedor) ? ($venta->vendedor->user_primer_nombre . ' ' . $venta->vendedor->user_primer_apellido) : 'N/A' }}</td>
                         <td class="text-right">Q {{ number_format($venta->ven_total_vendido, 2) }}</td>
-                        <td class="text-center">{{ $venta->ven_situacion == 1 ? 'Activa' : 'Inactiva' }}</td>
+                        <td class="text-center">{{ $venta->ven_situacion }}</td>
                     </tr>
                 @endforeach
             </tbody>

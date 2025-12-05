@@ -727,7 +727,8 @@ class ReportesManager {
 
             // Colores para estado de venta
             let colorVenta = 'bg-gray-100 text-gray-800';
-            if (venta.ven_situacion === 'ACTIVA') colorVenta = 'bg-green-100 text-green-800';
+            if (venta.ven_situacion === 'ACTIVA' || venta.ven_situacion === 'FACTURADA') colorVenta = 'bg-green-100 text-green-800';
+            else if (venta.ven_situacion === 'COMPLETADA') colorVenta = 'bg-blue-100 text-blue-800';
             else if (venta.ven_situacion === 'ANULADA') colorVenta = 'bg-red-100 text-red-800';
             else if (venta.ven_situacion === 'PENDIENTE') colorVenta = 'bg-yellow-100 text-yellow-800';
 
@@ -859,7 +860,9 @@ class ReportesManager {
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${venta.ven_situacion === 'EDITABLE' ? 'bg-blue-100 text-blue-800' :
                     venta.ven_situacion === 'AUTORIZADA' ? 'bg-green-100 text-green-800' :
-                        'bg-yellow-100 text-yellow-800'}">
+                        venta.ven_situacion === 'COMPLETADA' ? 'bg-blue-800 text-white' :
+                            venta.ven_situacion === 'FACTURADA' ? 'bg-green-800 text-white' :
+                                'bg-yellow-100 text-yellow-800'}">
                         <i class="fas fa-clock mr-1"></i>
                         ${venta.ven_situacion || 'PENDIENTE'}
                     </span>
