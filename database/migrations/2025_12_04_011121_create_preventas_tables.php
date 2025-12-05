@@ -11,6 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Fix for production: Check if backup table exists and holds the FKs (from a failed future migration)
+        if (Schema::hasTable('pro_preventas_backup')) {
+            try {
+                Schema::table('pro_preventas_backup', function (Blueprint $table) {
+                    $table->dropForeign('pro_preventas_prev_cliente_id_foreign');
+                });
+            } catch (\Throwable $e) {}
+            
+            try {
+                Schema::table('pro_preventas_backup', function (Blueprint $table) {
+                    $table->dropForeign('pro_preventas_prev_producto_id_foreign');
+                });
+            } catch (\Throwable $e) {}
+        }
+
         Schema::create('pro_preventas', function (Blueprint $table) {
             $table->id('prev_id');
             $table->unsignedInteger('prev_cliente_id');
