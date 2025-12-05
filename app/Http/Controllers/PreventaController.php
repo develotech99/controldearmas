@@ -166,6 +166,47 @@ class PreventaController extends Controller
             DB::beginTransaction();
             
             $preventa = Preventa::findOrFail($id);
+
+            // 1. Buscar pagos asociados
+            $pagos = DB::table('pro_pagos_subidos')->where('ps_preventa_id', $id)->get();
+
+            foreach ($pagos as $pago) {
+                // Si fue aprobado, revertir saldo y caja
+                if ($pago->ps_estado === 'APROBADO') {
+                    $monto = $pago->ps_monto_comprobante;
+                    $clienteId = $preventa->prev_cliente_id;
+
+                    // Revertir Saldo Cliente
+                    DB::table('pro_clientes_saldo')
+                        ->where('saldo_cliente_id', $clienteId)
+                        ->decrement('saldo_monto', $monto);
+
+                    $nuevoSaldo = DB::table('pro_clientes_saldo')->where('saldo_cliente_id', $clienteId)->value('saldo_monto');
+
+                    // Historial de Reversión
+                    DB::table('pro_clientes_saldo_historial')->insert([
+                        'hist_cliente_id' => $clienteId,
+                        'hist_tipo' => 'CARGO', // Cargo para reducir el saldo
+                        'hist_monto' => $monto,
+                        'hist_saldo_anterior' => $nuevoSaldo + $monto,
+                        'hist_saldo_nuevo' => $nuevoSaldo,
+                        'hist_referencia' => 'REV-PRE-' . $id,
+                        'hist_observaciones' => 'Reversión por eliminación de Preventa #' . $id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    // Eliminar de Caja (o crear contra-asiento, pero usuario pidió eliminar)
+                    // Buscamos por referencia o descripción similar
+                    DB::table('cja_historial')
+                        ->where('cja_no_referencia', $pago->ps_referencia)
+                        ->orWhere('cja_observaciones', 'like', "%Preventa #{$id}%")
+                        ->delete();
+                }
+                
+                // Eliminar el registro de pago subido
+                DB::table('pro_pagos_subidos')->where('ps_id', $pago->ps_id)->delete();
+            }
             
             // Delete details first
             $preventa->detalles()->delete();
@@ -175,7 +216,7 @@ class PreventaController extends Controller
             
             DB::commit();
             
-            return response()->json(['success' => true, 'message' => 'Preventa eliminada correctamente']);
+            return response()->json(['success' => true, 'message' => 'Preventa y registros asociados eliminados correctamente']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);

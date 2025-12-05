@@ -130,7 +130,7 @@ window.imprimir = function (id) {
 window.eliminar = function (id) {
     Swal.fire({
         title: '¿Estás seguro?',
-        text: "Esta acción no se puede deshacer. La preventa será eliminada permanentemente.",
+        text: "Esta acción no se puede deshacer. Se eliminará la preventa y cualquier pago/abono asociado (incluyendo registros de caja y saldo).",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
