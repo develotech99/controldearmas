@@ -20,8 +20,11 @@
     <!-- Header -->
     <div class="md:flex md:items-center md:justify-between mb-6">
         <div class="min-w-0 flex-1">
-            <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate flex items-center gap-2">
                 Gestión de Clientes
+                <button type="button" class="text-blue-600 hover:text-blue-800 transition-colors btn-abrir-manual" data-section="clientes" title="Ver ayuda de Clientes">
+                    <i class="fas fa-question-circle text-xl"></i>
+                </button>
             </h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Administra la información de tus clientes

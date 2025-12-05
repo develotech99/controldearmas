@@ -5,8 +5,11 @@
 @section('content')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <div class="mb-6">
-        <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate flex items-center gap-2">
             Punto de Venta
+            <button type="button" class="text-blue-600 hover:text-blue-800 transition-colors btn-abrir-manual" data-section="ventas" title="Ver ayuda de Ventas">
+                <i class="fas fa-question-circle text-xl"></i>
+            </button>
         </h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Realiza ventas, gestiona el carrito y procesa pagos de manera eficiente.

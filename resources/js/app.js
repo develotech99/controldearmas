@@ -19,6 +19,8 @@ window.Alpine = Alpine;
 
 Alpine.start();
 
+import './manual';
+
 /**
  * Validación simple de formularios (modo exclusión por "excepciones")
  * - Ignora inputs hidden y disabled por defecto

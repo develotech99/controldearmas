@@ -277,96 +277,39 @@ class DashboardManager {
             });
         });
 
-        // Lógica del Manual de Sistema
-        this.configurarManual();
-    }
 
-    /**
-     * Configurar Manual de Sistema
-     */
-    configurarManual() {
-        const modal = document.getElementById('modalManual');
-        const btnAbrir = document.getElementById('btn-abrir-manual');
-        const btnCerrar = document.getElementById('btn-cerrar-manual');
-        const btnEntendido = document.getElementById('btn-entendido-manual');
-        const backdrop = document.getElementById('modalManualBackdrop');
 
-        if (!modal || !btnAbrir) return;
-
-        // Abrir modal
-        btnAbrir.addEventListener('click', () => {
-            modal.classList.remove('hidden');
-        });
-
-        // Cerrar modal
-        const cerrarModal = () => {
-            modal.classList.add('hidden');
-        };
-
-        if (btnCerrar) btnCerrar.addEventListener('click', cerrarModal);
-        if (btnEntendido) btnEntendido.addEventListener('click', cerrarModal);
-        if (backdrop) backdrop.addEventListener('click', cerrarModal);
-
-        // Navegación del manual
-        const navButtons = document.querySelectorAll('#manual-nav button');
-        const contents = document.querySelectorAll('#manual-content > div');
-
-        navButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const step = btn.dataset.step;
-
-                // Actualizar botones
-                navButtons.forEach(b => {
-                    if (b.dataset.step === step) {
-                        b.className = 'w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-                    } else {
-                        b.className = 'w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white';
-                    }
-                });
-
-                // Actualizar contenido
-                contents.forEach(content => {
-                    if (content.dataset.content === step) {
-                        content.classList.remove('hidden');
-                    } else {
-                        content.classList.add('hidden');
-                    }
-                });
-            });
-        });
-    }
-
-    /**
-     * Iniciar actualización automática cada 5 minutos
-     */
-    iniciarActualizacionAutomatica() {
-        this.refreshInterval = setInterval(() => {
-            console.log('Actualizando dashboard automáticamente...');
-            this.cargarEstadisticas();
-        }, 300000); // 5 minutos
-    }
-
-    /**
-     * Detener actualización automática
-     */
-    detenerActualizacionAutomatica() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
+        /**
+         * Iniciar actualización automática cada 5 minutos
+         */
+        iniciarActualizacionAutomatica() {
+            this.refreshInterval = setInterval(() => {
+                console.log('Actualizando dashboard automáticamente...');
+                this.cargarEstadisticas();
+            }, 300000); // 5 minutos
         }
-    }
 
-    /**
-     * Mostrar error
-     */
-    mostrarError(mensaje) {
-        console.error(mensaje);
+        /**
+         * Detener actualización automática
+         */
+        detenerActualizacionAutomatica() {
+            if (this.refreshInterval) {
+                clearInterval(this.refreshInterval);
+                this.refreshInterval = null;
+            }
+        }
 
-        // Mostrar en contenedores
-        const ventasContainer = document.getElementById('ventas-recientes-container');
-        const stockContainer = document.getElementById('alertas-stock-container');
+        /**
+         * Mostrar error
+         */
+        mostrarError(mensaje) {
+            console.error(mensaje);
 
-        const errorHTML = `
+            // Mostrar en contenedores
+            const ventasContainer = document.getElementById('ventas-recientes-container');
+            const stockContainer = document.getElementById('alertas-stock-container');
+
+            const errorHTML = `
             <div class="text-center py-12">
                 <div class="text-red-500 text-4xl mb-4">⚠️</div>
                 <p class="text-slate-600">${mensaje}</p>
@@ -377,19 +320,19 @@ class DashboardManager {
             </div>
         `;
 
-        if (ventasContainer) ventasContainer.innerHTML = errorHTML;
-        if (stockContainer) stockContainer.innerHTML = errorHTML;
+            if (ventasContainer) ventasContainer.innerHTML = errorHTML;
+            if (stockContainer) stockContainer.innerHTML = errorHTML;
+        }
     }
-}
 
 // Inicializar al cargar el DOM
-document.addEventListener('DOMContentLoaded', function () {
-    window.dashboardManager = new DashboardManager();
-});
+document.addEventListener('DOMContentLoaded', function() {
+        window.dashboardManager = new DashboardManager();
+    });
 
 // Limpiar al salir
-window.addEventListener('beforeunload', function () {
-    if (window.dashboardManager) {
-        window.dashboardManager.detenerActualizacionAutomatica();
-    }
-});
+window.addEventListener('beforeunload', function() {
+        if (window.dashboardManager) {
+            window.dashboardManager.detenerActualizacionAutomatica();
+        }
+    });
