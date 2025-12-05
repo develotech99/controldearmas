@@ -301,7 +301,9 @@
     </div>
 </div>
 
-@push('scripts')
-    @vite(['resources/js/pagos/historial.js'])
-@endpush
+
+
 @endsection
+
+@vite('resources/js/pagos/historial.js')
+
