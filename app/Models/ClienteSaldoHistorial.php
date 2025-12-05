@@ -7,23 +7,26 @@ use Illuminate\Database\Eloquent\Model;
 class ClienteSaldoHistorial extends Model
 {
     protected $table = 'pro_clientes_saldo_historial';
-    protected $primaryKey = 'historial_id';
+    protected $primaryKey = 'hist_id';
 
     protected $fillable = [
-        'historial_cliente_id',
-        'historial_tipo',
-        'historial_monto',
-        'historial_referencia',
-        'historial_fecha'
+        'hist_cliente_id',
+        'hist_tipo',
+        'hist_monto',
+        'hist_saldo_anterior',
+        'hist_saldo_nuevo',
+        'hist_referencia',
+        'hist_observaciones'
     ];
 
     protected $casts = [
-        'historial_fecha' => 'datetime',
-        'historial_monto' => 'decimal:2'
+        'hist_monto' => 'decimal:2',
+        'hist_saldo_anterior' => 'decimal:2',
+        'hist_saldo_nuevo' => 'decimal:2'
     ];
 
     public function cliente()
     {
-        return $this->belongsTo(Cliente::class, 'historial_cliente_id', 'cliente_id');
+        return $this->belongsTo(Cliente::class, 'hist_cliente_id', 'cliente_id');
     }
 }
