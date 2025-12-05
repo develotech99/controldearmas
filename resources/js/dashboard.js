@@ -86,7 +86,7 @@ class DashboardManager {
      */
     renderVentasRecientes(ventas) {
         const container = document.getElementById('ventas-recientes-container');
-        
+
         if (!container) return;
 
         if (!ventas || ventas.length === 0) {
@@ -103,10 +103,10 @@ class DashboardManager {
         }
 
         let html = '<div class="space-y-3">';
-        
+
         ventas.forEach(venta => {
             const estadoClass = venta.estado === 'COMPLETADA' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
-            
+
             html += `
                 <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
                     <div class="flex-1">
@@ -139,7 +139,7 @@ class DashboardManager {
                 </div>
             `;
         });
-        
+
         html += '</div>';
         container.innerHTML = html;
     }
@@ -149,7 +149,7 @@ class DashboardManager {
      */
     renderAlertasStock(productos) {
         const container = document.getElementById('alertas-stock-container');
-        
+
         if (!container) return;
 
         if (!productos || productos.length === 0) {
@@ -166,12 +166,12 @@ class DashboardManager {
         }
 
         let html = '<div class="space-y-3">';
-        
+
         productos.forEach(producto => {
-            const estadoClass = producto.estado === 'AGOTADO' 
-                ? 'bg-red-100 text-red-800 border-red-200' 
+            const estadoClass = producto.estado === 'AGOTADO'
+                ? 'bg-red-100 text-red-800 border-red-200'
                 : 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            
+
             const iconoEstado = producto.estado === 'AGOTADO'
                 ? '❌'
                 : '⚠️';
@@ -201,7 +201,7 @@ class DashboardManager {
                 </div>
             `;
         });
-        
+
         html += '</div>';
         container.innerHTML = html;
     }
@@ -217,13 +217,13 @@ class DashboardManager {
 
         const animar = () => {
             valorActual += incremento;
-            
-            if ((incremento > 0 && valorActual >= valorFinal) || 
+
+            if ((incremento > 0 && valorActual >= valorFinal) ||
                 (incremento < 0 && valorActual <= valorFinal)) {
                 elemento.textContent = valorFinal.toLocaleString();
                 return;
             }
-            
+
             elemento.textContent = Math.floor(valorActual).toLocaleString();
             requestAnimationFrame(animar);
         };
@@ -236,9 +236,9 @@ class DashboardManager {
      */
     formatearFecha(fecha) {
         const date = new Date(fecha);
-        const opciones = { 
-            year: 'numeric', 
-            month: 'short', 
+        const opciones = {
+            year: 'numeric',
+            month: 'short',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
@@ -266,37 +266,15 @@ class DashboardManager {
      * Configurar acciones rápidas
      */
     configurarAccionesRapidas() {
-        // Nueva Venta
-        const btnNuevaVenta = document.querySelector('[data-accion="nueva-venta"]');
-        if (btnNuevaVenta) {
-            btnNuevaVenta.addEventListener('click', () => {
-                window.location.href = '/ventas';
+        const botones = document.querySelectorAll('button[data-href]');
+        botones.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const url = btn.dataset.href;
+                if (url) {
+                    window.location.href = url;
+                }
             });
-        }
-
-        // Agregar Arma
-        const btnAgregarArma = document.querySelector('[data-accion="agregar-arma"]');
-        if (btnAgregarArma) {
-            btnAgregarArma.addEventListener('click', () => {
-                window.location.href = '/inventario';
-            });
-        }
-
-        // Nuevo Cliente
-        const btnNuevoCliente = document.querySelector('[data-accion="nuevo-cliente"]');
-        if (btnNuevoCliente) {
-            btnNuevoCliente.addEventListener('click', () => {
-                window.location.href = '/clientes/crear';
-            });
-        }
-
-        // Generar Reporte
-        const btnReporte = document.querySelector('[data-accion="generar-reporte"]');
-        if (btnReporte) {
-            btnReporte.addEventListener('click', () => {
-                window.location.href = '/reportes';
-            });
-        }
+        });
     }
 
     /**
@@ -324,11 +302,11 @@ class DashboardManager {
      */
     mostrarError(mensaje) {
         console.error(mensaje);
-        
+
         // Mostrar en contenedores
         const ventasContainer = document.getElementById('ventas-recientes-container');
         const stockContainer = document.getElementById('alertas-stock-container');
-        
+
         const errorHTML = `
             <div class="text-center py-12">
                 <div class="text-red-500 text-4xl mb-4">⚠️</div>
@@ -339,19 +317,19 @@ class DashboardManager {
                 </button>
             </div>
         `;
-        
+
         if (ventasContainer) ventasContainer.innerHTML = errorHTML;
         if (stockContainer) stockContainer.innerHTML = errorHTML;
     }
 }
 
 // Inicializar al cargar el DOM
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     window.dashboardManager = new DashboardManager();
 });
 
 // Limpiar al salir
-window.addEventListener('beforeunload', function() {
+window.addEventListener('beforeunload', function () {
     if (window.dashboardManager) {
         window.dashboardManager.detenerActualizacionAutomatica();
     }

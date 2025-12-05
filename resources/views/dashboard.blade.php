@@ -127,7 +127,7 @@
         <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-4">Acciones Rápidas</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Nueva Venta -->
-            <button data-accion="nueva-venta" 
+            <button data-href="{{ route('ventas.index') }}" 
                     class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-green-300 dark:hover:border-green-500 transition-all text-left group">
                 <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
                     <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@
             </button>
 
             <!-- Agregar Arma -->
-            <button data-accion="agregar-arma" 
+            <button data-href="{{ route('inventario.index') }}" 
                     class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-blue-300 dark:hover:border-blue-500 transition-all text-left group">
                 <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
                     <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@
             </button>
 
             <!-- Nuevo Cliente -->
-            <button data-accion="nuevo-cliente" 
+            <button data-href="{{ route('clientes.index') }}" 
                     class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-purple-300 dark:hover:border-purple-500 transition-all text-left group">
                 <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
                     <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +169,7 @@
             </button>
 
             <!-- Generar Reporte -->
-            <button data-accion="generar-reporte" 
+            <button data-href="{{ route('reportes.index') }}" 
                     class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-orange-300 dark:hover:border-orange-500 transition-all text-left group">
                 <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
                     <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
