@@ -206,7 +206,8 @@ class VentasController extends Controller
             )
             ->orderBy('producto_nombre')
             ->get()
-            ->unique('producto_id');
+            ->unique('producto_id')
+            ->values();
 
         // Series + LOTES (igual que series, pero para pro_lotes)
         $productos = $productos->map(function ($producto) {
