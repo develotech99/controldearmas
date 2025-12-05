@@ -27,6 +27,7 @@ use App\Http\Controllers\UsersUbicacionController;
 use App\Http\Controllers\ProEmpresaDeImportacionController;
 use App\Http\Controllers\ProLicenciaParaImportacionController;
 use App\Http\Controllers\PreventaController;
+use App\Http\Controllers\EstadoCuentaController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -413,6 +414,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/vista-cambiaria', [FacturacionController::class, 'verFacturaCambiaria'])
             ->name('facturacion.vista.cambiaria');
     });
+    // Estado de Cuenta Clientes
+    Route::get('/clientes/estado-cuenta', [EstadoCuentaController::class, 'index'])->name('clientes.estado_cuenta');
+    Route::get('/api/clientes/estado-cuenta', [EstadoCuentaController::class, 'listar']);
+    Route::get('/api/clientes/estado-cuenta/{id}', [EstadoCuentaController::class, 'detalle']);
+
 });
 
 require __DIR__ . '/auth.php';
