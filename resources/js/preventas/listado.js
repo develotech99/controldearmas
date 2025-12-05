@@ -49,6 +49,10 @@ function initTable() {
                                     class="bg-blue-100 hover:bg-blue-200 text-blue-800 p-2 rounded-full transition duration-150" title="Ver Detalle">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            <button onclick="imprimir(${row.prev_id})" 
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-800 p-2 rounded-full transition duration-150" title="Imprimir">
+                                <i class="fas fa-print"></i>
+                            </button>
                             <button onclick="eliminar(${row.prev_id})" 
                                     class="bg-red-100 hover:bg-red-200 text-red-800 p-2 rounded-full transition duration-150" title="Eliminar">
                                 <i class="fas fa-trash"></i>
@@ -77,8 +81,17 @@ window.verDetalle = async function (id) {
 
         document.getElementById('detFecha').textContent = new Date(preventa.prev_fecha).toLocaleDateString();
         document.getElementById('detTotal').textContent = `Q${parseFloat(preventa.prev_total).toFixed(2)}`;
+        document.getElementById('detAbonado').textContent = `Q${parseFloat(preventa.prev_monto_pagado).toFixed(2)}`;
         document.getElementById('detEstado').textContent = preventa.prev_estado;
         document.getElementById('detObservaciones').textContent = preventa.prev_observaciones || '-';
+
+        // Set Print Button ID
+        const btnPrint = document.getElementById('btnImprimirModal');
+        if (btnPrint) {
+            btnPrint.onclick = function () {
+                imprimir(id);
+            };
+        }
 
         const tbody = document.getElementById('tbody-productos');
         tbody.innerHTML = '';
@@ -86,10 +99,10 @@ window.verDetalle = async function (id) {
         preventa.detalles.forEach(d => {
             const row = `
                 <tr>
-                    <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">${d.producto ? d.producto.producto_nombre : 'Producto Eliminado'}</td>
-                    <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-300">${d.det_cantidad}</td>
-                    <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-300">Q${parseFloat(d.det_precio_unitario).toFixed(2)}</td>
-                    <td class="px-4 py-2 text-sm text-right font-bold text-gray-900 dark:text-gray-300">Q${parseFloat(d.det_subtotal).toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${d.producto ? d.producto.producto_nombre : 'Producto Eliminado'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">${d.det_cantidad}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">Q${parseFloat(d.det_precio_unitario).toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-gray-300">Q${parseFloat(d.det_subtotal).toFixed(2)}</td>
                 </tr>
             `;
             tbody.innerHTML += row;
@@ -101,6 +114,10 @@ window.verDetalle = async function (id) {
         console.error('Error loading details:', error);
         Swal.fire('Error', 'No se pudieron cargar los detalles', 'error');
     }
+};
+
+window.imprimir = function (id) {
+    window.open(`/preventas/${id}/imprimir`, '_blank');
 };
 
 window.eliminar = function (id) {

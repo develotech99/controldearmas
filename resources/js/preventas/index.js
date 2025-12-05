@@ -458,12 +458,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (result.success) {
                 Swal.fire({
-                    title: '¡Éxito!',
-                    text: 'Preventa registrada correctamente',
+                    title: '¡Preventa Creada!',
+                    text: 'La preventa se ha registrado correctamente.',
                     icon: 'success',
-                    confirmButtonText: 'Aceptar'
-                }).then(() => {
-                    location.reload(); // Recargar para limpiar todo
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fas fa-print"></i> Imprimir Comprobante',
+                    cancelButtonText: 'Cerrar',
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#aaa'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.open(`/preventas/${result.preventa_id}/imprimir`, '_blank');
+                    }
+                    window.location.reload();
                 });
             } else {
                 Swal.fire('Error', result.message, 'error');

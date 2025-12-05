@@ -161,4 +161,12 @@ class PreventaController extends Controller
             return response()->json(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
     }
+
+    public function imprimir($id)
+    {
+        $preventa = Preventa::with(['cliente', 'empresa', 'detalles.producto'])
+            ->findOrFail($id);
+
+        return view('preventas.print', compact('preventa'));
+    }
 }

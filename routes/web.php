@@ -419,6 +419,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/preventas/listado', [PreventaController::class, 'apiListado']);
     Route::delete('/api/preventas/{id}', [PreventaController::class, 'destroy']);
     Route::get('/api/preventas/{id}', [PreventaController::class, 'show']);
+    Route::get('/preventas/{id}/imprimir', [PreventaController::class, 'imprimir'])->name('preventas.imprimir');
 
     // Estado de Cuenta Clientes
     Route::get('/clientes/estado-cuenta', [EstadoCuentaController::class, 'index'])->name('clientes.estado_cuenta');
