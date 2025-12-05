@@ -5,7 +5,7 @@
 import Chart from 'chart.js/auto';
 class ReportesManager {
     constructor() {
-        this.currentTab = 'dashboard';
+        this.currentTab = 'ventas';
         this.kpis = {};
         this.filtros = {
             fecha_inicio: null,
@@ -88,7 +88,7 @@ class ReportesManager {
     async loadInitialData() {
         try {
             await Promise.all([
-                this.loadDashboard(),
+                this.cambiarTab(this.currentTab),
                 this.loadFiltros()
             ]);
         } catch (error) {
