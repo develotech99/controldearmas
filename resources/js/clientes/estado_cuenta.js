@@ -69,29 +69,6 @@ function initTable() {
 
 async function loadTable() {
     const search = document.getElementById('searchCliente').value;
-
-    // Show loading?
-
-    try {
-        const response = await fetch(`/api/clientes/estado-cuenta?search=${encodeURIComponent(search)}`);
-        const result = await response.json();
-
-        dataTable.clear();
-        dataTable.rows.add(result.data);
-        dataTable.draw();
-
-    } catch (error) {
-        console.error('Error loading data:', error);
-        Swal.fire('Error', 'No se pudieron cargar los datos', 'error');
-    }
-}
-
-// Make global for onclick
-window.verDetalle = async function (id, nombre) {
-    currentClienteId = id;
-    document.getElementById('modalTitle').textContent = `Detalle de Cuenta: ${nombre}`;
-
-    const modal = document.getElementById('modalDetalle');
     modal.classList.remove('hidden');
 
     // Reset tabs
