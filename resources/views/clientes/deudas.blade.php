@@ -2,14 +2,47 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Clientes Morosos</h1>
-        <button id="btnNuevaDeuda" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition-colors flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Nueva Deuda
-        </button>
+    <!-- Header Gradient -->
+    <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 mb-8 text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+        <div class="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-blue-500 opacity-10 rounded-full blur-xl"></div>
+        
+        <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold">Clientes Morosos</h1>
+                <p class="text-slate-300 mt-1">Gestión manual de deudas y saldos pendientes</p>
+            </div>
+            <button id="btnNuevaDeuda" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 flex items-center gap-2 font-semibold border border-blue-400/30">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nueva Deuda Manual
+            </button>
+        </div>
+    </div>
+
+    <!-- Warning Alert -->
+    <div class="bg-amber-50 border-l-4 border-amber-500 p-4 mb-8 rounded-r-lg shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm leading-5 font-medium text-amber-800">
+                    Uso Recomendado
+                </h3>
+                <div class="mt-2 text-sm leading-5 text-amber-700">
+                    <p>
+                        Esta sección está diseñada para el <strong>ingreso manual de datos</strong> en casos especiales o para migrar registros antiguos (papel) al sistema.
+                    </p>
+                    <p class="mt-1">
+                        Para operaciones regulares, se recomienda encarecidamente generar las deudas automáticamente a través del módulo de <strong>Ventas</strong> al realizar una venta al crédito.
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Filtros -->
