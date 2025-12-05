@@ -498,7 +498,7 @@ public function guardarCliente(Request $request)
 
                 // Update Details Status
                 foreach ($venta->detalleVentas as $detalle) {
-                    $detalle->det_situacion = ($nuevoEstado === 'COMPLETADA') ? 'COMPLETADO' : 'AUTORIZADO';
+                    $detalle->det_situacion = 'ACTIVO';
                     $detalle->save();
 
                     // Stock Deduction Logic
