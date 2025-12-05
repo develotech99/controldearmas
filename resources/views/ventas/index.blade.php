@@ -292,14 +292,22 @@
                                     </div>
                                 </div>
 
-                                <div class="grid gap-2">
+                                <div class="grid gap-2" id="listaMetodosPago">
                                     @foreach ($metodopago as $metodo)
+                                        @if(strtolower($metodo->metpago_descripcion) !== 'saldo a favor')
                                         <label class="flex items-center p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                                            <input type="radio" name="metodoPago" value="{{ $metodo->metpago_id }}" class="mr-3"
+                                            <input type="radio" name="metodoPago" value="{{ $metodo->metpago_id }}" class="mr-3">
                                                 <i class="fas fa-credit-card mr-2 text-blue-600"></i>
                                             <span class="text-sm">{{ $metodo->metpago_descripcion }}</span>
                                         </label>
+                                        @endif
                                     @endforeach
+                                    
+                                    <!-- Mensaje cuando se cubre todo con saldo a favor -->
+                                    <div id="mensajePagoCompletoSaldo" class="hidden p-3 bg-green-50 text-green-700 rounded-lg text-sm text-center border border-green-200">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        El saldo a favor cubre el total de la venta.
+                                    </div>
                                 </div>
 
                                 <!-- Autorización (para métodos 1–5) -->

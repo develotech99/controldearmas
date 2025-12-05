@@ -171,6 +171,12 @@ function actualizarRestante() {
     const inputSaldo = document.getElementById('inputSaldoUsar');
     const montoRestante = document.getElementById('montoRestantePagar');
 
+    // Elementos UI para métodos de pago
+    const listaMetodos = document.getElementById('listaMetodosPago');
+    const mensajeCompleto = document.getElementById('mensajePagoCompletoSaldo');
+    const metodoPagoHeader = document.getElementById('metodoPagoHeader');
+    const metodoPagoContenido = document.getElementById('metodoPagoContenido');
+
     const totalVenta = parseFloat(totalElement.textContent.replace('Q', '')) || 0;
     const saldoDisponible = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
     let saldoUsar = parseFloat(inputSaldo.value) || 0;
@@ -190,6 +196,28 @@ function actualizarRestante() {
     if (restante < 0) restante = 0;
 
     montoRestante.textContent = `Q${restante.toFixed(2)}`;
+
+    // Lógica de visibilidad de métodos de pago
+    if (restante <= 0.01) {
+        // Si no queda nada por pagar
+        if (listaMetodos) listaMetodos.classList.add('hidden');
+        if (mensajeCompleto) mensajeCompleto.classList.remove('hidden');
+
+        // Opcional: Colapsar acordeón si se desea, o dejarlo expandido con el mensaje
+        // if (metodoPagoContenido) metodoPagoContenido.classList.remove('hidden');
+
+        // Desmarcar radios para evitar envíos confusos (aunque el backend ya lo ignora)
+        document.querySelectorAll('input[name="metodoPago"]').forEach(r => r.checked = false);
+
+        // Ocultar detalles de métodos específicos
+        document.getElementById("autorizacionContainer")?.classList.add("hidden");
+        document.getElementById("cuotasContainer")?.classList.add("hidden");
+
+    } else {
+        // Si queda saldo pendiente
+        if (listaMetodos) listaMetodos.classList.remove('hidden');
+        if (mensajeCompleto) mensajeCompleto.classList.add('hidden');
+    }
 
     // Actualizar cuotas si es necesario
     if (typeof updateCuotasFromTotal === 'function') {
