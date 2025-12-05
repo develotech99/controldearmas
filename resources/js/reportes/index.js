@@ -997,7 +997,10 @@ class ReportesManager {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(payloadFinal)
+                body: JSON.stringify({
+                    ven_id: venta.ven_id,
+                    tipo: tipo
+                })
             });
 
             if (response.status === 419)
@@ -1008,8 +1011,19 @@ class ReportesManager {
 
             const result = await response.json();
 
-            if (result.codigo !== 1)
-                throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
+            if (!result.success)
+                throw new Error(result.message || 'Error al autorizar la venta');
+
+            // Show success message
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: result.message,
+                timer: 2000
+            });
+
+            // Reload ventas list
+            this.loadReporteVentas();
 
             // Redirección según opción
             // Redirección según opción -> AHORA APERTURA DE MODAL

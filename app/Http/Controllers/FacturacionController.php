@@ -1200,4 +1200,61 @@ public function certificarCambiaria(Request $request)
             'data' => $resultados
         ]);
     }
+
+    public function anularFactura(Request $request)
+    {
+        $request->validate([
+            'fac_id' => 'required|integer|exists:facturacion,fac_id',
+            'motivo' => 'required|string|min:5'
+        ]);
+
+        $facId = $request->input('fac_id');
+        $motivo = $request->input('motivo');
+
+        try {
+            DB::transaction(function () use ($facId, $motivo) {
+                $factura = Facturacion::findOrFail($facId);
+
+                if ($factura->fac_estado === 'ANULADA') {
+                    throw new Exception('La factura ya está anulada.');
+                }
+
+                // 1. Anular en FEL (Si aplica)
+                // TODO: Integrar con FelService para anular en SAT si es necesario.
+                
+                // 2. Actualizar estado de factura
+                $factura->update([
+                    'fac_estado' => 'ANULADA',
+                    'fac_motivo_anulacion' => $motivo,
+                    'fac_anulada_por' => auth()->id(),
+                    'fac_fecha_anulacion' => now()
+                ]);
+
+                // 3. Actualizar venta asociada
+                if ($factura->fac_venta_id) {
+                    $venta = \App\Models\ProVenta::find($factura->fac_venta_id);
+                    
+                    if ($venta) {
+                        // Regla de negocio: La venta pasa a EDITABLE, no se anula ni devuelve stock.
+                        $venta->update([
+                            'ven_situacion' => 'EDITABLE',
+                            'ven_observaciones' => $venta->ven_observaciones . " [Factura #{$factura->fac_numero} anulada: $motivo]"
+                        ]);
+                    }
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Factura anulada correctamente. La venta ha pasado a estado EDITABLE.'
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Error anulando factura: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al anular factura: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

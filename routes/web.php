@@ -407,7 +407,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/obtener-facturas', [FacturacionController::class, 'obtenerFacturas'])->name('facturacion.obtener');
         Route::get('/consultar-dte/{uuid}', [FacturacionController::class, 'consultarDte'])->name('facturacion.consultarDte');
         Route::get('/{id}/vista', [FacturacionController::class, 'vista'])->name('facturacion.vista');
-        Route::post('/anular/{id}', [FacturacionController::class, 'anular'])->name('facturacion.anular');
+        Route::post('/anular', [FacturacionController::class, 'anularFactura'])->name('facturacion.anular');
         Route::post('/buscarCui', [FacturacionController::class, 'buscarCUI'])->name('buscarCui');
         Route::post('/certificar-cambiaria', [FacturacionController::class, 'certificarCambiaria'])
             ->name('facturacion.certificar.cambiaria');
