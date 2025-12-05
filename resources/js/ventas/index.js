@@ -60,10 +60,9 @@ async function clientesParticulares() {
                 </option>`;
         });
 
-        // Si hay un único resultado → se selecciona automáticamente
-        if (data.length === 1) {
-            select.value = data[0].cliente_id;
-            // Disparar evento change manualmente para cargar empresas
+        // Si hay resultados, seleccionamos el primero y disparamos el evento
+        if (data.length > 0) {
+            select.selectedIndex = 0;
             select.dispatchEvent(new Event('change'));
         }
     } else {
@@ -136,20 +135,23 @@ document.getElementById("clienteSelect").addEventListener("change", function () 
 document.getElementById('checkSaldoFavor')?.addEventListener('change', function () {
     const infoRestante = document.getElementById('infoSaldoRestante');
     const montoRestante = document.getElementById('montoRestantePagar');
+    const inputSaldo = document.getElementById('inputSaldoUsar');
     const totalElement = document.getElementById('totalModal'); // Total de la venta
 
     if (this.checked) {
         infoRestante.classList.remove('hidden');
-        // Calcular restante
+
         const totalVenta = parseFloat(totalElement.textContent.replace('Q', '')) || 0;
         const saldoDisponible = parseFloat(this.dataset.saldoDisponible || 0);
 
-        let restante = totalVenta - saldoDisponible;
-        if (restante < 0) restante = 0;
+        // Por defecto, usar el máximo posible
+        const maxUsar = Math.min(totalVenta, saldoDisponible);
+        inputSaldo.value = maxUsar.toFixed(2);
 
-        montoRestante.textContent = `Q${restante.toFixed(2)}`;
+        actualizarRestante();
     } else {
         infoRestante.classList.add('hidden');
+        inputSaldo.value = '';
     }
 
     // Si hay lógica de cuotas, actualizarla también
@@ -157,6 +159,43 @@ document.getElementById('checkSaldoFavor')?.addEventListener('change', function 
         updateCuotasFromTotal();
     }
 });
+
+// Listener para el input de Saldo a Usar
+document.getElementById('inputSaldoUsar')?.addEventListener('input', function () {
+    actualizarRestante();
+});
+
+function actualizarRestante() {
+    const totalElement = document.getElementById('totalModal');
+    const checkSaldo = document.getElementById('checkSaldoFavor');
+    const inputSaldo = document.getElementById('inputSaldoUsar');
+    const montoRestante = document.getElementById('montoRestantePagar');
+
+    const totalVenta = parseFloat(totalElement.textContent.replace('Q', '')) || 0;
+    const saldoDisponible = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
+    let saldoUsar = parseFloat(inputSaldo.value) || 0;
+
+    // Validaciones
+    if (saldoUsar > saldoDisponible) {
+        saldoUsar = saldoDisponible;
+        inputSaldo.value = saldoDisponible.toFixed(2);
+        Swal.fire('Atención', 'No puede usar más del saldo disponible', 'warning');
+    }
+    if (saldoUsar > totalVenta) {
+        saldoUsar = totalVenta;
+        inputSaldo.value = totalVenta.toFixed(2);
+    }
+
+    let restante = totalVenta - saldoUsar;
+    if (restante < 0) restante = 0;
+
+    montoRestante.textContent = `Q${restante.toFixed(2)}`;
+
+    // Actualizar cuotas si es necesario
+    if (typeof updateCuotasFromTotal === 'function') {
+        updateCuotasFromTotal();
+    }
+}
 
 // Event listener para el tipo de cliente
 tipoClienteSelect.addEventListener("change", function () {
@@ -3958,8 +3997,7 @@ async function procesarVentaFinal() {
         const checkSaldo = document.getElementById('checkSaldoFavor');
         let saldoFavorUsado = 0;
         if (checkSaldo && checkSaldo.checked) {
-            const disponible = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
-            saldoFavorUsado = Math.min(disponible, total);
+            saldoFavorUsado = parseFloat(document.getElementById('inputSaldoUsar').value) || 0;
         }
 
         // 2. DATOS DE VENTA

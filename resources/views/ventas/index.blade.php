@@ -283,7 +283,12 @@
                                         <span id="textoSaldoFavor" class="text-sm font-bold text-blue-700">Q0.00</span>
                                     </label>
                                     <div id="infoSaldoRestante" class="text-xs text-gray-600 mt-1 hidden">
-                                        Restante a pagar: <span class="font-bold" id="montoRestantePagar">Q0.00</span>
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <label class="font-semibold">Monto a usar:</label>
+                                            <input type="number" id="inputSaldoUsar" step="0.01" min="0" 
+                                                class="w-24 px-2 py-1 border rounded text-right text-sm focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        Restante a pagar con otro método: <span class="font-bold text-red-600" id="montoRestantePagar">Q0.00</span>
                                     </div>
                                 </div>
 
