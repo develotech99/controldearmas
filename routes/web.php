@@ -341,7 +341,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/ventas/autorizar', [VentasController::class, 'autorizarVenta']);
     Route::post('/ventas/cancelar', [VentasController::class, 'cancelarVenta']);
-    Route::get('/ventas/pendientes', [VentasController::class, 'obtenerVentasPendientes']);
+    Route::get('ventas/{id}/editar', [VentasController::class, 'editar'])->name('ventas.editar');
+    Route::post('ventas/cambiar-serie', [VentasController::class, 'cambiarSerie'])->name('ventas.cambiarSerie');
+    Route::get('api/productos/{id}/series-disponibles', [VentasController::class, 'getSeriesDisponibles']);
+    Route::get('/api/ventas/{id}', [VentasController::class, 'getDetalleVenta']);
     Route::post('/ventas/actualizar-licencias', [VentasController::class, 'actualizarLicencias']);
     Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
         ->name('ventas.marcar-disponibles');

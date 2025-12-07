@@ -3482,4 +3482,78 @@ public function procesarVenta(Request $request): JsonResponse
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+    public function getDetalleVenta($id)
+    {
+        try {
+            $venta = DB::table('pro_ventas as v')
+                ->leftJoin('pro_clientes as c', 'v.ven_cliente_id', '=', 'c.cliente_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->where('v.ven_id', $id)
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_situacion',
+                    'v.ven_total_vendido',
+                    'c.cliente_nombre1',
+                    'c.cliente_apellido1',
+                    'c.cliente_nit',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre as vendedor_nombre'
+                )
+                ->first();
+
+            if (!$venta) {
+                return response()->json(['codigo' => 0, 'mensaje' => 'Venta no encontrada'], 404);
+            }
+
+            // Detalles
+            $detalles = DB::table('pro_detalle_ventas as d')
+                ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                ->where('d.det_ven_id', $id)
+                ->select(
+                    'p.producto_nombre',
+                    'd.det_cantidad',
+                    'd.det_precio as det_precio_unitario',
+                    DB::raw('(d.det_cantidad * d.det_precio) - IFNULL(d.det_descuento, 0) as det_subtotal')
+                )
+                ->get();
+
+            // Pagos (Combinando Pagos Subidos para ver boletas)
+            $pagos = DB::table('pro_pagos_subidos')
+                ->where('ps_venta_id', $id)
+                // ->where('ps_estado', 'APROBADO') // O mostrar todos? El usuario quiere ver historial.
+                ->select(
+                    'ps_banco_nombre as metodo',
+                    'ps_fecha_comprobante as fecha',
+                    'ps_referencia as referencia',
+                    'ps_monto_comprobante as monto',
+                    'ps_imagen_path as comprobante'
+                )
+                ->orderBy('ps_fecha_comprobante', 'desc')
+                ->get();
+
+            // Formatear respuesta
+            $data = [
+                'ven_id' => $venta->ven_id,
+                'ven_fecha' => $venta->ven_fecha,
+                'ven_situacion' => $venta->ven_situacion,
+                'ven_total_vendido' => $venta->ven_total_vendido,
+                'cliente' => [
+                    'nombre' => trim($venta->cliente_nombre1 . ' ' . $venta->cliente_apellido1),
+                    'nit' => $venta->cliente_nit,
+                    'empresa' => $venta->cliente_nom_empresa
+                ],
+                'vendedor' => [
+                    'nombre' => $venta->vendedor_nombre
+                ],
+                'detalles' => $detalles,
+                'pagos' => $pagos
+            ];
+
+            return response()->json(['codigo' => 1, 'data' => $data]);
+
+        } catch (\Exception $e) {
+            return response()->json(['codigo' => 0, 'mensaje' => $e->getMessage()], 500);
+        }
+    }
 }
