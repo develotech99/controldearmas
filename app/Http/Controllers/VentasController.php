@@ -2350,9 +2350,19 @@ public function procesarReserva(Request $request): JsonResponse
 // }
 
 
+use Carbon\Carbon; // Add this at the top of the file if not already present
+
 public function procesarVenta(Request $request): JsonResponse
 {
     try {
+        // Decodificar JSON si viene como string (FormData)
+        if (is_string($request->productos)) {
+            $request->merge(['productos' => json_decode($request->productos, true)]);
+        }
+        if (is_string($request->pago)) {
+            $request->merge(['pago' => json_decode($request->pago, true)]);
+        }
+
         // 0. VALIDACIÓN
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
@@ -2842,8 +2852,20 @@ public function procesarVenta(Request $request): JsonResponse
             ]);
         }
 
+        // Manejo del Comprobante (Boleta)
+        $comprobantePath = null;
+        if ($request->hasFile('comprobante')) {
+            $file = $request->file('comprobante');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('comprobantes', $filename, 'public');
+            $comprobantePath = $path;
+        }
+
         if ($metodoPagoPrincipal == "6") { // Pagos/Cuotas
-            $pagoData = $request->pago;
+            // Normalizar pagoData (tomar el primer elemento si es array de arrays)
+            $rawPago = $request->pago;
+            $pagoData = isset($rawPago[0]) && is_array($rawPago[0]) ? $rawPago[0] : $rawPago;
+
             $abonoInicial = floatval($pagoData['abono_inicial'] ?? 0);
             $cantidadCuotas = intval($pagoData['cantidad_cuotas'] ?? 0);
             $cuotas = $pagoData['cuotas'] ?? [];
@@ -2872,17 +2894,20 @@ public function procesarVenta(Request $request): JsonResponse
 
             // Detalle del abono inicial (si hubo)
             if ($abonoInicial > 0) {
+                $fechaAbono = !empty($pagoData['fecha_pago_abono']) ? \Carbon\Carbon::parse($pagoData['fecha_pago_abono']) : now();
+
                 DB::table('pro_detalle_pagos')->insert([
                     'det_pago_pago_id'          => $pagoId,
                     'det_pago_cuota_id'         => null,
-                    'det_pago_fecha'            => now(),
+                    'det_pago_fecha'            => $fechaAbono,
                     'det_pago_monto'            => $abonoInicial,
                     'det_pago_metodo_pago'      => $pagoData['metodo_abono'] ?? 'efectivo', // ID o texto? Ajustar según front
-                    'det_pago_banco_id'         => $pagoData['banco_id_abono'] ?? null,
-                    'det_pago_numero_autorizacion' => $pagoData['numero_autorizacion_abono'] ?? null,
+                    'det_pago_banco_id'         => $pagoData['banco_abono'] ?? null, // Note: front sends banco_abono
+                    'det_pago_numero_autorizacion' => $pagoData['autorizacion_abono'] ?? null, // Note: front sends autorizacion_abono
                     'det_pago_tipo_pago'        => 'ABONO_INICIAL',
                     'det_pago_estado'           => 'VALIDO',
                     'det_pago_observaciones'    => 'Abono inicial de venta a cuotas',
+                    'det_pago_imagen_boucher'   => $comprobantePath, // Guardar comprobante
                     'det_pago_usuario_registro' => auth()->id(),
                     'created_at'                => now(),
                     'updated_at'                => now(),
@@ -2947,17 +2972,24 @@ public function procesarVenta(Request $request): JsonResponse
 
             // 1. Registrar pago principal (si queda monto por pagar)
             if ($montoPrincipal > 0) {
+                // Normalizar pagoData
+                $rawPago = $request->pago;
+                $pagoData = isset($rawPago[0]) && is_array($rawPago[0]) ? $rawPago[0] : $rawPago;
+                
+                $fechaPago = !empty($pagoData['fecha_pago']) ? \Carbon\Carbon::parse($pagoData['fecha_pago']) : now();
+
                 DB::table('pro_detalle_pagos')->insert([
                     'det_pago_pago_id'          => $pagoId,
                     'det_pago_cuota_id'         => null,
-                    'det_pago_fecha'            => now(),
+                    'det_pago_fecha'            => $fechaPago,
                     'det_pago_monto'            => $montoPrincipal,
                     'det_pago_metodo_pago'      => $metodoPagoPrincipal,
-                    'det_pago_banco_id'         => $request->pago['banco_id'] ?? null,
-                    'det_pago_numero_autorizacion' => $request->pago['numero_autorizacion'] ?? null,
+                    'det_pago_banco_id'         => $pagoData['banco_id'] ?? null,
+                    'det_pago_numero_autorizacion' => $pagoData['numero_autorizacion'] ?? null,
                     'det_pago_tipo_pago'        => 'PAGO_UNICO',
                     'det_pago_estado'           => 'VALIDO',
                     'det_pago_observaciones'    => 'Pago principal de la venta',
+                    'det_pago_imagen_boucher'   => $comprobantePath, // Guardar comprobante
                     'det_pago_usuario_registro' => auth()->id(),
                     'created_at'                => now(),
                     'updated_at'                => now(),

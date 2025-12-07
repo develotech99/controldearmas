@@ -92,78 +92,77 @@ class DeudasController extends Controller
 
     public function pagar(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'monto' => 'required|numeric|min:0.01',
             'metodo_pago' => 'required|string',
             'referencia' => 'nullable|string',
             'nota' => 'nullable|string',
+            'banco_id' => 'nullable|integer',
+            'fecha_pago' => 'nullable|date',
+            'comprobante' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Datos inválidos'], 422);
-        }
 
         try {
             DB::beginTransaction();
 
-            $deuda = DB::table('pro_deudas_clientes')->where('deuda_id', $id)->first();
-
+            $deuda = DB::table('pro_deudas_clientes')->where('id', $id)->first();
             if (!$deuda) {
-                return response()->json(['success' => false, 'message' => 'Deuda no encontrada'], 404);
+                return response()->json(['success' => false, 'message' => 'Deuda no encontrada.'], 404);
             }
 
-            if ($request->monto > $deuda->saldo_pendiente) {
-                return response()->json(['success' => false, 'message' => 'El monto excede el saldo pendiente'], 422);
+            // Handle file upload
+            $comprobantePath = null;
+            if ($request->hasFile('comprobante')) {
+                $comprobantePath = $request->file('comprobante')->store('comprobantes', 'public');
             }
 
-            // 1. Registrar Abono
+            // Registrar abono
             DB::table('pro_deudas_abonos')->insert([
                 'deuda_id' => $id,
+                'user_id' => auth()->id(),
                 'monto' => $request->monto,
                 'metodo_pago' => $request->metodo_pago,
                 'referencia' => $request->referencia,
                 'nota' => $request->nota,
-                'user_id' => auth()->id(),
-                'created_at' => now(),
+                'banco_id' => $request->banco_id,
+                'comprobante_path' => $comprobantePath,
+                'created_at' => $request->fecha_pago ? Carbon::parse($request->fecha_pago) : now(),
                 'updated_at' => now(),
             ]);
 
-            // 2. Actualizar Deuda
+            // Actualizar deuda
             $nuevoPagado = $deuda->monto_pagado + $request->monto;
             $nuevoSaldo = $deuda->monto - $nuevoPagado;
-            $nuevoEstado = $nuevoSaldo <= 0 ? 'PAGADO' : 'PENDIENTE';
+            $estado = $nuevoSaldo <= 0 ? 'PAGADA' : 'PENDIENTE';
 
-            DB::table('pro_deudas_clientes')
-                ->where('deuda_id', $id)
-                ->update([
-                    'monto_pagado' => $nuevoPagado,
-                    'saldo_pendiente' => $nuevoSaldo,
-                    'estado' => $nuevoEstado,
-                    'updated_at' => now(),
-                ]);
+            DB::table('pro_deudas_clientes')->where('id', $id)->update([
+                'monto_pagado' => $nuevoPagado,
+                'saldo_pendiente' => $nuevoSaldo,
+                'estado' => $estado,
+                'updated_at' => now(),
+            ]);
 
-            // 3. Registrar en Caja (cja_historial)
-            // Buscar ID del método de pago
+            // Registrar en historial de caja
+            // Buscar ID de método de pago
             $metodoId = DB::table('pro_metodos_pago')
                 ->where('metpago_descripcion', $request->metodo_pago)
                 ->value('metpago_id');
 
-            // Si no encuentra el método, usar uno por defecto (ID 1)
             if (!$metodoId) {
+                // Fallback o error, asumimos 1 (Efectivo) o buscamos similar
                 $metodoId = 1; 
             }
 
             DB::table('cja_historial')->insert([
-                'cja_tipo' => 'PAGO_DEUDA',
+                'cja_tipo' => 'DEPOSITO', // O 'INGRESO'
                 'cja_id_venta' => null,
-                'cja_id_import' => $id, // Store deuda_id here for linking
                 'cja_usuario' => auth()->id(),
                 'cja_monto' => $request->monto,
-                'cja_fecha' => now(),
+                'cja_fecha' => $request->fecha_pago ? Carbon::parse($request->fecha_pago)->toDateString() : now()->toDateString(),
                 'cja_metodo_pago' => $metodoId,
-                'cja_no_referencia' => $request->referencia ?? "PAGO-DEUDA-{$id}",
-                'cja_situacion' => 'ACTIVO',
-                'cja_observaciones' => "Abono a deuda ID {$id}. Nota: " . ($request->nota ?? ''),
+                'cja_tipo_banco' => $request->banco_id,
+                'cja_no_referencia' => $request->referencia,
+                'cja_observaciones' => 'Abono a deuda #' . $id . '. ' . $request->nota,
                 'created_at' => now(),
             ]);
 

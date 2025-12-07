@@ -183,10 +183,51 @@
                         <span id="carrito-total" class="text-blue-600">Q0.00</span>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Monto Anticipo (Q)</label>
-                        <input type="number" id="monto_pagado" min="0" step="0.01" value="0.00"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-green-600">
+                    <div class="space-y-3">
+                        <!-- Método de Pago -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Método de Pago</label>
+                            <select id="metodo_pago" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="TRANSFERENCIA">Transferencia</option>
+                                <option value="CHEQUE">Cheque</option>
+                                <option value="TARJETA">Tarjeta</option>
+                            </select>
+                        </div>
+
+                        <!-- Banco (Oculto por defecto) -->
+                        <div id="div-banco" class="hidden">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Banco</label>
+                            <select id="banco_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">Seleccionar banco...</option>
+                                <option value="1">Banrural</option>
+                                <option value="2">Banco Industrial</option>
+                                <option value="3">G&T Continental</option>
+                                <option value="4">BAM</option>
+                                <option value="5">Interbanco</option>
+                            </select>
+                        </div>
+
+                        <!-- Fecha Pago (Oculto por defecto) -->
+                        <div id="div-fecha-pago" class="hidden">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha de Pago</label>
+                            <input type="datetime-local" id="fecha_pago" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Referencia (Oculto por defecto) -->
+                        <div id="div-referencia" class="hidden">
+                            <label id="lbl-referencia" class="block text-sm font-semibold text-gray-700 mb-1">No. Autorización</label>
+                            <input type="text" id="referencia" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Monto Anticipo -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Monto Anticipo (Q)</label>
+                            <input type="number" id="monto_pagado" min="0" step="0.01" value="0.00"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-green-600">
+                        </div>
                     </div>
 
                     <button id="btn-procesar" type="button"

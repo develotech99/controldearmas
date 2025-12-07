@@ -435,7 +435,40 @@ document.addEventListener('DOMContentLoaded', function () {
     btnCerrarCarrito.addEventListener('click', cerrarCarrito);
     overlayCarrito.addEventListener('click', cerrarCarrito);
 
-    // --- Procesar Preventa ---
+    // --- Lógica de Pago (Preventa) ---
+    const selectMetodoPago = document.getElementById('metodo_pago');
+    const divBanco = document.getElementById('div-banco');
+    const divFechaPago = document.getElementById('div-fecha-pago');
+    const divReferencia = document.getElementById('div-referencia');
+    const lblReferencia = document.getElementById('lbl-referencia');
+    const inputFechaPago = document.getElementById('fecha_pago');
+
+    // Init fecha pago
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    if (inputFechaPago) inputFechaPago.value = now.toISOString().slice(0, 16);
+
+    selectMetodoPago?.addEventListener('change', function () {
+        const metodo = this.value;
+        if (metodo === 'EFECTIVO') {
+            divBanco.classList.add('hidden');
+            divFechaPago.classList.add('hidden');
+            divReferencia.classList.add('hidden');
+        } else {
+            divBanco.classList.remove('hidden');
+            divFechaPago.classList.remove('hidden');
+            divReferencia.classList.remove('hidden');
+
+            if (metodo === 'TARJETA') {
+                lblReferencia.textContent = 'No. Autorización';
+            } else if (metodo === 'CHEQUE') {
+                lblReferencia.textContent = 'No. Cheque';
+            } else if (metodo === 'TRANSFERENCIA') {
+                lblReferencia.textContent = 'No. Transferencia';
+            }
+        }
+    });
+
     // --- Procesar Preventa ---
     btnProcesar.addEventListener('click', async () => {
         if (!clienteSeleccionado) {
@@ -446,6 +479,28 @@ document.addEventListener('DOMContentLoaded', function () {
         if (carrito.length === 0) {
             Swal.fire('Error', 'El carrito está vacío', 'warning');
             return;
+        }
+
+        // Validar Pago
+        const metodo = selectMetodoPago.value;
+        const banco = document.getElementById('banco_id').value;
+        const fechaPago = inputFechaPago.value;
+        const referencia = document.getElementById('referencia').value;
+        const montoAnticipo = parseFloat(inputMontoPagado.value) || 0;
+
+        if (montoAnticipo > 0 && metodo !== 'EFECTIVO') {
+            if (!banco) {
+                Swal.fire('Error', 'Debe seleccionar un banco', 'warning');
+                return;
+            }
+            if (!fechaPago) {
+                Swal.fire('Error', 'Debe ingresar la fecha de pago', 'warning');
+                return;
+            }
+            if (!referencia) {
+                Swal.fire('Error', 'Debe ingresar el número de referencia/autorización', 'warning');
+                return;
+            }
         }
 
         // Loader en botón
@@ -465,7 +520,12 @@ document.addEventListener('DOMContentLoaded', function () {
             monto_pagado: inputMontoPagado.value,
             fecha: inputFecha.value,
             observaciones: inputObservaciones.value,
-            productos: carrito
+            productos: carrito,
+            // Datos de Pago
+            metodo_pago: metodo,
+            banco_id: banco,
+            fecha_pago: fechaPago,
+            referencia: referencia
         };
 
         try {

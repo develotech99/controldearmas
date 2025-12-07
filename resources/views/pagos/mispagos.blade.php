@@ -398,6 +398,9 @@
                                 <option value="">— Selecciona el banco —</option>
                                 <option value="1">Banrural</option>
                                 <option value="2">Banco Industrial</option>
+                                <option value="3">G&T Continental</option>
+                                <option value="4">BAM</option>
+                                <option value="5">Interbanco</option>
                             </select>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Este banco se usará para validar el comprobante.</p>
                         </div>

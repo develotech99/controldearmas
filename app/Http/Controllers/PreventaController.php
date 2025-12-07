@@ -33,7 +33,25 @@ class PreventaController extends Controller
             'productos.*.producto_id' => 'required|exists:pro_productos,producto_id',
             'productos.*.cantidad' => 'required|integer|min:1',
             'productos.*.precio' => 'required|numeric|min:0',
+            // Payment fields validation
+            'metodo_pago' => 'nullable|string',
+            'banco_id' => 'nullable|integer',
+            'fecha_pago' => 'nullable|date',
+            'referencia' => 'nullable|string',
         ]);
+
+        // Custom validation for non-cash payments
+        if ($request->monto_pagado > 0 && $request->metodo_pago && $request->metodo_pago !== 'EFECTIVO') {
+            if (!$request->banco_id) {
+                return response()->json(['success' => false, 'message' => 'El banco es requerido para este método de pago.'], 422);
+            }
+            if (!$request->fecha_pago) {
+                return response()->json(['success' => false, 'message' => 'La fecha de pago es requerida.'], 422);
+            }
+            if (!$request->referencia) {
+                return response()->json(['success' => false, 'message' => 'La referencia/autorización es requerida.'], 422);
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -66,16 +84,21 @@ class PreventaController extends Controller
 
             // 3. Registrar pago pendiente de validación si hay monto > 0
             if ($request->monto_pagado > 0) {
+                $concepto = 'Abono Preventa #' . $preventa->prev_id;
+                if ($request->metodo_pago) {
+                    $concepto .= " ({$request->metodo_pago})";
+                }
+
                 DB::table('pro_pagos_subidos')->insert([
                     'ps_venta_id'               => null, // No hay venta aún
                     'ps_preventa_id'            => $preventa->prev_id,
-                    'ps_cliente_user_id'        => $cliente->cliente_user_id ?? null, // Si tiene usuario
+                    'ps_cliente_user_id'        => null, // Ajustar si se tiene el user_id del cliente
                     'ps_monto_comprobante'      => $request->monto_pagado,
-                    'ps_fecha_comprobante'      => now(),
-                    'ps_referencia'             => 'PRE-' . $preventa->prev_id,
-                    'ps_concepto'               => 'Abono Preventa #' . $preventa->prev_id,
+                    'ps_fecha_comprobante'      => $request->fecha_pago ? \Carbon\Carbon::parse($request->fecha_pago) : now(),
+                    'ps_referencia'             => $request->referencia ?? ('PRE-' . $preventa->prev_id),
+                    'ps_concepto'               => $concepto,
                     'ps_estado'                 => 'PENDIENTE_VALIDACION',
-                    'ps_banco_id'               => null, // Se puede agregar si el front lo envía
+                    'ps_banco_id'               => $request->banco_id,
                     'ps_imagen_path'            => null,
                     'created_at'                => now(),
                     'updated_at'                => now(),

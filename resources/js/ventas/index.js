@@ -3890,6 +3890,7 @@ function validarMetodoPago() {
     const metodoPago = document.querySelector('input[name="metodoPago"]:checked')?.value;
     const numeroAutorizacion = document.getElementById("numeroAutorizacion")?.value.trim() || '';
     const selecBanco = document.getElementById("selectBanco")?.value.trim() || '';
+    const fechaPago = document.getElementById("fechaPago")?.value;
 
     const checkSaldoFavor = document.getElementById('checkSaldoFavor');
     const montoRestanteElem = document.getElementById('montoRestantePagar');
@@ -3938,24 +3939,36 @@ function validarMetodoPago() {
                     `Debe ingresar el número de autorización para ${tipoMetodo[metodoPago]}`
                 );
             }
+
+            if (!fechaPago) {
+                errores.push(
+                    `Debe ingresar la fecha de pago para ${tipoMetodo[metodoPago]}`
+                );
+            }
             break;
 
         case "6": // Pagos/Cuotas
-            // Verificar si el abono es por transferencia
-            const esTransferencia = document.querySelector(
-                'input[name="metodoAbono"][value="transferencia"]:checked'
-            );
+            // Verificar si el abono es por transferencia o cheque
+            const metodoAbono = document.querySelector(
+                'input[name="metodoAbono"]:checked'
+            )?.value;
 
-            if (esTransferencia) {
+            if (metodoAbono === "transferencia" || metodoAbono === "cheque") {
                 if (!selecBanco || selecBanco === "") {
                     errores.push(
-                        `Debe seleccionar el tipo de banco para el abono por transferencia`
+                        `Debe seleccionar el tipo de banco para el abono`
                     );
                 }
 
                 if (!numeroAutorizacion) {
                     errores.push(
-                        `Debe ingresar el número de autorización de la transferencia`
+                        `Debe ingresar el número de autorización/cheque`
+                    );
+                }
+
+                if (!fechaPago) {
+                    errores.push(
+                        `Debe ingresar la fecha del abono`
                     );
                 }
             }
@@ -4149,6 +4162,7 @@ async function procesarVentaFinal() {
                 case "5": // Cheque
                     const numeroAutorizacion = document.getElementById("numeroAutorizacion").value.trim();
                     const bancoId = document.getElementById("selectBanco").value;
+                    const fechaPagoVal = document.getElementById("fechaPago").value;
 
                     datosVenta.pago = [{
                         tipo: metodoPago === "2" ? "tarjeta_credito" :
@@ -4156,13 +4170,15 @@ async function procesarVentaFinal() {
                                 metodoPago === "4" ? "transferencia" : "cheque",
                         monto: montoRestante.toFixed(2),
                         numero_autorizacion: numeroAutorizacion,
-                        banco_id: bancoId
+                        banco_id: bancoId,
+                        fecha_pago: fechaPagoVal
                     }];
                     break;
 
                 case "6": // Pagos/Cuotas
                     const abonoInicial = parseFloat(document.getElementById("abonoInicial").value) || 0;
                     const metodoAbono = document.querySelector('input[name="metodoAbono"]:checked')?.value || "efectivo";
+                    const fechaPagoAbono = document.getElementById("fechaPago").value;
 
                     // Recopilar cuotas
                     const cuotasInputs = document.querySelectorAll("#cuotasLista .cuota-input");
@@ -4180,24 +4196,10 @@ async function procesarVentaFinal() {
                         cantidad_cuotas: cuotas.length,
                         cuotas: cuotas,
                         // Agregar datos de banco si es transferencia
-                        banco_abono: metodoAbono === 'transferencia' ? document.getElementById("selectBanco").value : null,
-                        autorizacion_abono: metodoAbono === 'transferencia' ? document.getElementById("numeroAutorizacion").value : null
+                        banco_abono: (metodoAbono === 'transferencia' || metodoAbono === 'cheque') ? document.getElementById("selectBanco").value : null,
+                        autorizacion_abono: (metodoAbono === 'transferencia' || metodoAbono === 'cheque') ? document.getElementById("numeroAutorizacion").value : null,
+                        fecha_pago_abono: (metodoAbono === 'transferencia' || metodoAbono === 'cheque') ? fechaPagoAbono : null
                     }];
-
-                    // Si el abono es por transferencia, agregar datos bancarios (redundante pero mantenemos lógica anterior por si acaso)
-                    if (metodoAbono === "transferencia") {
-                        const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
-                        const bancoIdAbono = document.getElementById("selectBanco").value;
-                        datosVenta.pago[0].numero_autorizacion_abono = numeroAutorizacionAbono;
-                        datosVenta.pago[0].banco_id_abono = bancoIdAbono;
-                    }
-                    // Si el abono es por cheque
-                    if (metodoAbono === "cheque") {
-                        const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
-                        const bancoIdAbono = document.getElementById("selectBanco").value;
-                        datosVenta.pago[0].numero_autorizacion_abono = numeroAutorizacionAbono;
-                        datosVenta.pago[0].banco_id_abono = bancoIdAbono;
-                    }
                     break;
             }
         } else {
@@ -4208,13 +4210,41 @@ async function procesarVentaFinal() {
         ('Datos de venta a enviar:', datosVenta);
 
         // 4. ENVIAR AL CONTROLADOR
+        // 4. ENVIAR AL CONTROLADOR
+        const formData = new FormData();
+
+        // Agregar campos simples
+        formData.append('cliente_id', datosVenta.cliente_id);
+        formData.append('fecha_venta', datosVenta.fecha_venta);
+        formData.append('subtotal', datosVenta.subtotal);
+        formData.append('descuento_porcentaje', datosVenta.descuento_porcentaje);
+        formData.append('descuento_monto', datosVenta.descuento_monto);
+        formData.append('total', datosVenta.total);
+        if (datosVenta.empresa_id) formData.append('empresa_id', datosVenta.empresa_id);
+        formData.append('saldo_favor_usado', datosVenta.saldo_favor_usado);
+        if (datosVenta.metodo_pago) formData.append('metodo_pago', datosVenta.metodo_pago);
+
+        // Agregar productos (JSON stringified)
+        formData.append('productos', JSON.stringify(datosVenta.productos));
+
+        // Agregar pago (JSON stringified)
+        if (datosVenta.pago) {
+            formData.append('pago', JSON.stringify(datosVenta.pago));
+        }
+
+        // Agregar comprobante si existe
+        const fileInput = document.getElementById('comprobante_pago');
+        if (fileInput && fileInput.files.length > 0) {
+            formData.append('comprobante', fileInput.files[0]);
+        }
+
         const response = await fetch('/api/ventas/procesar-venta', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                // Content-Type header is automatically set by fetch when using FormData
             },
-            body: JSON.stringify(datosVenta)
+            body: formData
         });
 
         const resultado = await response.json();
@@ -4310,6 +4340,7 @@ function limpiarFormularioVenta() {
         .toISOString()
         .slice(0, 16);
     document.getElementById("fechaVenta").value = fechaHoraLocal;
+    document.getElementById("fechaPago").value = fechaHoraLocal;
 
     // Recalcular totales
     calcularTotales();

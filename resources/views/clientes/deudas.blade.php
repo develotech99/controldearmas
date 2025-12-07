@@ -187,14 +187,32 @@
                 </select>
             </div>
 
+            <div id="divBanco" class="hidden">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Banco</label>
+                <select id="pago_banco" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                    <option value="">Seleccione un banco...</option>
+                    <!-- JS Populate -->
+                </select>
+            </div>
+
             <div id="divReferencia" class="hidden">
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" id="lblReferencia">Referencia</label>
                 <input type="text" id="pago_referencia" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
             </div>
 
             <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha de Pago *</label>
+                <input type="datetime-local" id="pago_fecha" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white" required>
+            </div>
+
+            <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nota (Opcional)</label>
                 <input type="text" id="pago_nota" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Comprobante (Opcional)</label>
+                <input type="file" id="pago_comprobante" accept="image/*,application/pdf" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
             </div>
 
             <div class="flex justify-end pt-4">

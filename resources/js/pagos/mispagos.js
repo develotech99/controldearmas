@@ -190,13 +190,33 @@ const datatable = new DataTable('#tablaFacturas', {
             searchable: false,
             render: (_d, _t, row) => {
                 let extraBtns = '';
-                if (row.comprobante_revision) {
+
+                // Buscar comprobante en pagos realizados si no hay en revisión
+                let comprobanteUrl = row.comprobante_revision ? `/storage/${row.comprobante_revision}` : null;
+
+                if (!comprobanteUrl && Array.isArray(row.pagos_realizados)) {
+                    const pagoConComprobante = row.pagos_realizados.find(p => p.comprobante);
+                    if (pagoConComprobante) {
+                        comprobanteUrl = `/storage/${pagoConComprobante.comprobante}`;
+                    }
+                }
+
+                if (comprobanteUrl) {
                     extraBtns += `
-                        <a href="/storage/${row.comprobante_revision}" target="_blank" 
+                        <a href="${comprobanteUrl}" target="_blank" 
                            class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                            title="Ver Boleta Cargada">
                             <i class="fas fa-file-invoice mr-1"></i>Boleta
                         </a>`;
+                } else {
+                    // Botón para subir boleta si NO existe (para cualquier tipo de pago)
+                    // Se usa la misma lógica de modal de pago pero solo para subir comprobante
+                    extraBtns += `
+                        <button class="btn-subir-boleta bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                data-venta="${row.venta_id}"
+                                title="Adjuntar Boleta">
+                            <i class="fas fa-upload mr-1"></i>Adjuntar
+                        </button>`;
                 }
 
                 if (Number(row.pendiente) > 0) {
@@ -422,6 +442,25 @@ document.getElementById('tablaFacturas')?.addEventListener('click', (ev) => {
         renderCuotas(venta);
         btnSubir && (btnSubir.dataset.venta = ventaId);
         openModal();
+    }
+
+    if (btn.classList.contains('btn-subir-boleta')) {
+        const ventaId = btn.dataset.venta;
+        const venta = ventaIndex.get(Number(ventaId));
+        if (!venta) return;
+
+        // Limpiar lista de cuotas porque es subida directa
+        listDiv.innerHTML = '';
+        totalSel.textContent = 'Q 0.00';
+        selectedCuotas = [];
+
+        // Configurar modal para solo subida
+        btnSubir && (btnSubir.dataset.venta = ventaId);
+        btnSubir && (btnSubir.dataset.modo = 'solo_boleta'); // Flag para saber que es solo boleta
+
+        openModal();
+        // Saltar directamente al paso 2 (subir foto)
+        showStep(2);
     }
 
     if (btn.classList.contains('btn-detalle')) {

@@ -344,7 +344,15 @@
                                                 <option value="banco_industrial">Banco Industrial</option>
                                                 <option value="banco_bam">Banco BAM</option>
                                                 <option value="banco_gyt">Banco GYT</option>
+                                                <option value="interbanco">Interbanco</option>
                                             </select>
+                                        </div>
+
+                                        <!-- Fecha de Transferencia/Pago -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Pago</label>
+                                            <input type="datetime-local" id="fechaPago"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                         </div>
 
                                         <!-- Número de Autorización -->
@@ -353,6 +361,13 @@
                                                 Autorización / No. Cheque</label>
                                             <input type="text" id="numeroAutorizacion"
                                                 placeholder="Ingrese el número de autorización"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <!-- Comprobante de Pago -->
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Comprobante (Opcional)</label>
+                                            <input type="file" id="comprobante_pago" accept="image/*,application/pdf"
                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                         </div>
                                     </div>

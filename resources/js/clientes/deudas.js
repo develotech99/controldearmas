@@ -166,6 +166,43 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Cargar bancos
+    const pagoBanco = document.getElementById('pago_banco');
+    const divBanco = document.getElementById('divBanco');
+    const pagoFecha = document.getElementById('pago_fecha');
+
+    async function cargarBancos() {
+        try {
+            const response = await fetch('/api/bancos'); // Asumiendo ruta existente
+            const bancos = await response.json();
+            pagoBanco.innerHTML = '<option value="">Seleccione un banco...</option>';
+            bancos.forEach(b => {
+                const option = document.createElement('option');
+                option.value = b.banco_id;
+                option.textContent = b.banco_nombre;
+                pagoBanco.appendChild(option);
+            });
+        } catch (e) {
+            console.error('Error cargando bancos', e);
+            // Fallback hardcoded si falla API
+            const bancos = [
+                { banco_id: 1, banco_nombre: 'Banrural' },
+                { banco_id: 2, banco_nombre: 'Banco Industrial' },
+                { banco_id: 3, banco_nombre: 'G&T Continental' },
+                { banco_id: 4, banco_nombre: 'BAM' },
+                { banco_id: 5, banco_nombre: 'Interbanco' }
+            ];
+            pagoBanco.innerHTML = '<option value="">Seleccione un banco...</option>';
+            bancos.forEach(b => {
+                const option = document.createElement('option');
+                option.value = b.banco_id;
+                option.textContent = b.banco_nombre;
+                pagoBanco.appendChild(option);
+            });
+        }
+    }
+    cargarBancos();
+
     // --- Lógica de Pago (Abono) ---
     window.abrirModalPago = function (id, total, saldo) {
         document.getElementById('pago_deuda_id').value = id;
@@ -178,6 +215,12 @@ document.addEventListener('DOMContentLoaded', function () {
         formPago.reset();
         pagoMetodo.value = 'EFECTIVO';
         divReferencia.classList.add('hidden');
+        divBanco.classList.add('hidden');
+
+        // Set default date to now
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        pagoFecha.value = now.toISOString().slice(0, 16);
 
         modalPago.classList.remove('hidden');
         modalPago.classList.add('flex');
@@ -194,11 +237,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const metodo = pagoMetodo.value;
         if (metodo === 'EFECTIVO') {
             divReferencia.classList.add('hidden');
+            divBanco.classList.add('hidden');
         } else {
             divReferencia.classList.remove('hidden');
-            if (metodo === 'TARJETA') lblReferencia.textContent = 'No. Autorización';
-            else if (metodo === 'CHEQUE') lblReferencia.textContent = 'No. Cheque';
-            else if (metodo === 'TRANSFERENCIA') lblReferencia.textContent = 'No. Transferencia';
+            divBanco.classList.remove('hidden'); // Mostrar banco para Transferencia, Cheque y Tarjeta
+
+            if (metodo === 'TARJETA') {
+                lblReferencia.textContent = 'No. Autorización';
+            }
+            else if (metodo === 'CHEQUE') {
+                lblReferencia.textContent = 'No. Cheque';
+            }
+            else if (metodo === 'TRANSFERENCIA') {
+                lblReferencia.textContent = 'No. Transferencia';
+            }
         }
     });
 
@@ -213,21 +265,31 @@ document.addEventListener('DOMContentLoaded', function () {
         const metodo = pagoMetodo.value;
         const referencia = document.getElementById('pago_referencia').value;
         const nota = document.getElementById('pago_nota').value;
+        const bancoId = pagoBanco.value;
+        const fecha = pagoFecha.value;
 
         try {
+            const formData = new FormData();
+            formData.append('monto', monto);
+            formData.append('metodo_pago', metodo);
+            formData.append('referencia', referencia);
+            formData.append('nota', nota);
+            formData.append('banco_id', bancoId);
+            formData.append('fecha_pago', fecha);
+
+            const fileInput = document.getElementById('pago_comprobante');
+            if (fileInput.files.length > 0) {
+                formData.append('comprobante', fileInput.files[0]);
+            }
+
             const response = await fetch(`/clientes/deudas/${id}/pagar`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
+                    // Content-Type header is automatically set by fetch when using FormData
                 },
-                body: JSON.stringify({
-                    monto: monto,
-                    metodo_pago: metodo,
-                    referencia: referencia,
-                    nota: nota
-                })
+                body: formData
             });
 
             const data = await response.json();
