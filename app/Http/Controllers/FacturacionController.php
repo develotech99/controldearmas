@@ -1236,14 +1236,29 @@ public function certificarCambiaria(Request $request)
 
             foreach ($detalles as $det) {
                 if ($det->producto_requiere_serie == 1) {
+                    // Get all series assigned to this sale detail
                     $series = DB::table('pro_movimientos as m')
                         ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
                         ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id)
                         ->where('m.mov_producto_id', $det->det_producto_id)
-                        ->pluck('s.serie_numero_serie')
+                        ->select('s.serie_id', 's.serie_numero_serie')
+                        ->get();
+
+                    // Get IDs of series already invoiced for this sale
+                    $invoicedSeriesIds = DB::table('facturacion_series as fs')
+                        ->join('facturacion_detalle as fd', 'fs.fac_detalle_id', '=', 'fd.det_fac_id')
+                        ->join('facturacion as f', 'fd.det_fac_factura_id', '=', 'f.fac_id')
+                        ->where('f.fac_venta_id', $venta->ven_id)
+                        ->where('f.fac_estado', '!=', 'ANULADO') // Ignore cancelled invoices
+                        ->pluck('fs.serie_id')
                         ->toArray();
 
-                    $det->series = $series;
+                    // Filter out invoiced series
+                    $availableSeries = $series->filter(function($s) use ($invoicedSeriesIds) {
+                        return !in_array($s->serie_id, $invoicedSeriesIds);
+                    })->pluck('serie_numero_serie')->values()->toArray();
+
+                    $det->series = $availableSeries;
                 } else {
                     $det->series = [];
                 }

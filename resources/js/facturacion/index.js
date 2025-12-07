@@ -1137,166 +1137,96 @@ const seleccionarVenta = (venta) => {
     ventaSeleccionadaInfo.classList.remove('hidden');
     resultadosVenta.classList.add('hidden');
     busquedaVenta.value = '';
+    const buscarVenta = async () => {
+        const ventaId = busquedaVenta?.value?.trim();
+        if (!ventaId) {
+            Swal.fire({ icon: 'warning', title: 'Ingrese ID de venta', text: 'Por favor ingrese el ID de la venta a buscar.' });
+            return;
+        }
 
-    // Llenar items
-    contenedorItems.innerHTML = '';
-    if (venta.detalles && venta.detalles.length > 0) {
-        venta.detalles.forEach(det => {
-            if (det.series && det.series.length > 0) {
-                // Calcular descuento unitario
-                const descuentoTotal = parseFloat(det.det_descuento || 0);
-                const cantidadTotal = parseFloat(det.det_cantidad || 1);
-                const descuentoUnitario = cantidadTotal > 0 ? (descuentoTotal / cantidadTotal) : 0;
+        setBtnLoading(btnBuscarVenta, true);
 
-                // Agregar una línea por cada serie
-                det.series.forEach(serie => {
-                    // Check if serie is object or string (backward compatibility)
-                    const serieNumero = serie.numero || serie;
-                    const serieId = serie.id || null;
+        try {
+            const res = await fetch(`/api/ventas/${ventaId}`, {
+                headers: { 'X-CSRF-TOKEN': token }
+            });
+            const json = await res.json();
 
-                    // Series are usually 1 unit each. We assume if it's here, it's not invoiced yet 
-                    // UNLESS we track series individually in det_cantidad_facturada which is tricky for partial.
-                    // For now, we assume series items are either fully pending or fully invoiced if we rely on det_cantidad_facturada at line level.
-                    // BUT, if det_cantidad_facturada > 0, we might have invoiced some series.
-                    // Ideally we should filter out series that are already invoiced.
-                    // Since we don't have per-series status in this view, we'll rely on the count.
-                    // If det_cantidad_facturada < det_cantidad, we show available series.
-                    // This is a simplification. For strict control, we'd need to know WHICH series were invoiced.
-                    // Assuming FIFO or user selection.
-
-                    agregarItem({
-                        descripcion: `${det.producto_nombre} (Serie: ${serieNumero})`,
-                        cantidad: 1,
-                        precio: det.det_precio,
-                        descuento: descuentoUnitario.toFixed(2),
-                        producto_id: det.det_producto_id,
-                        detalle_venta_id: det.det_id,
-                        series_ids: serieId ? [serieId] : [],
-                        max: 1 // Series items are always 1
-                    });
-                });
-
-                // Si hay cantidad sobrante sin serie (should not happen for serialized items if data is correct)
-                const sobrante = cantidadTotal - det.series.length;
-                if (sobrante > 0) {
-                    // Check pending for non-serialized part
-                    // This part is tricky mixed with series. 
-                    // Let's assume for now series logic handles its own 1-by-1.
-                }
-            } else {
-                // Producto normal sin series
-                const cantidadTotal = parseFloat(det.det_cantidad || 0);
-                const cantidadFacturada = parseFloat(det.det_cantidad_facturada || 0);
-                const pendiente = cantidadTotal - cantidadFacturada;
-
-                if (pendiente > 0) {
-                    agregarItem({
-                        descripcion: det.producto_nombre,
-                        cantidad: pendiente,
-                        precio: det.det_precio,
-                        descuento: det.det_descuento, // Note: discount might need adjustment if partial
-                        producto_id: det.det_producto_id,
-                        detalle_venta_id: det.det_id,
-                        max: pendiente,
-                        pendiente: pendiente
-                    });
-                }
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'Venta no encontrada');
             }
-        });
-    }
-    recalcularTotales();
-};
 
-const buscarVenta = async () => {
-    const ventaId = busquedaVenta?.value?.trim();
-    if (!ventaId) {
-        Swal.fire({ icon: 'warning', title: 'Ingrese ID de venta', text: 'Por favor ingrese el ID de la venta a buscar.' });
-        return;
-    }
+            seleccionarVenta(json.data);
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'No se pudo buscar la venta' });
+        } finally {
+            setBtnLoading(btnBuscarVenta, false);
+        }
+    };
 
-    setBtnLoading(btnBuscarVenta, true);
 
-    try {
-        const res = await fetch(`/api/ventas/${ventaId}`, {
-            headers: { 'X-CSRF-TOKEN': token }
-        });
-        const json = await res.json();
+    btnBuscarVenta?.addEventListener('click', buscarVenta);
+    busquedaVenta?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarVenta();
+        }
+    });
 
-        if (!res.ok || !json.success) {
-            throw new Error(json.message || 'Venta no encontrada');
+    btnQuitarVenta?.addEventListener('click', () => {
+        facVentaId.value = '';
+        ventaSeleccionadaInfo.classList.add('hidden');
+        contenedorItems.innerHTML = '';
+        agregarItem(); // Agregar uno vacío
+        FormFactura.reset();
+        recalcularTotales();
+    });
+
+    // ===== SUBMIT: CERTIFICAR FACTURA =====
+    FormFactura?.addEventListener('submit', async (e) => {
+        const items = contenedorItems.querySelectorAll('.item-factura');
+        if (items.length === 0) {
+            e.preventDefault();
+            Swal.fire({ icon: 'warning', title: 'Sin items', text: 'Agrega al menos un producto/servicio.' });
+            return;
+        }
+        let totalFactura = 0;
+        items.forEach((item) => { totalFactura += toNumber(q(item, '.item-total').value); });
+        if (totalFactura <= 0) {
+            e.preventDefault();
+            Swal.fire({ icon: 'warning', title: 'Importes inválidos', text: 'Verifica cantidades, precios y descuentos.' });
+            return;
         }
 
-        seleccionarVenta(json.data);
-    } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'No se pudo buscar la venta' });
-    } finally {
-        setBtnLoading(btnBuscarVenta, false);
-    }
-};
-
-
-btnBuscarVenta?.addEventListener('click', buscarVenta);
-busquedaVenta?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
         e.preventDefault();
-        buscarVenta();
-    }
-});
 
-btnQuitarVenta?.addEventListener('click', () => {
-    facVentaId.value = '';
-    ventaSeleccionadaInfo.classList.add('hidden');
-    contenedorItems.innerHTML = '';
-    agregarItem(); // Agregar uno vacío
-    FormFactura.reset();
-    recalcularTotales();
-});
-
-// ===== SUBMIT: CERTIFICAR FACTURA =====
-FormFactura?.addEventListener('submit', async (e) => {
-    const items = contenedorItems.querySelectorAll('.item-factura');
-    if (items.length === 0) {
-        e.preventDefault();
-        Swal.fire({ icon: 'warning', title: 'Sin items', text: 'Agrega al menos un producto/servicio.' });
-        return;
-    }
-    let totalFactura = 0;
-    items.forEach((item) => { totalFactura += toNumber(q(item, '.item-total').value); });
-    if (totalFactura <= 0) {
-        e.preventDefault();
-        Swal.fire({ icon: 'warning', title: 'Importes inválidos', text: 'Verifica cantidades, precios y descuentos.' });
-        return;
-    }
-
-    e.preventDefault();
-
-    if (!token) {
-        Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
-        return;
-    }
-
-    const btn = btnGuardarFactura;
-    setBtnLoading(btn, true);
-
-    try {
-        const formData = new FormData(FormFactura);
-
-        const res = await fetch('/facturacion/certificar', {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
-            body: formData
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || data?.codigo !== 1) {
-            throw new Error(data?.detalle || data?.mensaje || `Error ${res.status}`);
+        if (!token) {
+            Swal.fire({ icon: 'error', title: 'CSRF no encontrado', text: 'No se encontró el token CSRF.' });
+            return;
         }
 
-        const result = await Swal.fire({
-            icon: 'success',
-            title: '¡Factura certificada!',
-            html: `
+        const btn = btnGuardarFactura;
+        setBtnLoading(btn, true);
+
+        try {
+            const formData = new FormData(FormFactura);
+
+            const res = await fetch('/facturacion/certificar', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || data?.codigo !== 1) {
+                throw new Error(data?.detalle || data?.mensaje || `Error ${res.status}`);
+            }
+
+            const result = await Swal.fire({
+                icon: 'success',
+                title: '¡Factura certificada!',
+                html: `
                 <div style="text-align:left">
                 <p><b>UUID:</b> ${data.data.uuid}</p>
                 <p><b>Serie:</b> ${data.data.serie}</p>
@@ -1304,106 +1234,106 @@ FormFactura?.addEventListener('submit', async (e) => {
                 <p><b>Total:</b> Q ${Number(data.data.total).toFixed(2)}</p>
                 </div>
             `,
-            showCancelButton: true,
-            confirmButtonText: '📄 Imprimir Factura',
-            cancelButtonText: 'Cerrar',
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#6b7280',
-            reverseButtons: true
-        });
+                showCancelButton: true,
+                confirmButtonText: '📄 Imprimir Factura',
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6b7280',
+                reverseButtons: true
+            });
 
-        if (result.isConfirmed) {
-            window.open(`/facturacion/${data.data.fac_id}/vista`, '_blank');
-        }
-
-        cerrarModal('modalFactura');
-        FormFactura.reset();
-        contenedorItems.innerHTML = '';
-        document.getElementById('subtotalFactura').textContent = 'Q 0.00';
-        document.getElementById('descuentoFactura').textContent = 'Q 0.00';
-        document.getElementById('ivaFactura').textContent = 'Q 0.00';
-        document.getElementById('totalFactura').textContent = 'Q 0.00';
-
-        if (window.tablaFacturas) {
-            window.tablaFacturas.ajax.reload(null, false);
-        }
-
-    } catch (err) {
-        console.error(err);
-        Swal.fire({ icon: 'error', title: 'No se pudo certificar', text: err.message || 'Error desconocido' });
-    } finally {
-        setBtnLoading(btn, false);
-    }
-});
-
-// =============================
-// DATATABLE FACTURAS
-// =============================
-const elTabla = document.getElementById('tablaFacturas');
-const fmtQ = (n) => `Q ${Number(n || 0).toFixed(2)}`;
-const fmtFecha = (s) => {
-    if (!s) return '—';
-    const d = new Date(s);
-    return d.toLocaleDateString('es-GT') + ' ' + d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
-};
-
-const estadoBadge = (estado) => {
-    if (estado === 'CERTIFICADO') {
-        return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">✓ Certificado</span>';
-    }
-    if (estado === 'ANULADO') {
-        return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">✕ Anulado</span>';
-    }
-    return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">${estado}</span>`;
-};
-
-const ES_LANG = {
-    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-};
-
-if (elTabla) {
-    window.tablaFacturas = new DataTable(elTabla, {
-        ajax: {
-            url: '/facturacion/obtener-facturas',
-            dataSrc: 'data',
-            data: (d) => {
-                const fi = document.getElementById('filtroFechaInicio')?.value;
-                const ff = document.getElementById('filtroFechaFin')?.value;
-                if (fi) d.fecha_inicio = fi;
-                if (ff) d.fecha_fin = ff;
-                return d;
+            if (result.isConfirmed) {
+                window.open(`/facturacion/${data.data.fac_id}/vista`, '_blank');
             }
-        },
-        columns: [
-            { title: 'UUID', data: 'fac_uuid', className: 'text-xs font-mono' },
-            {
-                title: 'Documento',
-                data: null,
-                render: (d, t, row) => `${row.fac_serie || ''}-${row.fac_numero || ''}`,
-                className: 'font-semibold'
+
+            cerrarModal('modalFactura');
+            FormFactura.reset();
+            contenedorItems.innerHTML = '';
+            document.getElementById('subtotalFactura').textContent = 'Q 0.00';
+            document.getElementById('descuentoFactura').textContent = 'Q 0.00';
+            document.getElementById('ivaFactura').textContent = 'Q 0.00';
+            document.getElementById('totalFactura').textContent = 'Q 0.00';
+
+            if (window.tablaFacturas) {
+                window.tablaFacturas.ajax.reload(null, false);
+            }
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire({ icon: 'error', title: 'No se pudo certificar', text: err.message || 'Error desconocido' });
+        } finally {
+            setBtnLoading(btn, false);
+        }
+    });
+
+    // =============================
+    // DATATABLE FACTURAS
+    // =============================
+    const elTabla = document.getElementById('tablaFacturas');
+    const fmtQ = (n) => `Q ${Number(n || 0).toFixed(2)}`;
+    const fmtFecha = (s) => {
+        if (!s) return '—';
+        const d = new Date(s);
+        return d.toLocaleDateString('es-GT') + ' ' + d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const estadoBadge = (estado) => {
+        if (estado === 'CERTIFICADO') {
+            return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">✓ Certificado</span>';
+        }
+        if (estado === 'ANULADO') {
+            return '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">✕ Anulado</span>';
+        }
+        return `<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">${estado}</span>`;
+    };
+
+    const ES_LANG = {
+        url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+    };
+
+    if (elTabla) {
+        window.tablaFacturas = new DataTable(elTabla, {
+            ajax: {
+                url: '/facturacion/obtener-facturas',
+                dataSrc: 'data',
+                data: (d) => {
+                    const fi = document.getElementById('filtroFechaInicio')?.value;
+                    const ff = document.getElementById('filtroFechaFin')?.value;
+                    if (fi) d.fecha_inicio = fi;
+                    if (ff) d.fecha_fin = ff;
+                    return d;
+                }
             },
-            { title: 'Cliente', data: 'fac_receptor_nombre', className: 'max-w-xs truncate' },
-            { title: 'Estado', data: 'fac_estado', render: (d) => estadoBadge(d), className: 'text-center' },
-            { title: 'Total', data: 'fac_total', render: (d) => fmtQ(d), className: 'text-right font-semibold' },
-            { title: 'Moneda', data: 'fac_moneda', className: 'text-center' },
-            { title: 'Fecha Emisión', data: 'fac_fecha_emision', render: (d) => fmtFecha(d), className: 'text-sm' },
-            { title: 'Certificado', data: 'fac_fecha_certificacion', render: (d) => fmtFecha(d), className: 'text-sm' },
-            {
-                title: 'Acciones',
-                data: null,
-                orderable: false,
-                searchable: false,
-                render: (d, t, row) => {
+            columns: [
+                { title: 'UUID', data: 'fac_uuid', className: 'text-xs font-mono' },
+                {
+                    title: 'Documento',
+                    data: null,
+                    render: (d, t, row) => `${row.fac_serie || ''}-${row.fac_numero || ''}`,
+                    className: 'font-semibold'
+                },
+                { title: 'Cliente', data: 'fac_receptor_nombre', className: 'max-w-xs truncate' },
+                { title: 'Estado', data: 'fac_estado', render: (d) => estadoBadge(d), className: 'text-center' },
+                { title: 'Total', data: 'fac_total', render: (d) => fmtQ(d), className: 'text-right font-semibold' },
+                { title: 'Moneda', data: 'fac_moneda', className: 'text-center' },
+                { title: 'Fecha Emisión', data: 'fac_fecha_emision', render: (d) => fmtFecha(d), className: 'text-sm' },
+                { title: 'Certificado', data: 'fac_fecha_certificacion', render: (d) => fmtFecha(d), className: 'text-sm' },
+                {
+                    title: 'Acciones',
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: (d, t, row) => {
 
-                    const puedeAnular = row.fac_estado === 'CERTIFICADO';
+                        const puedeAnular = row.fac_estado === 'CERTIFICADO';
 
-                    // Elegir ruta correcta según tipo de factura
-                    const urlVista =
-                        row.fac_tipo_documento === 'FCAM'
-                            ? `/facturacion/${row.fac_id}/vista-cambiaria`
-                            : `/facturacion/${row.fac_id}/vista`;
+                        // Elegir ruta correcta según tipo de factura
+                        const urlVista =
+                            row.fac_tipo_documento === 'FCAM'
+                                ? `/facturacion/${row.fac_id}/vista-cambiaria`
+                                : `/facturacion/${row.fac_id}/vista`;
 
-                    return `
+                        return `
         <div class="flex flex-nowrap gap-2">
 
             <!-- Botón imprimir -->
@@ -1430,30 +1360,30 @@ if (elTabla) {
             ` : ''}
         </div>
     `;
+                    }
+
                 }
+            ],
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            ordering: false,
+            searching: false,
+            scrollX: true,
+            autoWidth: false,
+            language: ES_LANG
+        });
 
-            }
-        ],
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        ordering: false,
-        searching: false,
-        scrollX: true,
-        autoWidth: false,
-        language: ES_LANG
-    });
+        // Event delegation for Anular button
+        elTabla.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.btn-anular');
+            if (!btn) return;
 
-    // Event delegation for Anular button
-    elTabla.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.btn-anular');
-        if (!btn) return;
+            const uuid = btn.dataset.anular;
+            const id = btn.dataset.id;
 
-        const uuid = btn.dataset.anular;
-        const id = btn.dataset.id;
-
-        const { value: formValues } = await Swal.fire({
-            title: 'Anular Factura',
-            html: `
+            const { value: formValues } = await Swal.fire({
+                title: 'Anular Factura',
+                html: `
                 <div class="text-left">
                     <p class="mb-4 text-sm text-gray-600">Seleccione el tipo de anulación:</p>
                     
@@ -1481,84 +1411,84 @@ if (elTabla) {
                     </div>
                 </div>
             `,
-            showCancelButton: true,
-            confirmButtonText: 'Proceder',
-            cancelButtonText: 'Cancelar',
-            focusConfirm: false,
-            preConfirm: () => {
-                const tipo = document.querySelector('input[name="tipo_anulacion"]:checked').value;
-                const motivo = document.getElementById('swal-motivo').value;
-                if (!motivo) {
-                    Swal.showValidationMessage('El motivo es requerido');
+                showCancelButton: true,
+                confirmButtonText: 'Proceder',
+                cancelButtonText: 'Cancelar',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const tipo = document.querySelector('input[name="tipo_anulacion"]:checked').value;
+                    const motivo = document.getElementById('swal-motivo').value;
+                    if (!motivo) {
+                        Swal.showValidationMessage('El motivo es requerido');
+                    }
+                    return { tipo, motivo };
                 }
-                return { tipo, motivo };
-            }
-        });
+            });
 
-        if (formValues) {
-            try {
-                // Show loading
-                Swal.fire({
-                    title: 'Anulando...',
-                    text: 'Por favor espere',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
+            if (formValues) {
+                try {
+                    // Show loading
+                    Swal.fire({
+                        title: 'Anulando...',
+                        text: 'Por favor espere',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
 
-                const res = await fetch(`/facturacion/anular/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
-                    body: JSON.stringify({
-                        tipo_anulacion: formValues.tipo,
-                        motivo: formValues.motivo
-                    })
-                });
+                    const res = await fetch(`/facturacion/anular/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            tipo_anulacion: formValues.tipo,
+                            motivo: formValues.motivo
+                        })
+                    });
 
-                const data = await res.json();
+                    const data = await res.json();
 
-                if (data.codigo === 1) {
-                    Swal.fire('Anulada', 'La factura ha sido anulada correctamente.', 'success');
-                    window.tablaFacturas.ajax.reload(null, false);
-                } else {
-                    throw new Error(data.mensaje || 'Error al anular');
+                    if (data.codigo === 1) {
+                        Swal.fire('Anulada', 'La factura ha sido anulada correctamente.', 'success');
+                        window.tablaFacturas.ajax.reload(null, false);
+                    } else {
+                        throw new Error(data.mensaje || 'Error al anular');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    Swal.fire('Error', error.message, 'error');
                 }
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Error', error.message, 'error');
             }
-        }
-    });
-}
-
-btnFiltrarFacturas?.addEventListener('click', () => {
-    if (window.tablaFacturas) {
-        Swal.fire({
-            title: 'Cargando...',
-            text: 'Filtrando facturas',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        window.tablaFacturas.ajax.reload(() => {
-            Swal.close();
         });
     }
-});
 
-// ===== CONSULTAR DTE =====
-const btnConsultarDte = document.getElementById('btnConsultarDte');
-const uuidConsulta = document.getElementById('uuid_consulta');
-const resultadoConsultaDte = document.getElementById('resultadoConsultaDte');
+    btnFiltrarFacturas?.addEventListener('click', () => {
+        if (window.tablaFacturas) {
+            Swal.fire({
+                title: 'Cargando...',
+                text: 'Filtrando facturas',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
 
-const templateResultadoDte = document.getElementById('templateResultadoDte') || (() => {
-    const temp = document.createElement('template');
-    temp.innerHTML = `
+            window.tablaFacturas.ajax.reload(() => {
+                Swal.close();
+            });
+        }
+    });
+
+    // ===== CONSULTAR DTE =====
+    const btnConsultarDte = document.getElementById('btnConsultarDte');
+    const uuidConsulta = document.getElementById('uuid_consulta');
+    const resultadoConsultaDte = document.getElementById('resultadoConsultaDte');
+
+    const templateResultadoDte = document.getElementById('templateResultadoDte') || (() => {
+        const temp = document.createElement('template');
+        temp.innerHTML = `
         <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
             <div class="flex items-center justify-between mb-3">
                 <h4 class="font-semibold text-gray-800">Resultado de la Consulta</h4>
@@ -1592,24 +1522,24 @@ const templateResultadoDte = document.getElementById('templateResultadoDte') || 
             </div>
         </div>
     `;
-    return temp;
-})();
+        return temp;
+    })();
 
-const consultarDte = async (uuid, contenedorResultado) => {
-    if (!uuid.trim()) {
-        Swal.fire({ icon: 'warning', title: 'UUID requerido', text: 'Por favor ingresa un UUID válido' });
-        return;
-    }
+    const consultarDte = async (uuid, contenedorResultado) => {
+        if (!uuid.trim()) {
+            Swal.fire({ icon: 'warning', title: 'UUID requerido', text: 'Por favor ingresa un UUID válido' });
+            return;
+        }
 
-    const uuidPattern = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
-    if (!uuidPattern.test(uuid)) {
-        Swal.fire({ icon: 'warning', title: 'UUID inválido', text: 'El formato del UUID no es correcto' });
-        return;
-    }
+        const uuidPattern = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
+        if (!uuidPattern.test(uuid)) {
+            Swal.fire({ icon: 'warning', title: 'UUID inválido', text: 'El formato del UUID no es correcto' });
+            return;
+        }
 
-    setBtnLoading(btnConsultarDte, true);
+        setBtnLoading(btnConsultarDte, true);
 
-    contenedorResultado.innerHTML = `
+        contenedorResultado.innerHTML = `
         <div class="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
             <div class="flex flex-col items-center justify-center space-y-3">
                 <svg class="w-8 h-8 animate-spin text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1621,28 +1551,28 @@ const consultarDte = async (uuid, contenedorResultado) => {
             </div>
         </div>
     `;
-    contenedorResultado.classList.remove('hidden');
+        contenedorResultado.classList.remove('hidden');
 
-    try {
-        const response = await fetch(`/facturacion/consultar-dte/${uuid}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': token
+        try {
+            const response = await fetch(`/facturacion/consultar-dte/${uuid}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.codigo !== 1) {
+                throw new Error(data.mensaje || 'Error al consultar el DTE');
             }
-        });
 
-        const data = await response.json();
+            mostrarResultadoDte(data.data, contenedorResultado);
+        } catch (error) {
+            console.error('Error consultando DTE:', error);
 
-        if (!response.ok || data.codigo !== 1) {
-            throw new Error(data.mensaje || 'Error al consultar el DTE');
-        }
-
-        mostrarResultadoDte(data.data, contenedorResultado);
-    } catch (error) {
-        console.error('Error consultando DTE:', error);
-
-        contenedorResultado.innerHTML = `
+            contenedorResultado.innerHTML = `
             <div class="bg-white rounded-lg border border-red-200 p-6 shadow-sm">
                 <div class="flex items-center space-x-3 text-red-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1655,44 +1585,44 @@ const consultarDte = async (uuid, contenedorResultado) => {
                 </div>
             </div>
         `;
-        contenedorResultado.classList.remove('hidden');
+            contenedorResultado.classList.remove('hidden');
 
-        Swal.fire({
-            icon: 'error',
-            title: 'Error en consulta',
-            text: error.message || 'No se pudo consultar el DTE'
-        });
-    } finally {
-        setBtnLoading(btnConsultarDte, false);
-    }
-};
+            Swal.fire({
+                icon: 'error',
+                title: 'Error en consulta',
+                text: error.message || 'No se pudo consultar el DTE'
+            });
+        } finally {
+            setBtnLoading(btnConsultarDte, false);
+        }
+    };
 
-const mostrarResultadoDte = (datos, contenedor) => {
-    const template = templateResultadoDte.content.cloneNode(true);
+    const mostrarResultadoDte = (datos, contenedor) => {
+        const template = templateResultadoDte.content.cloneNode(true);
 
-    template.querySelector('[data-uuid]').textContent = datos.UUID || datos.uuid;
-    template.querySelector('[data-documento]').textContent = `${datos.Serie || datos.serie}-${datos.Numero || datos.numero}`;
-    template.querySelector('[data-fecha-certificacion]').textContent = datos.FechaHoraCertificacion || datos.fechaHoraCertificacion;
+        template.querySelector('[data-uuid]').textContent = datos.UUID || datos.uuid;
+        template.querySelector('[data-documento]').textContent = `${datos.Serie || datos.serie}-${datos.Numero || datos.numero}`;
+        template.querySelector('[data-fecha-certificacion]').textContent = datos.FechaHoraCertificacion || datos.fechaHoraCertificacion;
 
-    const estado = datos.estado_local || 'Desconocido';
-    template.querySelector('[data-estado]').textContent = estado;
+        const estado = datos.estado_local || 'Desconocido';
+        template.querySelector('[data-estado]').textContent = estado;
 
-    const badge = template.querySelector('[data-estado-badge]');
-    badge.textContent = estado;
+        const badge = template.querySelector('[data-estado-badge]');
+        badge.textContent = estado;
 
-    let badgeClass = 'bg-gray-100 text-gray-800';
-    if (estado === 'CERTIFICADO') {
-        badgeClass = 'bg-emerald-100 text-emerald-800';
-    } else if (estado === 'ANULADO') {
-        badgeClass = 'bg-red-100 text-red-800';
-    }
+        let badgeClass = 'bg-gray-100 text-gray-800';
+        if (estado === 'CERTIFICADO') {
+            badgeClass = 'bg-emerald-100 text-emerald-800';
+        } else if (estado === 'ANULADO') {
+            badgeClass = 'bg-red-100 text-red-800';
+        }
 
-    badge.className = `px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`;
+        badge.className = `px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`;
 
-    if (estado === 'ANULADO' && datos.fecha_anulacion) {
-        const infoAnulacion = document.createElement('div');
-        infoAnulacion.className = 'col-span-2 bg-red-50 border border-red-200 rounded p-3 mt-2';
-        infoAnulacion.innerHTML = `
+        if (estado === 'ANULADO' && datos.fecha_anulacion) {
+            const infoAnulacion = document.createElement('div');
+            infoAnulacion.className = 'col-span-2 bg-red-50 border border-red-200 rounded p-3 mt-2';
+            infoAnulacion.innerHTML = `
             <p class="text-sm text-red-800 font-semibold mb-1">
                 <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -1702,101 +1632,101 @@ const mostrarResultadoDte = (datos, contenedor) => {
             <p class="text-xs text-red-700">Fecha de anulación: ${datos.fecha_anulacion}</p>
             ${datos.motivo_anulacion ? `<p class="text-xs text-red-700 mt-1">Motivo: ${datos.motivo_anulacion}</p>` : ''}
         `;
-        template.querySelector('.grid').appendChild(infoAnulacion);
-    }
+            template.querySelector('.grid').appendChild(infoAnulacion);
+        }
 
-    const btnLimpiar = template.querySelector('[data-limpiar-consulta]');
-    btnLimpiar?.addEventListener('click', () => {
-        contenedor.innerHTML = '';
-        contenedor.classList.add('hidden');
-        uuidConsulta.value = '';
-    });
-
-    contenedor.innerHTML = '';
-    contenedor.appendChild(template);
-    contenedor.classList.remove('hidden');
-};
-
-btnConsultarDte?.addEventListener('click', () => {
-    consultarDte(uuidConsulta.value, resultadoConsultaDte);
-});
-
-uuidConsulta?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        consultarDte(uuidConsulta.value, resultadoConsultaDte);
-    }
-});
-
-// ===== ANULAR FACTURA =====
-document.addEventListener('click', async (e) => {
-    if (e.target.closest('.btn-anular')) {
-        const btn = e.target.closest('.btn-anular');
-        const uuid = btn.dataset.anular;
-        const id = btn.dataset.id;
-
-        const result = await Swal.fire({
-            title: '¿Anular Factura?',
-            text: `Esta acción anulará la factura ${uuid}. ¿Estás seguro?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, anular',
-            cancelButtonText: 'Cancelar'
+        const btnLimpiar = template.querySelector('[data-limpiar-consulta]');
+        btnLimpiar?.addEventListener('click', () => {
+            contenedor.innerHTML = '';
+            contenedor.classList.add('hidden');
+            uuidConsulta.value = '';
         });
 
-        if (result.isConfirmed) {
-            try {
-                setBtnLoading(btn, true);
+        contenedor.innerHTML = '';
+        contenedor.appendChild(template);
+        contenedor.classList.remove('hidden');
+    };
 
-                const response = await fetch(`/facturacion/anular/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': token,
-                        'Accept': 'application/json'
-                    }
-                });
+    btnConsultarDte?.addEventListener('click', () => {
+        consultarDte(uuidConsulta.value, resultadoConsultaDte);
+    });
 
-                const data = await response.json();
+    uuidConsulta?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            consultarDte(uuidConsulta.value, resultadoConsultaDte);
+        }
+    });
 
-                if (response.ok && data.codigo === 1) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Factura anulada',
-                        text: 'La factura ha sido anulada exitosamente'
+    // ===== ANULAR FACTURA =====
+    document.addEventListener('click', async (e) => {
+        if (e.target.closest('.btn-anular')) {
+            const btn = e.target.closest('.btn-anular');
+            const uuid = btn.dataset.anular;
+            const id = btn.dataset.id;
+
+            const result = await Swal.fire({
+                title: '¿Anular Factura?',
+                text: `Esta acción anulará la factura ${uuid}. ¿Estás seguro?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, anular',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    setBtnLoading(btn, true);
+
+                    const response = await fetch(`/facturacion/anular/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json'
+                        }
                     });
 
-                    if (window.tablaFacturas) {
-                        window.tablaFacturas.ajax.reload(null, false);
+                    const data = await response.json();
+
+                    if (response.ok && data.codigo === 1) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Factura anulada',
+                            text: 'La factura ha sido anulada exitosamente'
+                        });
+
+                        if (window.tablaFacturas) {
+                            window.tablaFacturas.ajax.reload(null, false);
+                        }
+                    } else {
+                        throw new Error(data.mensaje || 'Error al anular la factura');
                     }
-                } else {
-                    throw new Error(data.mensaje || 'Error al anular la factura');
+                } catch (error) {
+                    console.error('Error anulando factura:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al anular',
+                        text: error.message || 'No se pudo anular la factura'
+                    });
+                } finally {
+                    setBtnLoading(btn, false);
                 }
-            } catch (error) {
-                console.error('Error anulando factura:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error al anular',
-                    text: error.message || 'No se pudo anular la factura'
-                });
-            } finally {
-                setBtnLoading(btn, false);
             }
         }
-    }
-});
+    });
 
-// ==========================================
-// EXPORTS PARA USO EN OTROS MÓDULOS (REPORTES)
-// ==========================================
-window.abrirModal = abrirModal;
-window.cerrarModal = cerrarModal;
-window.seleccionarVenta = seleccionarVenta;
-window.seleccionarVentaCambiaria = seleccionarVentaCambiaria;
-window.buscarVenta = buscarVenta;
-window.buscarVentaCambiaria = buscarVentaCambiaria;
-window.resetModalFacturaCambiaria = resetModalFacturaCambiaria;
-window.recalcularTotales = recalcularTotales;
-window.agregarItem = agregarItem;
+    // ==========================================
+    // EXPORTS PARA USO EN OTROS MÓDULOS (REPORTES)
+    // ==========================================
+    window.abrirModal = abrirModal;
+    window.cerrarModal = cerrarModal;
+    window.seleccionarVenta = seleccionarVenta;
+    window.seleccionarVentaCambiaria = seleccionarVentaCambiaria;
+    window.buscarVenta = buscarVenta;
+    window.buscarVentaCambiaria = buscarVentaCambiaria;
+    window.resetModalFacturaCambiaria = resetModalFacturaCambiaria;
+    window.recalcularTotales = recalcularTotales;
+    window.agregarItem = agregarItem;
 // window.agregarItemCambiaria = agregarItemCambiaria; 
 // window.recalcularTotalesCambiaria = recalcularTotalesCambiaria;

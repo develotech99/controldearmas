@@ -3404,9 +3404,9 @@ public function procesarVenta(Request $request): JsonResponse
         foreach ($detalles as $det) {
             if ($det->producto_requiere_serie) {
                 $det->series = DB::table('pro_movimiento_series as ms')
-                    ->join('pro_series as s', 'ms.mov_serie_serie_id', '=', 's.serie_id')
+                    ->join('pro_series_productos as s', 'ms.mov_serie_serie_id', '=', 's.serie_id')
                     ->where('ms.mov_serie_detalle_id', $det->det_id)
-                    ->select('s.serie_id', 's.serie_numero')
+                    ->select('s.serie_id', 's.serie_numero_serie as serie_numero')
                     ->get();
             }
         }
@@ -3416,10 +3416,11 @@ public function procesarVenta(Request $request): JsonResponse
 
     public function getSeriesDisponibles($productoId)
     {
-        $series = DB::table('pro_series')
+        $series = DB::table('pro_series_productos')
             ->where('serie_producto_id', $productoId)
-            ->where('serie_situacion', 1) // 1 = Disponible
-            ->select('serie_id', 'serie_numero')
+            ->where('serie_situacion', 1) // 1 = Activo
+            ->where('serie_estado', 'disponible')
+            ->select('serie_id', 'serie_numero_serie as serie_numero')
             ->get();
 
         return response()->json($series);
@@ -3437,9 +3438,10 @@ public function procesarVenta(Request $request): JsonResponse
             DB::beginTransaction();
 
             // 1. Verify New Series is Available
-            $newSerie = DB::table('pro_series')
+            $newSerie = DB::table('pro_series_productos')
                 ->where('serie_id', $request->new_serie_id)
                 ->where('serie_situacion', 1)
+                ->where('serie_estado', 'disponible')
                 ->lockForUpdate()
                 ->first();
 
@@ -3459,17 +3461,17 @@ public function procesarVenta(Request $request): JsonResponse
 
             // 3. Update Series Statuses
             // Old -> Available
-            DB::table('pro_series')
+            DB::table('pro_series_productos')
                 ->where('serie_id', $request->old_serie_id)
-                ->update(['serie_situacion' => 1]);
+                ->update(['serie_estado' => 'disponible']);
 
             // New -> Sold (or Reserved?)
             // If the sale is EDITABLE/FROZEN, the stock is technically still "Sold" or "Reserved" for this sale.
             // We should match the status of the old serie before we changed it?
-            // Assuming 3 (Vendido) for now as it was likely invoiced then cancelled.
-            DB::table('pro_series')
+            // Assuming 'vendido' for now as it was likely invoiced then cancelled.
+            DB::table('pro_series_productos')
                 ->where('serie_id', $request->new_serie_id)
-                ->update(['serie_situacion' => 3]); 
+                ->update(['serie_estado' => 'vendido']); 
 
             DB::commit();
 
