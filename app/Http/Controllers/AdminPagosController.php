@@ -50,11 +50,27 @@ class AdminPagosController extends Controller
 
             $ultimaCarga = DB::table('pro_estados_cuenta')->max('created_at');
 
+            // Calcular Dinero en Tienda (Efectivo sin depósito subido)
+            // Pagos en efectivo (metodo=1) que están VALIDOS en detalle_pagos
+            // Pero que NO tienen un registro en pro_pagos_subidos para esa venta.
+            $dineroEnTienda = DB::table('pro_detalle_pagos as dp')
+                ->join('pro_pagos as p', 'p.pago_id', '=', 'dp.det_pago_pago_id')
+                ->join('pro_ventas as v', 'v.ven_id', '=', 'p.pago_venta_id')
+                ->where('dp.det_pago_metodo_pago', 1) // 1 = Efectivo
+                ->where('dp.det_pago_estado', 'VALIDO')
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                          ->from('pro_pagos_subidos as ps')
+                          ->whereColumn('ps.ps_venta_id', 'v.ven_id');
+                })
+                ->sum('dp.det_pago_monto');
+
             return response()->json([
                 'codigo' => 1,
                 'mensaje' => 'Estadísticas obtenidas exitosamente',
                 'data' => [
                     'saldo_total_gtq' => $totalGTQ,
+                    'dinero_en_tienda' => (float) $dineroEnTienda, // Nuevo campo
                     'saldos'          => $saldos,
                     'pendientes'      => $pendientes,
                     'ultima_carga'    => $ultimaCarga,
@@ -675,10 +691,114 @@ class AdminPagosController extends Controller
                             ->orWhere('c.cliente_nom_empresa', 'like', "%{$qParam}%")
                             ->orWhere('c.cliente_nit', 'like', "%{$qParam}%");
                     });
+                });
+
+            // --- QUERY PARA PAGOS EN TIENDA (EFECTIVO SIN DEPÓSITO) ---
+            // Solo si no se está filtrando por situación o si se busca explícitamente 'EN_TIENDA' (aunque no existe en DB)
+            // O si el usuario quiere ver todo.
+            // Para simplificar, lo agregamos siempre y dejamos que los filtros de fecha apliquen.
+            
+            $qEnTienda = DB::table('pro_detalle_pagos as dp')
+                ->join('pro_pagos as p', 'p.pago_id', '=', 'dp.det_pago_pago_id')
+                ->join('pro_ventas as v', 'v.ven_id', '=', 'p.pago_venta_id')
+                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+                ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
+                ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'dp.det_pago_usuario_registro')
+                ->select(
+                    'dp.det_pago_id as cja_id', // Usamos ID de detalle pago
+                    'dp.det_pago_fecha as cja_fecha',
+                    DB::raw("'VENTA' as cja_tipo"),
+                    'dp.det_pago_numero_autorizacion as cja_no_referencia',
+                    'dp.det_pago_observaciones as cja_observaciones',
+                    'dp.det_pago_monto as cja_monto',
+                    DB::raw("'EN_TIENDA' as cja_situacion"), // Estado virtual
+                    'v.ven_id as cja_id_venta',
+                    DB::raw("'Efectivo' as metodo"), // Hardcoded o join con metodos
+                    
+                    // Cliente (misma lógica)
+                    DB::raw("
+                       CASE
+                           WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
+                               CONCAT(
+                                   c.cliente_nom_empresa, 
+                                   ' | ', 
+                                   TRIM(CONCAT_WS(' ', 
+                                       COALESCE(c.cliente_nombre1, ''), 
+                                       COALESCE(c.cliente_apellido1, '')
+                                   ))
+                               )
+                           WHEN c.cliente_id IS NOT NULL THEN 
+                               TRIM(CONCAT_WS(' ', 
+                                   COALESCE(c.cliente_nombre1, ''),
+                                   COALESCE(c.cliente_nombre2, ''),
+                                   COALESCE(c.cliente_apellido1, ''),
+                                   COALESCE(c.cliente_apellido2, '')
+                               ))
+                           ELSE NULL
+                       END as cliente_nombre
+                    "),
+                    DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
+                    'c.cliente_tipo',
+                    'c.cliente_nit',
+                    
+                    // Vendedor
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(vendedor.user_primer_nombre, ''),
+                            COALESCE(vendedor.user_segundo_nombre, ''),
+                            COALESCE(vendedor.user_primer_apellido, ''),
+                            COALESCE(vendedor.user_segundo_apellido, '')
+                        )) as vendedor_nombre
+                    "),
+                    'v.ven_user as vendedor_id',
+                    
+                    // Usuario Registro
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(usuario_registro.user_primer_nombre, ''),
+                            COALESCE(usuario_registro.user_segundo_nombre, ''),
+                            COALESCE(usuario_registro.user_primer_apellido, ''),
+                            COALESCE(usuario_registro.user_segundo_apellido, '')
+                        )) as usuario_registro_nombre
+                    "),
+                    'dp.det_pago_usuario_registro as usuario_registro_id',
+                    'v.ven_total_vendido as venta_total'
+                )
+                ->where('dp.det_pago_metodo_pago', 1) // Efectivo
+                ->where('dp.det_pago_estado', 'VALIDO')
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                          ->from('pro_pagos_subidos as ps')
+                          ->whereColumn('ps.ps_venta_id', 'v.ven_id');
                 })
-                ->orderBy('h.cja_fecha', 'desc');
-     
-             $rows = $q->get();
+                ->whereDate('dp.det_pago_fecha', '>=', $from)
+                ->whereDate('dp.det_pago_fecha', '<=', $to)
+                // Filtros adicionales si aplican
+                ->when($metodoId, function($qq) use ($metodoId) {
+                    // Si filtran por metodo != 1, esto no devuelve nada
+                    if ($metodoId != 1) return $qq->whereRaw('1 = 0');
+                })
+                ->when($situacion, function($qq) use ($situacion) {
+                    // Si filtran por situacion != EN_TIENDA, esto no devuelve nada?
+                    // O si filtran por ACTIVO, esto no debería salir.
+                    // Asumimos que si filtran por situacion, quieren ver solo esa situacion.
+                    // Como 'EN_TIENDA' no es standard, solo si no hay filtro o si el filtro es especial lo mostramos.
+                    // Pero el filtro viene del front. Si el front no tiene opcion 'EN_TIENDA', y filtra por 'ACTIVO', esto no debe salir.
+                    if ($situacion && $situacion !== 'EN_TIENDA') return $qq->whereRaw('1 = 0');
+                })
+                ->when($qParam, function ($qq) use ($qParam) {
+                     $qq->where(function ($sub) use ($qParam) {
+                        $sub->where('dp.det_pago_numero_autorizacion', 'like', "%{$qParam}%")
+                            ->orWhere('dp.det_pago_observaciones', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nombre1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_apellido1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nom_empresa', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nit', 'like', "%{$qParam}%");
+                    });
+                });
+
+            // Unir consultas
+            $rows = $q->unionAll($qEnTienda)->orderBy('cja_fecha', 'desc')->get();
      
              // ⭐ Obtener productos vendidos por venta
              $ventaIds = $rows->pluck('cja_id_venta')->filter()->unique()->values()->all();

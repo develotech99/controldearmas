@@ -226,6 +226,7 @@ const renderTabla = (rows) => {
         let estadoBadge = `<span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">${est}</span>`;
         if (est === 'ACTIVO') estadoBadge = `<span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">ACTIVO</span>`;
         if (est === 'ANULADO') estadoBadge = `<span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">ANULADO</span>`;
+        if (est === 'EN_TIENDA') estadoBadge = `<span class="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">EN TIENDA</span>`;
 
         // Acciones
         let acciones = "";

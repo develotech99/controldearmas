@@ -239,11 +239,13 @@ const CargarStats = async () => {
         if (codigo === 1) {
             const {
                 saldo_total_gtq = 0,
+                dinero_en_tienda = 0,
                 pendientes = 0,
                 ultima_carga = null,
             } = data || {};
 
             setTxt("saldoCajaTotalGTQ", fmtQ(saldo_total_gtq));
+            setTxt("dineroEnTienda", fmtQ(dinero_en_tienda));
             setTxt("contadorPendientes", String(pendientes));
             setTxt(
                 "ultimaCargaEstado",
@@ -787,7 +789,8 @@ const renderMovimientos = (rows = []) => {
         const estadoBadges = {
             'ACTIVO': 'bg-green-100 text-green-800',
             'PENDIENTE': 'bg-yellow-100 text-yellow-800',
-            'ANULADA': 'bg-red-100 text-red-800'
+            'ANULADA': 'bg-red-100 text-red-800',
+            'EN_TIENDA': 'bg-orange-100 text-orange-800'
         };
         const estadoBadge = `
             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${estadoBadges[est] || 'bg-gray-100 text-gray-800'}">
