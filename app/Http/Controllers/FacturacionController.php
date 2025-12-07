@@ -994,12 +994,14 @@ public function certificarCambiaria(Request $request)
     }
 
 
-    public function anular($id)
+    public function anular(Request $request, $id)
     {
         try {
             DB::beginTransaction();
 
             $factura = Facturacion::with('detalle')->findOrFail($id);
+            $tipoAnulacion = $request->input('tipo_anulacion', 'corregir'); // 'corregir' (Freeze) or 'anular' (Full)
+            $motivo = $request->input('motivo', 'Anulación solicitada por el usuario');
 
             // Verificar que la factura no esté ya anulada
             if ($factura->fac_estado === 'ANULADO') {
@@ -1023,7 +1025,8 @@ public function certificarCambiaria(Request $request)
 
             Log::info('FEL: Anulando factura', [
                 'uuid' => $factura->fac_uuid,
-                'factura_id' => $factura->fac_id
+                'factura_id' => $factura->fac_id,
+                'tipo' => $tipoAnulacion
             ]);
 
             // Anular en FEL
@@ -1038,7 +1041,7 @@ public function certificarCambiaria(Request $request)
             $factura->update([
                 'fac_estado' => 'ANULADO',
                 'fac_fecha_anulacion' => now(),
-                'fac_motivo_anulacion' => 'Anulación solicitada por el usuario'
+                'fac_motivo_anulacion' => $motivo . " [Tipo: " . strtoupper($tipoAnulacion) . "]"
             ]);
 
             // Guardar XML de anulación
@@ -1054,32 +1057,86 @@ public function certificarCambiaria(Request $request)
             $xmlAnulacionPath = "{$dir}/anulacion_{$factura->fac_uuid}.xml";
             $disk->put($xmlAnulacionPath, $xmlAnulacion);
 
-            // LOGICA DE REVERSION DE INVENTARIO (MODIFICADO: NO REVERTIR STOCK, SOLO ESTADO EDITABLE)
+            // LOGICA DE REVERSION
             if ($factura->fac_venta_id) {
                 $venta = DB::table('pro_ventas')->where('ven_id', $factura->fac_venta_id)->first();
                 
-                // Si la venta existe, la pasamos a EDITABLE para que el usuario pueda corregir
-                // No revertimos stock porque la venta sigue "viva", solo la factura murió.
                 if ($venta) {
-                    DB::table('pro_ventas')
-                        ->where('ven_id', $venta->ven_id)
-                        ->update([
-                            'ven_situacion' => 'EDITABLE',
-                            'ven_observaciones' => $venta->ven_observaciones . " [Factura anulada: " . $factura->fac_referencia . " - Venta en edición]"
-                        ]);
+                    // 1. Revertir cantidad facturada (SIEMPRE)
+                    foreach ($factura->detalle as $detFac) {
+                        if ($detFac->det_fac_detalle_venta_id) {
+                            DB::table('pro_detalle_ventas')
+                                ->where('det_id', $detFac->det_fac_detalle_venta_id)
+                                ->decrement('det_cantidad_facturada', $detFac->det_fac_cantidad);
+                        }
+                    }
 
-                    // Detalles también a EDITABLE? O se quedan como están?
-                    // Mejor dejarlos en un estado que permita edición pero indique que están reservados/vendidos.
-                    // 'AUTORIZADA' o 'EDITABLE'. Usemos 'EDITABLE' para consistencia.
-                    DB::table('pro_detalle_ventas')
-                        ->where('det_ven_id', $venta->ven_id)
-                        ->update(['det_situacion' => 'EDITABLE']);
+                    if ($tipoAnulacion === 'corregir') {
+                        // TIPO A: CONGELAR / EDITAR
+                        // Pasamos la venta a EDITABLE para que el usuario pueda corregir series/datos
+                        // NO revertimos stock físico (se queda reservado/vendido)
                         
-                    // NOTA: Los movimientos de stock (pro_movimientos) se quedan como 'venta' (situacion 1)
-                    // o deberían pasar a 'reserva' (situacion 3)?
-                    // Si se quedan como 'venta', el stock físico ya se descontó.
-                    // Si el usuario cambia una serie, tendremos que hacer el swap en el controlador de ventas.
-                    // Si cancela la venta definitivamente, ahí sí revertimos.
+                        DB::table('pro_ventas')
+                            ->where('ven_id', $venta->ven_id)
+                            ->update([
+                                'ven_situacion' => 'EDITABLE',
+                                'ven_observaciones' => $venta->ven_observaciones . " [Factura anulada (Corrección): " . $factura->fac_referencia . "]"
+                            ]);
+
+                        DB::table('pro_detalle_ventas')
+                            ->where('det_ven_id', $venta->ven_id)
+                            ->update(['det_situacion' => 'EDITABLE']);
+
+                    } else {
+                        // TIPO B: ANULACION COMPLETA
+                        // Revertimos stock y cancelamos venta
+                        
+                        DB::table('pro_ventas')
+                            ->where('ven_id', $venta->ven_id)
+                            ->update([
+                                'ven_situacion' => 'CANCELADA',
+                                'ven_observaciones' => $venta->ven_observaciones . " [Factura anulada (Definitiva): " . $factura->fac_referencia . "]"
+                            ]);
+
+                        DB::table('pro_detalle_ventas')
+                            ->where('det_ven_id', $venta->ven_id)
+                            ->update(['det_situacion' => 'CANCELADO']);
+
+                        // Revertir Stock
+                        $detallesVenta = DB::table('pro_detalle_ventas')->where('det_ven_id', $venta->ven_id)->get();
+                        foreach ($detallesVenta as $det) {
+                            // Revertir series si existen
+                            $seriesMov = DB::table('pro_movimiento_series')
+                                ->where('mov_serie_detalle_id', $det->det_id)
+                                ->get();
+                            
+                            foreach ($seriesMov as $sm) {
+                                DB::table('pro_series')
+                                    ->where('serie_id', $sm->mov_serie_serie_id)
+                                    ->update(['serie_situacion' => 1]); // 1 = Disponible
+                            }
+
+                            // Revertir stock numérico
+                            // Asumimos que al vender se descontó de 'disponible' y no se incrementó 'reservada' (venta directa)
+                            // O si fue reserva, se manejó diferente.
+                            // Para simplificar: Devolvemos a disponible.
+                            
+                            // Check if product requires stock
+                            $prod = DB::table('pro_productos')->where('producto_id', $det->det_producto_id)->first();
+                            if ($prod && $prod->producto_requiere_stock) {
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $det->det_producto_id)
+                                    ->increment('stock_cantidad_disponible', $det->det_cantidad);
+                            }
+                        }
+                        
+                        // Cancelar pagos asociados?
+                        // Si se anula definitivamente, deberíamos cancelar pagos o dejarlos como saldo a favor?
+                        // Por ahora, marcamos caja como cancelada si es venta contado.
+                        DB::table('cja_historial')
+                            ->where('cja_id_venta', $venta->ven_id)
+                            ->update(['cja_situacion' => 'CANCELADA']);
+                    }
                 }
             }
 

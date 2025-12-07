@@ -3377,4 +3377,107 @@ public function procesarVenta(Request $request): JsonResponse
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+    // --- EDIT SALE LOGIC ---
+
+    public function editar($id)
+    {
+        $venta = DB::table('pro_ventas as v')
+            ->join('pro_clientes as c', 'v.ven_cliente_id', '=', 'c.cliente_id')
+            ->where('v.ven_id', $id)
+            ->select('v.*', 'c.cliente_nombre1', 'c.cliente_apellido1', 'c.cliente_nit')
+            ->first();
+
+        if (!$venta) abort(404);
+
+        if ($venta->ven_situacion !== 'EDITABLE') {
+            // Optional: Allow editing if authorized but not invoiced?
+            // For now, restrict to EDITABLE (Frozen)
+            // abort(403, 'La venta no está en estado editable.');
+        }
+
+        $detalles = DB::table('pro_detalle_ventas as d')
+            ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+            ->where('d.det_ven_id', $id)
+            ->select('d.*', 'p.producto_nombre', 'p.producto_requiere_serie')
+            ->get();
+
+        foreach ($detalles as $det) {
+            if ($det->producto_requiere_serie) {
+                $det->series = DB::table('pro_movimiento_series as ms')
+                    ->join('pro_series as s', 'ms.mov_serie_serie_id', '=', 's.serie_id')
+                    ->where('ms.mov_serie_detalle_id', $det->det_id)
+                    ->select('s.serie_id', 's.serie_numero')
+                    ->get();
+            }
+        }
+
+        return view('ventas.editar', compact('venta', 'detalles'));
+    }
+
+    public function getSeriesDisponibles($productoId)
+    {
+        $series = DB::table('pro_series')
+            ->where('serie_producto_id', $productoId)
+            ->where('serie_situacion', 1) // 1 = Disponible
+            ->select('serie_id', 'serie_numero')
+            ->get();
+
+        return response()->json($series);
+    }
+
+    public function cambiarSerie(Request $request)
+    {
+        $request->validate([
+            'detalle_id' => 'required|integer',
+            'old_serie_id' => 'required|integer',
+            'new_serie_id' => 'required|integer'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Verify New Series is Available
+            $newSerie = DB::table('pro_series')
+                ->where('serie_id', $request->new_serie_id)
+                ->where('serie_situacion', 1)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$newSerie) {
+                throw new \Exception('La nueva serie no está disponible.');
+            }
+
+            // 2. Update Movement
+            $updated = DB::table('pro_movimiento_series')
+                ->where('mov_serie_detalle_id', $request->detalle_id)
+                ->where('mov_serie_serie_id', $request->old_serie_id)
+                ->update(['mov_serie_serie_id' => $request->new_serie_id]);
+
+            if (!$updated) {
+                throw new \Exception('No se encontró la asignación de la serie original.');
+            }
+
+            // 3. Update Series Statuses
+            // Old -> Available
+            DB::table('pro_series')
+                ->where('serie_id', $request->old_serie_id)
+                ->update(['serie_situacion' => 1]);
+
+            // New -> Sold (or Reserved?)
+            // If the sale is EDITABLE/FROZEN, the stock is technically still "Sold" or "Reserved" for this sale.
+            // We should match the status of the old serie before we changed it?
+            // Assuming 3 (Vendido) for now as it was likely invoiced then cancelled.
+            DB::table('pro_series')
+                ->where('serie_id', $request->new_serie_id)
+                ->update(['serie_situacion' => 3]); 
+
+            DB::commit();
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

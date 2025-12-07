@@ -1442,6 +1442,95 @@ if (elTabla) {
         autoWidth: false,
         language: ES_LANG
     });
+
+    // Event delegation for Anular button
+    elTabla.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-anular');
+        if (!btn) return;
+
+        const uuid = btn.dataset.anular;
+        const id = btn.dataset.id;
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Anular Factura',
+            html: `
+                <div class="text-left">
+                    <p class="mb-4 text-sm text-gray-600">Seleccione el tipo de anulación:</p>
+                    
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="tipo_anulacion" value="corregir" checked class="mt-1">
+                            <div>
+                                <span class="font-bold text-gray-800">Corregir / Editar Venta</span>
+                                <p class="text-xs text-gray-500">La factura se anula ante SAT, pero la venta queda "Congelada/Editable". El inventario NO se devuelve. Use esto para corregir series o datos y volver a facturar.</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="tipo_anulacion" value="anular" class="mt-1">
+                            <div>
+                                <span class="font-bold text-red-600">Anulación Definitiva</span>
+                                <p class="text-xs text-gray-500">La factura se anula y la venta se cancela. Todo el producto regresa al inventario (Disponible).</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Motivo de anulación</label>
+                        <textarea id="swal-motivo" class="w-full border rounded p-2 text-sm" rows="2" placeholder="Escriba el motivo..."></textarea>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Proceder',
+            cancelButtonText: 'Cancelar',
+            focusConfirm: false,
+            preConfirm: () => {
+                const tipo = document.querySelector('input[name="tipo_anulacion"]:checked').value;
+                const motivo = document.getElementById('swal-motivo').value;
+                if (!motivo) {
+                    Swal.showValidationMessage('El motivo es requerido');
+                }
+                return { tipo, motivo };
+            }
+        });
+
+        if (formValues) {
+            try {
+                // Show loading
+                Swal.fire({
+                    title: 'Anulando...',
+                    text: 'Por favor espere',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const res = await fetch(`/facturacion/anular/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify({
+                        tipo_anulacion: formValues.tipo,
+                        motivo: formValues.motivo
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.codigo === 1) {
+                    Swal.fire('Anulada', 'La factura ha sido anulada correctamente.', 'success');
+                    window.tablaFacturas.ajax.reload(null, false);
+                } else {
+                    throw new Error(data.mensaje || 'Error al anular');
+                }
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Error', error.message, 'error');
+            }
+        }
+    });
 }
 
 btnFiltrarFacturas?.addEventListener('click', () => {
