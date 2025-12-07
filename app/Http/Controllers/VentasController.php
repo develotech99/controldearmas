@@ -479,25 +479,8 @@ public function guardarCliente(Request $request)
                 }
 
                 // Determine new status
-                // 'sin_facturar' -> 'FINALIZADA' (o 'AUTORIZADA' si ese es el estado final que no pide factura)
-                // 'facturar' -> 'POR_FACTURAR' (o 'AUTORIZADA' si el flujo de facturación busca 'AUTORIZADA')
-                
-                // REVISIÓN DE ESTADOS:
-                // Si el usuario dice "Autorizar (igual a la lógica actual)", asumimos que el estado actual para facturar es 'AUTORIZADA' o 'ACTIVA'.
-                // En el código anterior, 'ACTIVA' parecía ser el estado post-autorización.
-                // Para 'sin_facturar', la venta debe quedar "cerrada" en cuanto a gestión, pero sin factura.
-                // Usaremos 'COMPLETADA' o 'FINALIZADA' para sin facturar si existe, si no 'AUTORIZADA' con una bandera interna?
-                // Vamos a usar 'AUTORIZADA' para el flujo normal (para que pase a facturación)
-                // Y 'FINALIZADA' (o similar) para sin facturar.
-                // PERO, el usuario dijo: "La venta queda autorizada...".
-                // Si ambas quedan 'AUTORIZADA', ¿cómo sabe facturación cual tocar?
-                // Asumiremos:
-                // Normal -> 'AUTORIZADA' (Lista para facturar)
-                // Sin Facturar -> 'FINALIZADA' (Ya no requiere nada más)
-                
-                // Ajuste según código previo: Antes se ponía 'ACTIVA'.
-                // Vamos a mantener 'ACTIVA' para el flujo normal si eso es lo que espera facturación.
-                // Y 'COMPLETADA' para sin facturar.
+                // 'sin_facturar' -> 'COMPLETADA' (Finalizada sin factura)
+                // 'facturar' -> 'AUTORIZADA' (Lista para facturar)
                 
                 $nuevoEstado = ($tipo === 'sin_facturar') ? 'COMPLETADA' : 'AUTORIZADA'; 
 
@@ -515,14 +498,14 @@ public function guardarCliente(Request $request)
                     $detalle->save();
 
                     // Stock Deduction Logic
-                    // Solo si el producto requiere stock
-                    if ($detalle->producto && $detalle->producto->producto_requiere_stock) {
+                    // SOLO SI ES 'sin_facturar'. Si es 'facturar', el descuento se hace al facturar.
+                    if ($tipo === 'sin_facturar' && $detalle->producto && $detalle->producto->producto_requiere_stock) {
                         
                         // Find reserved movements for this product in this sale
                         $movimientos = DB::table('pro_movimientos')
                             ->where('mov_documento_referencia', "VENTA-{$venId}")
                             ->where('mov_producto_id', $detalle->det_producto_id)
-                            ->where('mov_tipo', 'reserva')
+                            ->where('mov_situacion', 3) // 3 = Reservado
                             ->get();
 
                         foreach ($movimientos as $mov) {
@@ -545,12 +528,90 @@ public function guardarCliente(Request $request)
                                 // Decrement reserved (release reservation)
                                 DB::table('pro_stock_actual')
                                     ->where('stock_producto_id', $detalle->det_producto_id)
-                                    ->decrement('stock_cantidad_reservada2', $mov->mov_cantidad);
+                                    ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
                                 
                                 // Decrement physical stock (actual deduction)
                                 DB::table('pro_stock_actual')
                                     ->where('stock_producto_id', $detalle->det_producto_id)
-                                    ->decrement('stock_cantidad', $mov->mov_cantidad);
+                                    ->decrement('stock_cantidad_total', $mov->mov_cantidad); // Corrected column
+
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_disponible', $mov->mov_cantidad); // Also decrement available if needed? 
+                                    // Wait, available was already decremented when reserved?
+                                    // Let's check logic:
+                                    // Reserve: Available -= X, Reserved += X
+                                    // Finalize: Reserved -= X, Total -= X. (Available stays same)
+                                    // BUT, if we are just releasing reservation and confirming sale:
+                                    // Total = Available + Reserved (Usually)
+                                    // If we reduce Reserved, we must reduce Total. Available is untouched because it was already reduced during reservation.
+                                    
+                                    // Let's verify StockActual model logic:
+                                    // reservar: disponible -= cant, reservada += cant.
+                                    // liberarReserva: reservada -= cant, disponible += cant.
+                                    // decrementar: total -= cant, disponible -= cant.
+                                    
+                                    // So here we are confirming a reservation.
+                                    // We need to:
+                                    // 1. Reduce Reserved (it's no longer reserved, it's sold).
+                                    // 2. Reduce Total (it left the building).
+                                    // 3. Available? It was already reduced when reserved. So we don't touch it.
+                                    
+                                    // HOWEVER, FacturacionController does:
+                                    // decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                                    // decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                                    // decrement('stock_cantidad_total', $mov->mov_cantidad);
+                                    
+                                    // This implies FacturacionController assumes the reservation didn't touch available? Or it's double counting?
+                                    // Let's look at procesarVenta again.
+                                    // procesarVenta:
+                                    // decrement('stock_cantidad_reservada2', $seriesCount); ??
+                                    // increment('stock_cantidad_reservada', $seriesCount);
+                                    // It does NOT touch available or total.
+                                    
+                                    // Wait, if procesarVenta only touches 'reservada', then 'disponible' is still high?
+                                    // No, usually 'disponible' is calculated or updated.
+                                    
+                                    // Let's check StockActual::actualizarDesdeMovimientos
+                                    // $this->stock_cantidad_disponible = max(0, $resumen['stock_calculado'] - $this->stock_cantidad_reservada);
+                                    
+                                    // So if we increase 'reservada', 'disponible' should decrease if we recalculate.
+                                    // But procesarVenta does manual increment.
+                                    
+                                    // If `procesarVenta` ONLY increments `reservada`, then `disponible` is WRONG until recalculated?
+                                    // Or does `disponible` column exist? Yes.
+                                    
+                                    // If `procesarVenta` does NOT decrement `disponible`, then `disponible` is wrong.
+                                    // Let's check `procesarVenta` again.
+                                    // It inserts a movement with `mov_situacion = 3` (Reserved).
+                                    // It increments `stock_cantidad_reservada`.
+                                    // It does NOT decrement `stock_cantidad_disponible`.
+                                    
+                                    // So, `disponible` currently includes the reserved amount?
+                                    // If `disponible` = `total` - `reservada`, then increasing `reservada` effectively decreases `disponible` IF calculated.
+                                    // But here we have physical columns.
+                                    
+                                    // If `FacturacionController` decrements ALL THREE, it means:
+                                    // Reserved -= X
+                                    // Available -= X
+                                    // Total -= X
+                                    
+                                    // This implies that BEFORE this:
+                                    // Reserved had X.
+                                    // Available had X (it was not deducted yet?).
+                                    // Total had X.
+                                    
+                                    // If `procesarVenta` only increments `reservada`, then `disponible` still has the stock.
+                                    // So `FacturacionController` is correct to decrement `disponible`.
+                                    
+                                    // So I should follow `FacturacionController` pattern:
+                                    // Decrement Reserved.
+                                    // Decrement Available.
+                                    // Decrement Total.
+                                    
+                                    DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
                             }
                             
                             // Update Series/Lotes status
@@ -565,9 +626,34 @@ public function guardarCliente(Request $request)
                             }
                             
                             if ($mov->mov_lote_id) {
-                                 DB::table('pro_lotes')
-                                    ->where('lote_id', $mov->mov_lote_id)
-                                    ->decrement('lote_cantidad_disponible', $mov->mov_cantidad);
+                                 // Lotes are already deducted from available in procesarVenta?
+                                 // Let's check procesarVenta for Lotes.
+                                 // decrement('lote_cantidad_disponible')
+                                 // decrement('lote_cantidad_total')
+                                 // increment('stock_cantidad_reservada')
+                                 
+                                 // So for Lotes, the LOTE table is updated.
+                                 // But the STOCK table only has 'reservada' incremented.
+                                 // So 'stock_cantidad_total' and 'stock_cantidad_disponible' in STOCK table are NOT updated in procesarVenta for lotes?
+                                 // Wait, `procesarVenta` for lotes:
+                                 // It does NOT touch `pro_stock_actual` total/disponible.
+                                 
+                                 // So yes, I must decrement them here too.
+                                 
+                                 // But wait, if I decrement `lote_cantidad_disponible` in `procesarVenta`, 
+                                 // and then I decrement `stock_cantidad_disponible` here...
+                                 // It seems consistent.
+                                 
+                                 // However, `FacturacionController` decrements `pro_lotes`?
+                                 // No, `FacturacionController` logic for lotes:
+                                 // It updates `pro_movimientos`.
+                                 // It decrements `pro_stock_actual` (reservada, disponible, total).
+                                 // It does NOT touch `pro_lotes`.
+                                 
+                                 // This means `procesarVenta` already handled `pro_lotes` deduction?
+                                 // Yes: `decrement('lote_cantidad_disponible')` in `procesarVenta`.
+                                 
+                                 // So here I just need to update `pro_stock_actual`.
                             }
                         }
                     }
