@@ -387,7 +387,7 @@ public function guardarCliente(Request $request)
             $query = DB::table('pro_ventas as v')
                 ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
                 ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
-                ->whereIn('v.ven_situacion', ['PENDIENTE', 'EDITABLE', 'AUTORIZADA'])
+                ->whereIn('v.ven_situacion', ['PENDIENTE', 'EDITABLE', 'AUTORIZADA', 'CANCELADA'])
                 ->select(
                     'v.ven_id',
                     'v.ven_fecha',
@@ -1668,9 +1668,12 @@ public function procesarReserva(Request $request): JsonResponse
             // ========================================
             // 5. CANCELAR DETALLES DE VENTA
             // ========================================
+            // ========================================
+            // 5. CANCELAR DETALLES DE VENTA
+            // ========================================
             DB::table('pro_detalle_ventas')
                 ->where('det_ven_id', $venId)
-                ->update(['det_situacion' => 'ANULADO']);
+                ->update(['det_situacion' => 'CANCELADO']);
 
             // ========================================
             // 6. CANCELAR VENTA
@@ -1678,7 +1681,7 @@ public function procesarReserva(Request $request): JsonResponse
             DB::table('pro_ventas')
                 ->where('ven_id', $venId)
                 ->update([
-                    'ven_situacion' => 'ANULADA',
+                    'ven_situacion' => 'CANCELADA',
                     'ven_observaciones' => $motivoCancelacion,
                     'updated_at' => now()
                 ]);
@@ -1700,7 +1703,7 @@ public function procesarReserva(Request $request): JsonResponse
             DB::table('cja_historial')
                 ->where('cja_id_venta', $venId)
                 ->update([
-                    'cja_situacion' => 'ANULADA',
+                    'cja_situacion' => 'CANCELADA',
                     'cja_observaciones' => $motivoCancelacion
                 ]);
 

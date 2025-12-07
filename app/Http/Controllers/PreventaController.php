@@ -189,6 +189,7 @@ class PreventaController extends Controller
             DB::beginTransaction();
             
             $preventa = Preventa::findOrFail($id);
+            $motivo = request()->input('motivo', 'Cancelación de preventa');
 
             // 1. Buscar pagos asociados
             $pagos = DB::table('pro_pagos_subidos')->where('ps_preventa_id', $id)->get();
@@ -214,35 +215,39 @@ class PreventaController extends Controller
                         'hist_saldo_anterior' => $nuevoSaldo + $monto,
                         'hist_saldo_nuevo' => $nuevoSaldo,
                         'hist_referencia' => 'REV-PRE-' . $id,
-                        'hist_observaciones' => 'Reversión por eliminación de Preventa #' . $id,
+                        'hist_observaciones' => 'Reversión por cancelación de Preventa #' . $id,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
 
-                    // Eliminar de Caja (o crear contra-asiento, pero usuario pidió eliminar)
-                    // Buscamos por referencia o descripción similar
+                    // Actualizar en Caja (NO ELIMINAR)
                     DB::table('cja_historial')
                         ->where('cja_no_referencia', $pago->ps_referencia)
                         ->orWhere('cja_observaciones', 'like', "%Preventa #{$id}%")
-                        ->delete();
+                        ->update([
+                            'cja_situacion' => 'CANCELADA',
+                            'cja_observaciones' => "Cancelación Preventa #{$id}"
+                        ]);
                 }
                 
-                // Eliminar el registro de pago subido
-                DB::table('pro_pagos_subidos')->where('ps_id', $pago->ps_id)->delete();
+                // Actualizar el registro de pago subido (NO ELIMINAR)
+                DB::table('pro_pagos_subidos')
+                    ->where('ps_id', $pago->ps_id)
+                    ->update(['ps_estado' => 'CANCELADO']);
             }
             
-            // Delete details first
-            $preventa->detalles()->delete();
-            
-            // Delete header
-            $preventa->delete();
+            // Actualizar estado de la preventa (NO ELIMINAR)
+            $preventa->update([
+                'prev_estado' => 'CANCELADA',
+                'prev_observaciones' => $preventa->prev_observaciones . " | Cancelado: " . $motivo
+            ]);
             
             DB::commit();
             
-            return response()->json(['success' => true, 'message' => 'Preventa y registros asociados eliminados correctamente']);
+            return response()->json(['success' => true, 'message' => 'Preventa cancelada correctamente']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Error al cancelar: ' . $e->getMessage()], 500);
         }
     }
 
