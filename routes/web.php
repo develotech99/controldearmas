@@ -400,6 +400,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/clientes/{cliente}/ver-pdf-licencia', [ClientesController::class, 'verPdfLicencia'])
         ->name('clientes.ver-pdf-licencia');
 
+    // API Documentos Clientes (Licencias/Tenencias)
+    Route::get('/api/clientes/{id}/documentos', [ClientesController::class, 'getDocumentos']);
+    Route::post('/api/clientes/{id}/documentos', [ClientesController::class, 'storeDocumento']);
+    Route::delete('/api/clientes/documentos/{id}', [ClientesController::class, 'deleteDocumento']);
+
 
 
 

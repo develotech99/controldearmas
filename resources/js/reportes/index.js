@@ -972,9 +972,9 @@ class ReportesManager {
                             <div class="flex items-start p-2 hover:bg-gray-50 rounded">
                                 <i class="fas fa-file-invoice-dollar text-green-600 mt-1 mr-2"></i>
                                 <div>
-                                    <span class="font-bold text-gray-800">Autorizar y Facturar</span>
+                                    <span class="font-bold text-gray-800">Autorizar y enviar para que facturen la venta</span>
                                     <p class="text-gray-500 text-xs mt-1">
-                                        Envía la venta al módulo de facturación para generar la factura electrónica (FEL).
+                                        Envía la venta al módulo de facturación para generar la factura electrónica (FEL). y hasta que se facture se descontará del stock del inventario
                                     </p>
                                 </div>
                             </div>

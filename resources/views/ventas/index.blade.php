@@ -458,38 +458,74 @@
 
                     <div id="modalDocumentacion"
                         class="absolute inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
-                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
                             <h3 class="text-lg font-semibold mb-4 text-gray-800 flex justify-between items-center">
-                                Agregar Documento
+                                Documentación del Cliente
                                 <button type="button" id="btnCerrarModalDocumentacion"
                                     class="p-2 rounded hover:bg-gray-100">
                                     <i class="fas fa-times text-xl"></i>
                                 </button>
                             </h3>
 
-                            <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Columna Izquierda: Lista de Documentos -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de
-                                        Documento</label>
-                                    <select id="tipoDocumentoSelect"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Seleccionar...</option>
-                                        <option value="licencia_portacion">Licencia de Portación</option>
-                                        <option value="licencia_tenencia">Tenencia</option>
-
-                                    </select>
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Documentos Disponibles</h4>
+                                    <div id="listaDocumentosCliente" class="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2 bg-gray-50">
+                                        <p class="text-sm text-gray-500 text-center py-4">Cargando documentos...</p>
+                                    </div>
+                                    <input type="hidden" id="documentoSeleccionadoId">
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Número de
-                                        Documento</label>
-                                    <input type="text" id="numeroDocumentoInput" placeholder="Ej: 123456789"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                </div>
+                                <!-- Columna Derecha: Formulario Nuevo Documento -->
+                                <div class="border-l pl-6">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Agregar Nuevo Documento</h4>
+                                    <form id="formNuevoDocumento" class="space-y-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+                                            <select id="docTipo" name="tipo" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                                <option value="TENENCIA">Tenencia</option>
+                                                <option value="PORTACION">Licencia de Portación</option>
+                                            </select>
+                                        </div>
 
-                                <button type="button" id="btnCerrarModalDocumentacion"
-                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
-                                    <i class="fas fa-plus"></i> Agregar Documento
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1" id="lblDocNum">Número de Tenencia</label>
+                                            <input type="text" id="docNumero" name="numero_documento" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1" id="lblDocSec">Número de Propietario</label>
+                                            <input type="text" id="docSecundario" name="numero_secundario"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Vencimiento (Opcional)</label>
+                                            <input type="date" id="docVencimiento" name="fecha_vencimiento"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Imagen (Opcional)</label>
+                                            <input type="file" id="docImagen" name="imagen" accept="image/*,.pdf"
+                                                class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                        </div>
+
+                                        <button type="submit"
+                                            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 mt-2">
+                                            <i class="fas fa-save"></i> Guardar Documento
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 flex justify-end gap-3 border-t pt-4">
+                                <button type="button" id="btnConfirmarDocumento" disabled
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Usar Seleccionado
                                 </button>
                             </div>
                         </div>

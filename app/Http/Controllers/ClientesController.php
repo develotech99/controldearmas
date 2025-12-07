@@ -564,4 +564,85 @@ class ClientesController extends Controller
 
         return response()->json($clientes);
     }
+
+    // ==========================================
+    // MÉTODOS PARA DOCUMENTOS (LICENCIAS/TENENCIAS)
+    // ==========================================
+
+    public function getDocumentos($clienteId)
+    {
+        $documentos = \App\Models\ClienteDocumento::where('cliente_id', $clienteId)
+            ->where('estado', true)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'documentos' => $documentos
+        ]);
+    }
+
+    public function storeDocumento(Request $request, $clienteId)
+    {
+        $validator = Validator::make($request->all(), [
+            'tipo' => 'required|in:TENENCIA,PORTACION',
+            'numero_documento' => 'required|string|max:50',
+            'numero_secundario' => 'nullable|string|max:50',
+            'fecha_vencimiento' => 'nullable|date',
+            'imagen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $data = $validator->validated();
+            $data['cliente_id'] = $clienteId;
+
+            if ($request->hasFile('imagen')) {
+                $file = $request->file('imagen');
+                $filename = 'doc_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('clientes/documentos', $filename, 'public');
+                $data['imagen_path'] = $path;
+            }
+
+            $documento = \App\Models\ClienteDocumento::create($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Documento agregado correctamente',
+                'documento' => $documento
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al guardar documento:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar el documento'
+            ], 500);
+        }
+    }
+
+    public function deleteDocumento($id)
+    {
+        try {
+            $documento = \App\Models\ClienteDocumento::findOrFail($id);
+            $documento->update(['estado' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Documento eliminado correctamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar el documento'
+            ], 500);
+        }
+    }
 }

@@ -2403,6 +2403,7 @@ public function procesarVenta(Request $request): JsonResponse
             'productos.*.lotes_seleccionados.*.cantidad' => 'nullable|integer|min:1',
             // 'pago' => 'required|array', // SE VALIDA MANUALMENTE
             'reserva_id' => 'nullable|exists:pro_ventas,ven_id',
+            'documento_id' => 'nullable|exists:pro_clientes_documentos,id',
         ]);
 
         DB::beginTransaction();
@@ -2558,6 +2559,7 @@ public function procesarVenta(Request $request): JsonResponse
                     'ven_observaciones' => 'Venta Pendiente de autorizar por digecam (desde reserva)',
                     'ven_situacion'     => 'PENDIENTE',
                     'ven_empresa_id'    => $request->empresa_id,
+                    'ven_documento_id'  => $request->documento_id, // ✅ Nuevo campo
                     'updated_at'        => now(),
                 ]);
                 
@@ -2572,6 +2574,7 @@ public function procesarVenta(Request $request): JsonResponse
                 'ven_descuento'     => $request->descuento_monto ?? 0,
                 'ven_observaciones' => 'Venta Pendiente de autorizar por digecam',
                 'ven_situacion'     => 'PENDIENTE',
+                'ven_documento_id'  => $request->documento_id, // ✅ Nuevo campo
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
