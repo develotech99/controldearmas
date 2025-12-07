@@ -337,7 +337,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 cantidad: 1,
                 precio: precioFinal,
                 subtotal: precioFinal,
-                imagen: producto.foto_url
+                cantidad: 1,
+                precio: precioFinal,
+                subtotal: precioFinal,
+                imagen: producto.foto_url,
+                // Guardar precios base para recalculo
+                precio_normal: parseFloat(producto.precio_venta) || 0,
+                precio_empresa: parseFloat(producto.precio_venta_empresa) || 0
             });
         }
 
@@ -350,6 +356,62 @@ document.addEventListener('DOMContentLoaded', function () {
             title: 'Producto agregado',
             showConfirmButton: false,
             timer: 1500
+        });
+    }
+
+    function recalcularPreciosCarrito() {
+        if (!carrito || carrito.length === 0) return;
+
+        const esEmpresa = clienteSeleccionado && (clienteSeleccionado.cliente_tipo == 3 || selectEmpresa.value);
+        let cambios = false;
+
+        carrito.forEach(item => {
+            let nuevoPrecio = item.precio_normal;
+            if (esEmpresa && item.precio_empresa > 0) {
+                nuevoPrecio = item.precio_empresa;
+            }
+
+            if (item.precio !== nuevoPrecio) {
+                item.precio = nuevoPrecio;
+                item.subtotal = item.cantidad * nuevoPrecio;
+                cambios = true;
+            }
+        });
+
+        if (cambios) {
+            renderCarrito();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Precios actualizados',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+    }
+
+    function recalcularPreciosCarrito() {
+        if (!carrito || carrito.length === 0) return;
+
+        const esEmpresa = clienteSeleccionado && (clienteSeleccionado.cliente_tipo == 3 || selectEmpresa.value);
+        let cambios = false;
+
+        carrito.forEach(item => {
+            // Necesitamos buscar el producto original para saber sus precios
+            // Como 'carrito' solo tiene info básica, idealmente deberíamos tener acceso a la data completa del producto.
+            // PERO, en agregarAlCarrito guardamos precio_venta y precio_venta_empresa? No, solo guardamos el precio final.
+            // NECESITAMOS guardar ambos precios en el carrito para poder alternar.
+
+            // FIX: Vamos a asumir que necesitamos buscar el producto en el DOM o en una lista global si existe.
+            // O mejor, modifiquemos agregarAlCarrito para guardar ambos precios.
+            // Como no puedo modificar agregarAlCarrito facilmente sin romper, voy a intentar inferir o buscar.
+            // Re-reading agregarAlCarrito: it pushes { producto_id, nombre, cantidad, precio, subtotal, imagen }.
+            // It DOES NOT push precio_venta_empresa. This is a problem.
+
+            // I will modify this function to assume items have 'precios' object if I add it, 
+            // OR I will modify agregarAlCarrito to store it.
+            // Let's modify agregarAlCarrito first in a separate chunk.
         });
     }
 

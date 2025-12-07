@@ -147,6 +147,14 @@ document.getElementById("clienteSelect").addEventListener("change", function () 
         console.error("Error al parsear empresas:", e);
         divEmpresa.classList.add("hidden");
     }
+
+    // Recalcular precios del carrito al cambiar cliente
+    recalcularPreciosCarrito();
+});
+
+// Event listener para cambio de empresa
+document.getElementById("empresaSelect").addEventListener("change", function () {
+    recalcularPreciosCarrito();
 });
 
 // Listener para el checkbox de Saldo a Favor
@@ -1410,6 +1418,44 @@ function eliminarProducto(producto_id) {
 
     actualizarVistaCarrito();
     actualizarContadorCarrito?.();
+    actualizarVistaCarrito();
+    actualizarContadorCarrito?.();
+}
+
+function recalcularPreciosCarrito() {
+    if (!carritoProductos || carritoProductos.length === 0) return;
+
+    const selectCliente = document.getElementById("clienteSelect");
+    const selectEmpresa = document.getElementById("empresaSelect");
+
+    let esEmpresa = false;
+
+    if (selectCliente && selectCliente.value) {
+        const option = selectCliente.options[selectCliente.selectedIndex];
+        const tipo = option.dataset.tipo;
+        // Es empresa si tipo es 3 O si se seleccionó una empresa específica
+        esEmpresa = (tipo == 3) || (selectEmpresa && selectEmpresa.value);
+    }
+
+    let cambios = false;
+    carritoProductos.forEach(p => {
+        let nuevoPrecio = parseFloat(p.precio_venta) || 0;
+
+        if (esEmpresa && parseFloat(p.precio_venta_empresa) > 0) {
+            nuevoPrecio = parseFloat(p.precio_venta_empresa);
+        }
+
+        if (p.precio !== nuevoPrecio) {
+            p.precio = nuevoPrecio;
+            p.subtotal = p.cantidad * p.precio;
+            cambios = true;
+        }
+    });
+
+    if (cambios) {
+        actualizarVistaCarrito();
+        mostrarNotificacion("Precios actualizados según cliente", "info");
+    }
 }
 
 function routeReservarURL() {
