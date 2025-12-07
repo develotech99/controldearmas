@@ -316,19 +316,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Lógica del Carrito ---
     function agregarAlCarrito(producto) {
+        // Lógica de precio según cliente
+        let precioFinal = parseFloat(producto.precio_venta) || 0;
+        const esEmpresa = clienteSeleccionado && (clienteSeleccionado.cliente_tipo == 3 || selectEmpresa.value);
+
+        if (esEmpresa && parseFloat(producto.precio_venta_empresa) > 0) {
+            precioFinal = parseFloat(producto.precio_venta_empresa);
+        }
+
         const index = carrito.findIndex(item => item.producto_id === producto.producto_id);
-        const precio = parseFloat(producto.precio_venta) || 0;
 
         if (index !== -1) {
             carrito[index].cantidad++;
-            carrito[index].subtotal = carrito[index].cantidad * carrito[index].precio;
+            carrito[index].precio = precioFinal; // Actualizar precio
+            carrito[index].subtotal = carrito[index].cantidad * precioFinal;
         } else {
             carrito.push({
                 producto_id: producto.producto_id,
                 nombre: producto.producto_nombre,
                 cantidad: 1,
-                precio: precio,
-                subtotal: precio,
+                precio: precioFinal,
+                subtotal: precioFinal,
                 imagen: producto.foto_url
             });
         }

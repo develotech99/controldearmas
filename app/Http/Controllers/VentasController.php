@@ -151,63 +151,76 @@ class VentasController extends Controller
         $calibre_id = trim($request->query('calibre_id', ''));
         $busqueda = trim($request->query('busqueda', ''));
 
+        // Subquery para obtener el ÚLTIMO precio activo por producto
+        $latestPrices = DB::table('pro_precios')
+            ->select('precio_producto_id', DB::raw('MAX(precio_id) as max_id'))
+            ->where('precio_situacion', 1)
+            ->groupBy('precio_producto_id');
+
         $productos = DB::table('pro_productos')
-            ->leftJoin('pro_precios', 'producto_id', '=', 'precio_producto_id')
-            ->Join('pro_categorias', 'producto_categoria_id', '=', 'categoria_id')
-            ->Join('pro_subcategorias', 'producto_subcategoria_id', '=', 'subcategoria_id')
-            ->leftJoin('pro_marcas', 'producto_marca_id', '=', 'marca_id')
-            ->leftJoin('pro_modelo', 'producto_modelo_id', '=', 'modelo_id')
-            ->leftJoin('pro_calibres', 'producto_calibre_id', '=', 'calibre_id')
-            ->leftJoin('pro_paises', 'producto_madein', '=', 'pais_id')
-            ->leftJoin('pro_stock_actual', 'stock_producto_id', '=', 'producto_id')
-            ->leftJoin('pro_productos_fotos', function ($join) {
-                $join->on('producto_id', '=', 'foto_producto_id')
-                    ->where('foto_principal', 1);
+            // Join con la subquery para obtener el ID del precio más reciente
+            ->leftJoinSub($latestPrices, 'lp', function ($join) {
+                $join->on('pro_productos.producto_id', '=', 'lp.precio_producto_id');
             })
-            ->where('producto_situacion', 1)
-            ->when($categoria_id, fn($q) => $q->where('categoria_id', $categoria_id))
-            ->when($subcategoria_id, fn($q) => $q->where('subcategoria_id', $subcategoria_id))
-            ->when($marca_id, fn($q) => $q->where('marca_id', $marca_id))
-            ->when($modelo_id, fn($q) => $q->where('modelo_id', $modelo_id))
-            ->when($calibre_id, fn($q) => $q->where('calibre_id', $calibre_id))
-            ->when($busqueda, function ($q) use ($busqueda) {
-                $q->where(function ($query) use ($busqueda) {
-                    $query->where('producto_nombre', 'like', "%{$busqueda}%")
-                        ->orWhere('marca_descripcion', 'like', "%{$busqueda}%")
-                        ->orWhere('modelo_descripcion', 'like', "%{$busqueda}%")
-                        ->orWhere('calibre_nombre', 'like', "%{$busqueda}%");
-                });
+            // Join con la tabla de precios usando ese ID específico
+            ->leftJoin('pro_precios', 'pro_precios.precio_id', '=', 'lp.max_id')
+            
+            ->join('pro_categorias', 'pro_productos.producto_categoria_id', '=', 'pro_categorias.categoria_id')
+            ->join('pro_subcategorias', 'pro_productos.producto_subcategoria_id', '=', 'pro_subcategorias.subcategoria_id')
+            ->leftJoin('pro_marcas', 'pro_productos.producto_marca_id', '=', 'pro_marcas.marca_id')
+            ->leftJoin('pro_modelo', 'pro_productos.producto_modelo_id', '=', 'pro_modelo.modelo_id')
+            ->leftJoin('pro_calibres', 'pro_productos.producto_calibre_id', '=', 'pro_calibres.calibre_id')
+            ->leftJoin('pro_stock_actual', 'pro_stock_actual.stock_producto_id', '=', 'pro_productos.producto_id')
+            ->leftJoin('pro_productos_fotos', function ($join) {
+                $join->on('pro_productos.producto_id', '=', 'pro_productos_fotos.foto_producto_id')
+                    ->where('pro_productos_fotos.foto_principal', '=', 1);
             })
             ->select(
-                'producto_id',
-                'producto_nombre',
-                'pro_codigo_sku',
-                'producto_descripcion',
-                'producto_categoria_id',
-                'categoria_nombre',
-                'producto_subcategoria_id',
-                'subcategoria_nombre',
-                'producto_marca_id',
-                'marca_descripcion',
-                'producto_modelo_id',
-                'modelo_descripcion',
-                'producto_calibre_id',
-                'calibre_nombre',
-                'pais_descripcion',
-                'producto_situacion',
-                'producto_requiere_serie',
-                'precio_venta',
-                'precio_venta_empresa',
-                'foto_url',
-                'stock_cantidad_total',
-                'stock_cantidad_reservada',
-                'stock_cantidad_reservada2',
-                'producto_requiere_stock'
+                'pro_productos.producto_id',
+                'pro_productos.producto_nombre',
+                'pro_productos.pro_codigo_sku',
+                'pro_productos.producto_codigo_barra',
+                'pro_productos.producto_requiere_serie',
+                'pro_productos.producto_requiere_stock',
+                'pro_categorias.categoria_nombre',
+                'pro_subcategorias.subcategoria_nombre',
+                'pro_marcas.marca_descripcion',
+                'pro_modelo.modelo_descripcion',
+                'pro_calibres.calibre_nombre',
+                'pro_precios.precio_venta',
+                'pro_precios.precio_venta_empresa',
+                'pro_stock_actual.stock_cantidad_total',
+                'pro_stock_actual.stock_cantidad_disponible',
+                'pro_productos_fotos.foto_url'
             )
-            ->orderBy('producto_nombre')
-            ->get()
-            ->unique('producto_id')
-            ->values();
+            ->where('pro_productos.producto_situacion', 1);
+
+        if ($categoria_id) {
+            $productos->where('pro_productos.producto_categoria_id', $categoria_id);
+        }
+        if ($subcategoria_id) {
+            $productos->where('pro_productos.producto_subcategoria_id', $subcategoria_id);
+        }
+        if ($marca_id) {
+            $productos->where('pro_productos.producto_marca_id', $marca_id);
+        }
+        if ($modelo_id) {
+            $productos->where('pro_productos.producto_modelo_id', $modelo_id);
+        }
+        if ($calibre_id) {
+            $productos->where('pro_productos.producto_calibre_id', $calibre_id);
+        }
+        if ($busqueda) {
+            $productos->where(function ($q) use ($busqueda) {
+                $q->where('pro_productos.producto_nombre', 'like', '%' . $busqueda . '%')
+                    ->orWhere('pro_productos.pro_codigo_sku', 'like', '%' . $busqueda . '%')
+                    ->orWhere('pro_productos.producto_codigo_barra', 'like', '%' . $busqueda . '%');
+            });
+        }
+
+        $productos = $productos->orderBy('pro_productos.producto_nombre', 'asc')
+            ->limit(50)
+            ->get();
 
         // Series + LOTES (igual que series, pero para pro_lotes)
         $productos = $productos->map(function ($producto) {

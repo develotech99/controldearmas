@@ -61,7 +61,7 @@ async function clientesParticulares() {
                 const saldoFavor = c.saldo ? parseFloat(c.saldo.saldo_monto) : 0;
 
                 select.innerHTML += `
-                    <option value="${c.cliente_id}" data-empresas="${empresasJson}" data-saldo="${saldoFavor}">
+                    <option value="${c.cliente_id}" data-empresas="${empresasJson}" data-saldo="${saldoFavor}" data-tipo="${c.cliente_tipo}">
                         ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
                     </option>`;
             });
@@ -1286,6 +1286,18 @@ function agregarProductoAlCarrito(producto, cantidadSolicitada = 1) {
         // 🔹 Precio inicial siempre es el precio_venta (normal)
         let precioInicial = precioVenta;
         let precioActivo = 'normal';
+
+        // 👇 Lógica de precio según cliente (Empresa)
+        const clienteSelect = document.getElementById("clienteSelect");
+        const selectedOption = clienteSelect ? clienteSelect.options[clienteSelect.selectedIndex] : null;
+        const tipoCliente = selectedOption ? selectedOption.dataset.tipo : null;
+        const empresaSelect = document.getElementById("empresaSelect");
+        const esEmpresa = (tipoCliente == 3) || (empresaSelect && empresaSelect.value);
+
+        if (esEmpresa && precioVentaEmpresa > 0) {
+            precioInicial = precioVentaEmpresa;
+            precioActivo = 'empresa';
+        }
 
         carritoProductos.push({
             // Identidad / visual
