@@ -941,7 +941,23 @@ public function certificarCambiaria(Request $request)
             'talonario' => config('fel.emisor.talonario', ''),
         ];
 
-        return view('facturacion.factura', compact('factura', 'emisor'));
+        // Extraer Número de Acceso del XML si existe
+        $numeroAcceso = null;
+        if ($factura->fac_xml_certificado_path && Storage::disk('public')->exists($factura->fac_xml_certificado_path)) {
+            try {
+                $xmlContent = Storage::disk('public')->get($factura->fac_xml_certificado_path);
+                // Buscar NumeroAcceso en el XML (puede estar con namespace o sin)
+                // Estructura común: <dte:DatosGenerales ... NumeroAcceso="123456789" ...>
+                if (preg_match('/NumeroAcceso="([^"]+)"/', $xmlContent, $matches)) {
+                    $numeroAcceso = $matches[1];
+                }
+            } catch (\Exception $e) {
+                // Ignorar error al leer XML
+                \Log::warning("Error leyendo XML para factura {$id}: " . $e->getMessage());
+            }
+        }
+
+        return view('facturacion.factura', compact('factura', 'emisor', 'numeroAcceso'));
     }
     public function consultarDte($uuid)
     {

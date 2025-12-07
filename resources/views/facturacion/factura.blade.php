@@ -456,38 +456,36 @@
                     <span class="info-label">Moneda:</span>
                     <span class="info-value">{{ $factura->fac_moneda }}</span>
                 </div>
+                @if(isset($numeroAcceso))
                 <div class="info-row">
-                    <span class="info-label">Autorización:</span>
-                    <span class="info-value">{{ $factura->fac_serie }}</span>
+                    <span class="info-label">Número de Acceso:</span>
+                    <span class="info-value">{{ $numeroAcceso }}</span>
                 </div>
+                @endif
                 <div style="margin-top: 10px;">
                     <div class="info-label" style="margin-bottom: 5px;">UUID:</div>
-                    <div class="uuid"><b>{{ $factura->fac_uuid }}></b></div>
+                    <div class="uuid"><b>{{ $factura->fac_uuid }}</b></div>
                 </div>
             </div>
             <div class="info-box">
-                <h3>Cliente</h3>
+                <h3>DATOS DEL RECEPTOR</h3>
                 <div class="info-row">
-                    <span class="info-label">NIT:</span>
+                    <span class="info-label">NIT Receptor:</span>
                     <span class="info-value">{{ $factura->fac_nit_receptor }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Nombre:</span>
+                    <span class="info-label">Nombre Receptor:</span>
                     <span class="info-value">{{ $factura->fac_receptor_nombre }}</span>
                 </div>
                 @if ($factura->fac_receptor_direccion)
                     <div class="info-row">
-                        <span class="info-label">Dirección:</span>
-                        <span class="info-value">{{ $factura->fac_receptor_direccion }}</span>
+                        <span class="info-label">Dirección del comprador:</span>
+                        <span class="info-value" style="text-align: right;">
+                            {{ $factura->fac_receptor_direccion }}<br>
+                            Mixco, Guatemala, Guatemala
+                        </span>
                     </div>
                 @endif
-                @if ($factura->fac_receptor_telefono)
-                    <div class="info-row">
-                        <span class="info-label">Teléfono:</span>
-                        <span class="info-value">{{ $factura->fac_receptor_telefono }}</span>
-                    </div>
-                @endif
-
             </div>
         </div>
 
@@ -501,7 +499,7 @@
                     <th class="right" style="width: 80px;">P. Unit.</th>
                     <th class="right" style="width: 70px;">Desc.</th>
                     <th class="right" style="width: 90px;">Subtotal</th>
-                    <th class="right" style="width: 70px;">IVA</th>
+                    <th class="right" style="width: 90px;">IVA</th>
                     <th class="right" style="width: 90px;">Total</th>
                 </tr>
             </thead>
@@ -514,7 +512,7 @@
                         <td class="right">Q {{ number_format($d->det_fac_precio_unitario, 2) }}</td>
                         <td class="right">Q {{ number_format($d->det_fac_descuento, 2) }}</td>
                         <td class="right">Q {{ number_format($d->det_fac_monto_gravable, 2) }}</td>
-                        <td class="right">Q {{ number_format($d->det_fac_impuesto, 2) }}</td>
+                        <td class="right">IVA {{ number_format($d->det_fac_impuesto, 6) }}</td>
                         <td class="right"><strong>Q {{ number_format($d->det_fac_total, 2) }}</strong></td>
                     </tr>
                 @endforeach
@@ -546,8 +544,12 @@
         </div>
 
         <!-- Información adicional -->
+        <div style="margin-top: 20px; font-size: 11px; color: #555;">
+            <p>* Sujeto a pagos trimestrales ISR</p>
+        </div>
+
         <div
-            style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+            style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 20px; border-top: 1px solid #ddd;">
             <div style="font-size: 12px;">
                 <p style="margin: 5px 0;"><strong>Atendido por:</strong> {{ $factura->fac_vendedor }}</p>
                 <p style="margin: 5px 0; color: #666;">Fecha:
@@ -555,6 +557,8 @@
                 </p>
             </div>
             <div style="text-align: right; font-size: 11px; color: #666;">
+                <p><strong>Certificador:</strong> Cámara de Comercio de Guatemala</p>
+                <p><strong>NIT:</strong> 351598</p>
                 <p>Factura Electrónica en Línea (FEL)</p>
             </div>
         </div>
