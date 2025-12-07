@@ -17,7 +17,8 @@ class ProDetalleVenta extends Model
         'det_cantidad',
         'det_precio',
         'det_descuento',
-        'det_situacion'
+        'det_situacion',
+        'det_cantidad_facturada'
     ];
 
     protected $casts = [

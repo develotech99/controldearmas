@@ -1171,6 +1171,7 @@ public function certificarCambiaria(Request $request)
                     'p.producto_nombre',
                     'p.producto_requiere_serie',
                     'd.det_cantidad',
+                    'd.det_cantidad_facturada',
                     'd.det_precio',
                     'd.det_descuento'
                 )
