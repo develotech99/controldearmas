@@ -97,15 +97,18 @@ class AdminPagosController extends Controller
 
             $rows = DB::table('pro_pagos_subidos as ps')
                 ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'ps.ps_venta_id')
-                ->leftJoin('pro_preventas as prev', 'prev.prev_id', '=', 'ps.ps_preventa_id') // Join Preventas
+                ->leftJoin('pro_preventas as prev', 'prev.prev_id', '=', 'ps.ps_preventa_id')
+                ->leftJoin('pro_deudas_clientes as deuda', 'deuda.deuda_id', '=', 'ps.ps_deuda_id') // Join Deudas
                 ->leftJoin('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
                 ->leftJoin('users as u', 'u.user_id', '=', 'ps.ps_cliente_user_id')
                 ->leftJoin('pro_clientes as c', 'c.cliente_user_id', '=', 'ps.ps_cliente_user_id')
-                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'ps.ps_banco_id') // Join banks
+                ->leftJoin('pro_clientes as c_deuda', 'c_deuda.cliente_id', '=', 'deuda.cliente_id') // Join Client from Deuda
+                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'ps.ps_banco_id')
                 ->select([
                     'ps.ps_id',
                     'ps.ps_venta_id',
-                    'ps.ps_preventa_id', // Add preventa ID
+                    'ps.ps_preventa_id',
+                    'ps.ps_deuda_id', // Add Deuda ID
                     'ps.ps_estado',
                     'ps.ps_referencia',
                     'ps.ps_concepto',
@@ -113,19 +116,23 @@ class AdminPagosController extends Controller
                     'ps.ps_monto_comprobante',
                     'ps.ps_monto_total_cuotas_front',
                     'ps.ps_cuotas_json',
-                    'ps.ps_cuotas_json',
                     'ps.created_at',
-                    'b.banco_nombre', // Select bank name
+                    'b.banco_nombre',
 
                     'v.ven_id',
                     'v.ven_fecha',
                     'v.ven_total_vendido',
                     'v.ven_observaciones',
 
-                    'prev.prev_id', // Preventa fields
+                    'prev.prev_id',
                     'prev.prev_fecha',
                     'prev.prev_total',
                     'prev.prev_observaciones',
+
+                    'deuda.deuda_id', // Deuda fields
+                    'deuda.descripcion as deuda_descripcion',
+                    'deuda.monto as deuda_monto',
+                    'deuda.saldo_pendiente as deuda_saldo',
 
                     'pg.pago_id',
                     'pg.pago_monto_total',
@@ -135,15 +142,8 @@ class AdminPagosController extends Controller
 
                     DB::raw("
                     COALESCE(
-                        NULLIF(
-                            TRIM(CONCAT_WS(' ',
-                                c.cliente_nombre1,
-                                c.cliente_nombre2,
-                                c.cliente_apellido1,
-                                c.cliente_apellido2
-                            )),
-                            ''
-                        ),
+                        NULLIF(TRIM(CONCAT_WS(' ', c_deuda.cliente_nombre1, c_deuda.cliente_apellido1)), ''),
+                        NULLIF(TRIM(CONCAT_WS(' ', c.cliente_nombre1, c.cliente_nombre2, c.cliente_apellido1, c.cliente_apellido2)), ''),
                         u.email,
                         CONCAT('Usuario ', ps.ps_cliente_user_id),
                         'Cliente'
@@ -164,7 +164,9 @@ class AdminPagosController extends Controller
                             ->orWhere('ps.ps_concepto', 'like', "%{$q}%")
                             ->orWhere('v.ven_observaciones', 'like', "%{$q}%")
                             ->orWhere('v.ven_id', 'like', "%{$q}%")
-                            ->orWhere('prev.prev_id', 'like', "%{$q}%"); // Search by preventa ID
+                            ->orWhere('prev.prev_id', 'like', "%{$q}%")
+                            ->orWhere('deuda.deuda_id', 'like', "%{$q}%")
+                            ->orWhere('deuda.descripcion', 'like', "%{$q}%");
                     });
                 })
                 ->orderByDesc('ps.created_at')

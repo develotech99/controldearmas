@@ -138,11 +138,14 @@ class DeudasController extends Controller
             }
         }
 
-        // Registrar en pagos subidos (Pendiente de Validación)
+        // Determine status based on proof presence
+        $estado = $comprobantePath ? 'PENDIENTE_VALIDACION' : 'PENDIENTE_CARGA';
+
+        // Registrar en pagos subidos
         DB::table('pro_pagos_subidos')->insert([
             'ps_deuda_id' => $id,
             'ps_cliente_user_id' => auth()->id(),
-            'ps_estado' => 'PENDIENTE_VALIDACION',
+            'ps_estado' => $estado,
             'ps_canal' => 'WEB',
             'ps_fecha_comprobante' => $request->fecha_pago ? Carbon::parse($request->fecha_pago) : now(),
             'ps_monto_comprobante' => $request->monto,
@@ -156,7 +159,11 @@ class DeudasController extends Controller
 
         DB::commit();
 
-        return response()->json(['success' => true, 'message' => 'Pago enviado a validación correctamente.']);
+        $msg = $comprobantePath 
+            ? 'Pago enviado a validación correctamente.' 
+            : 'Pago registrado. Por favor sube el comprobante en "Mis Pagos" para validarlo.';
+
+        return response()->json(['success' => true, 'message' => $msg]);
     } catch (\Exception $e) {
         DB::rollBack();
         Log::error('Error al registrar pago: ' . $e->getMessage());

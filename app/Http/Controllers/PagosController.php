@@ -337,6 +337,28 @@ class PagosController extends Controller
                 'precios' => $r['precios'],  // 🔥 NUEVO
             ])->values();
 
+            // ===== Deudas pendientes de carga de comprobante =====
+            $deudasPendientesCarga = DB::table('pro_pagos_subidos as ps')
+                ->join('pro_deudas_clientes as d', 'd.deuda_id', '=', 'ps.ps_deuda_id')
+                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'd.cliente_id')
+                ->where('ps.ps_estado', 'PENDIENTE_CARGA')
+                ->when($userId, function ($query, $userId) {
+                    return $query->where('ps.ps_cliente_user_id', $userId);
+                })
+                ->select([
+                    'ps.ps_id',
+                    'ps.ps_deuda_id',
+                    'ps.ps_monto_comprobante as monto',
+                    'ps.ps_referencia',
+                    'ps.ps_concepto',
+                    'ps.created_at',
+                    'd.descripcion as deuda_descripcion',
+                    'd.monto as deuda_monto_total',
+                    'd.saldo_pendiente as deuda_saldo',
+                    DB::raw("TRIM(CONCAT_WS(' ', c.cliente_nombre1, c.cliente_apellido1)) as cliente_nombre")
+                ])
+                ->get();
+
             return response()->json([
                 'codigo' => 1,
                 'mensaje' => 'Datos devueltos correctamente',
@@ -344,6 +366,7 @@ class PagosController extends Controller
                     'pendientes' => array_values($pendientes),
                     'pagadas_ult4m' => array_values($pagadasUlt4m),
                     'facturas_pendientes_all' => $facturasPendientesAll,
+                    'deudas_pendientes_carga' => $deudasPendientesCarga, // Nuevo campo
                     'all' => $verTodas,
                 ]
             ], 200);
