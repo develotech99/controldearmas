@@ -2499,7 +2499,7 @@ function verificarEstructuraCarrito() {
 
 const modalDoc = document.getElementById('modalDocumentacion');
 const btnCerrarDoc = document.getElementById('btnCerrarModalDocumentacion');
-const checkDoc = document.querySelector('input[type="checkbox"] + span:contains("Esta venta requiere documentación")')?.previousElementSibling; // Selector aproximado, mejor usar ID si es posible
+
 // Asumiendo que el checkbox tiene un ID o clase específica, pero en el HTML vi un label envolviendo.
 // Vamos a buscar el checkbox dentro del label que contiene el texto.
 const labelDoc = Array.from(document.querySelectorAll('label')).find(l => l.textContent.includes('Esta venta requiere documentación'));

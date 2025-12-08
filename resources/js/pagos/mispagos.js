@@ -449,6 +449,13 @@ document.getElementById('tablaFacturas')?.addEventListener('click', (ev) => {
         const venta = ventaIndex.get(Number(ventaId));
         if (!venta) return;
 
+        // Find the payment to attach proof to (latest payment)
+        let targetPagoId = null;
+        if (venta.pagos_realizados && venta.pagos_realizados.length > 0) {
+            const lastPayment = venta.pagos_realizados[venta.pagos_realizados.length - 1];
+            targetPagoId = lastPayment.id;
+        }
+
         // Limpiar lista de cuotas porque es subida directa
         listDiv.innerHTML = '';
         totalSel.textContent = 'Q 0.00';
@@ -457,6 +464,12 @@ document.getElementById('tablaFacturas')?.addEventListener('click', (ev) => {
         // Configurar modal para solo subida
         btnSubir && (btnSubir.dataset.venta = ventaId);
         btnSubir && (btnSubir.dataset.modo = 'solo_boleta'); // Flag para saber que es solo boleta
+
+        if (targetPagoId) {
+            btnSubir.dataset.detalle_pago_id = targetPagoId;
+        } else {
+            delete btnSubir.dataset.detalle_pago_id;
+        }
 
         openModal();
         // Saltar directamente al paso 2 (subir foto)
@@ -1432,7 +1445,9 @@ document.addEventListener('keydown', (e) => {
 
 /* ==== Envío final ==== */
 btnEnviarPago?.addEventListener('click', async () => {
-    if (!selectedCuotas.length) {
+    const detallePagoId = btnSubir?.dataset?.detalle_pago_id;
+
+    if (!selectedCuotas.length && !detallePagoId) {
         showError('Error', 'No hay cuotas seleccionadas');
         return;
     }
@@ -1481,6 +1496,7 @@ btnEnviarPago?.addEventListener('click', async () => {
     fd.append('concepto', finalData.concepto || '');
     fd.append('banco_id', finalData.banco_id || '');
     fd.append('banco_nombre', finalData.banco_nombre || '');
+    fd.append('detalle_pago_id', detallePagoId || '');
 
     if (REQUIRE_COMPROBANTE && !currentBlob) {
         showError('Falta comprobante', 'Debes adjuntar el comprobante');

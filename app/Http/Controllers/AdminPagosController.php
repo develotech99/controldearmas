@@ -431,22 +431,43 @@ class AdminPagosController extends Controller
             }
 
             // 2) Detalle de pago (1 registro por comprobante)
-            $detId = DB::table('pro_detalle_pagos')->insertGetId([
-                'det_pago_pago_id'             => $venta->pago_id,
-                'det_pago_cuota_id'            => null,
-                'det_pago_fecha'               => $fecha,
-                'det_pago_monto'               => $monto,
-                'det_pago_metodo_pago'         => $metodoEfectivoId,
-                'det_pago_banco_id'            => $ps->ps_banco_id ?? null,
-                'det_pago_numero_autorizacion' => $ps->ps_referencia ?? null,
-                'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
-                'det_pago_tipo_pago'           => 'PAGO_UNICO',
-                'det_pago_estado'              => 'VALIDO',
-                'det_pago_observaciones'       => $observaciones,
-                'det_pago_usuario_registro'    => auth()->id(),
-                'created_at'                   => now(),
-                'updated_at'                   => now(),
-            ]);
+            if ($ps->ps_detalle_pago_id) {
+                // 🔥 UPDATE existing payment
+                DB::table('pro_detalle_pagos')
+                    ->where('det_pago_id', $ps->ps_detalle_pago_id)
+                    ->update([
+                        'det_pago_fecha'               => $fecha,
+                        'det_pago_monto'               => $monto, // Update amount if changed? Maybe user corrected it.
+                        'det_pago_metodo_pago'         => $metodoEfectivoId,
+                        'det_pago_banco_id'            => $ps->ps_banco_id ?? null,
+                        'det_pago_numero_autorizacion' => $ps->ps_referencia ?? null,
+                        'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
+                        'det_pago_estado'              => 'VALIDO', // Ensure it's valid
+                        'det_pago_observaciones'       => $observaciones,
+                        'updated_at'                   => now(),
+                    ]);
+                
+                $detId = $ps->ps_detalle_pago_id;
+                
+            } else {
+                // 🔥 INSERT new payment
+                $detId = DB::table('pro_detalle_pagos')->insertGetId([
+                    'det_pago_pago_id'             => $venta->pago_id,
+                    'det_pago_cuota_id'            => null,
+                    'det_pago_fecha'               => $fecha,
+                    'det_pago_monto'               => $monto,
+                    'det_pago_metodo_pago'         => $metodoEfectivoId,
+                    'det_pago_banco_id'            => $ps->ps_banco_id ?? null,
+                    'det_pago_numero_autorizacion' => $ps->ps_referencia ?? null,
+                    'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
+                    'det_pago_tipo_pago'           => 'PAGO_UNICO',
+                    'det_pago_estado'              => 'VALIDO',
+                    'det_pago_observaciones'       => $observaciones,
+                    'det_pago_usuario_registro'    => auth()->id(),
+                    'created_at'                   => now(),
+                    'updated_at'                   => now(),
+                ]);
+            }
 
             // 3) Master de pagos
             $nuevoPagado    = (float)$venta->pago_monto_pagado + $monto;

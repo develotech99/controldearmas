@@ -367,83 +367,89 @@ class PagosController extends Controller
             $user = $request->user();
 
             $data = $request->validate([
-                'venta_id' => ['required', 'integer'],
-                'cuotas' => ['required', 'string'], // JSON: [10,11]
-                'monto_total' => ['required', 'numeric'], // suma de cuotas seleccionadas (front)
-                'fecha' => ['nullable', 'date_format:Y-m-d\TH:i'],
-                'monto' => ['required', 'numeric'], // monto del comprobante
-                'referencia' => ['required', 'string', 'min:6', 'max:64'],
-                'concepto' => ['nullable', 'string', 'max:255'],
-                'banco_id' => ['nullable', 'integer'],        // <- bigint en tu BD
-                'banco_nombre' => ['nullable', 'string', 'max:64'],
-                'comprobante' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            ]);
+            'venta_id' => ['required', 'integer'],
+            'cuotas' => ['nullable', 'string'], // JSON: [10,11] (nullable for proof upload)
+            'monto_total' => ['required', 'numeric'], // suma de cuotas seleccionadas (front)
+            'fecha' => ['nullable', 'date_format:Y-m-d\TH:i'],
+            'monto' => ['required', 'numeric'], // monto del comprobante
+            'referencia' => ['required', 'string', 'min:6', 'max:64'],
+            'concepto' => ['nullable', 'string', 'max:255'],
+            'banco_id' => ['nullable', 'integer'],        // <- bigint en tu BD
+            'banco_nombre' => ['nullable', 'string', 'max:64'],
+            'comprobante' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'detalle_pago_id' => ['nullable', 'integer'], // ID del pago existente
+        ]);
 
-            $ventaId = (int) $data['venta_id'];
-            $cuotasArr = json_decode($data['cuotas'], true) ?: [];
+        $ventaId = (int) $data['venta_id'];
+        $cuotasArr = json_decode($data['cuotas'] ?? '[]', true) ?: [];
 
-            // 1) Verificar que la venta exista (y opcionalmente que pertenezca al usuario)
-            $venta = DB::table('pro_ventas as v')
-                ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
-                ->where('v.ven_id', $ventaId)
-                ->select('v.ven_id', 'pg.pago_id')
-                ->first();
+        // Validar que haya cuotas O detalle_pago_id
+        if (empty($cuotasArr) && empty($data['detalle_pago_id'])) {
+            return response()->json(['codigo' => 0, 'mensaje' => 'Debe seleccionar cuotas o un pago existente'], 422);
+        }
 
-            if (!$venta) {
-                return response()->json(['codigo' => 0, 'mensaje' => 'Venta no encontrada'], 404);
-            }
+        // 1) Verificar que la venta exista (y opcionalmente que pertenezca al usuario)
+        $venta = DB::table('pro_ventas as v')
+            ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
+            ->where('v.ven_id', $ventaId)
+            ->select('v.ven_id', 'pg.pago_id')
+            ->first();
 
-            // 2) BLOQUEO: ¿ya hay un envío en PENDIENTE_VALIDACION para esta venta?
-            $yaPendiente = DB::table('pro_pagos_subidos')
-                ->where('ps_venta_id', $ventaId)
-                ->where('ps_estado', 'PENDIENTE_VALIDACION')
-                ->exists();
+        if (!$venta) {
+            return response()->json(['codigo' => 0, 'mensaje' => 'Venta no encontrada'], 404);
+        }
 
-            if ($yaPendiente) {
-                return response()->json([
-                    'codigo' => 0,
-                    'mensaje' => 'Ya existe un pago en revisión para esta venta. Espera la validación antes de enviar otro.',
-                ], 200);
-            }
+        // 2) BLOQUEO: ¿ya hay un envío en PENDIENTE_VALIDACION para esta venta?
+        $yaPendiente = DB::table('pro_pagos_subidos')
+            ->where('ps_venta_id', $ventaId)
+            ->where('ps_estado', 'PENDIENTE_VALIDACION')
+            ->exists();
 
-            // 3) Subir archivo (opcional)
-            $path = null;
-            if ($request->hasFile('comprobante')) {
-                $path = $request->file('comprobante')->store('pagos_subidos', 'public'); // requiere storage:link
-            }
+        if ($yaPendiente) {
+            return response()->json([
+                'codigo' => 0,
+                'mensaje' => 'Ya existe un pago en revisión para esta venta. Espera la validación antes de enviar otro.',
+            ], 200);
+        }
 
-            // 4) Insert en TU ESQUEMA
-            $montoTotalCuotas = (float) $data['monto_total'];
-            $montoComprobante = (float) $data['monto'];
-            $diferencia = $montoComprobante - $montoTotalCuotas;
+        // 3) Subir archivo (opcional)
+        $path = null;
+        if ($request->hasFile('comprobante')) {
+            $path = $request->file('comprobante')->store('pagos_subidos', 'public'); // requiere storage:link
+        }
 
-            DB::beginTransaction();
+        // 4) Insert en TU ESQUEMA
+        $montoTotalCuotas = (float) $data['monto_total'];
+        $montoComprobante = (float) $data['monto'];
+        $diferencia = $montoComprobante - $montoTotalCuotas;
 
-            $insert = [
-                'ps_venta_id' => $ventaId,
-                'ps_cliente_user_id' => $user->id ?? $user->user_id ?? null,
-                'ps_estado' => 'PENDIENTE_VALIDACION',
-                'ps_canal' => 'WEB',
+        DB::beginTransaction();
 
-                'ps_fecha_comprobante' => $data['fecha'] ? Carbon::parse($data['fecha']) : null,
-                'ps_monto_comprobante' => $montoComprobante,
-                'ps_monto_total_cuotas_front' => $montoTotalCuotas,
-                'ps_diferencia' => $diferencia,
+        $insert = [
+            'ps_venta_id' => $ventaId,
+            'ps_cliente_user_id' => $user->id ?? $user->user_id ?? null,
+            'ps_estado' => 'PENDIENTE_VALIDACION',
+            'ps_canal' => 'WEB',
 
-                'ps_banco_id' => $data['banco_id'] ?? null,
-                'ps_banco_nombre' => $data['banco_nombre'] ?? null,
+            'ps_fecha_comprobante' => $data['fecha'] ? Carbon::parse($data['fecha']) : null,
+            'ps_monto_comprobante' => $montoComprobante,
+            'ps_monto_total_cuotas_front' => $montoTotalCuotas,
+            'ps_diferencia' => $diferencia,
 
-                'ps_referencia' => $data['referencia'],
-                'ps_concepto' => $data['concepto'] ?? null,
-                'ps_cuotas_json' => json_encode(array_values($cuotasArr), JSON_UNESCAPED_UNICODE),
+            'ps_banco_id' => $data['banco_id'] ?? null,
+            'ps_banco_nombre' => $data['banco_nombre'] ?? null,
 
-                'ps_imagen_path' => $path,
-                // opcionales:
-                'ps_checksum' => null, // si quieres, calcula hash del archivo/combinación
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+            'ps_referencia' => $data['referencia'],
+            'ps_concepto' => $data['concepto'] ?? null,
+            'ps_cuotas_json' => json_encode(array_values($cuotasArr), JSON_UNESCAPED_UNICODE),
+            'ps_detalle_pago_id' => $data['detalle_pago_id'] ?? null, // Guardamos ID
 
+            'ps_imagen_path' => $path,
+            // opcionales:
+            'ps_checksum' => null, // si quieres, calcula hash del archivo/combinación
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];    
             $psId = DB::table('pro_pagos_subidos')->insertGetId($insert);
 
             DB::commit();
