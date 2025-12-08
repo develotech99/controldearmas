@@ -187,7 +187,7 @@ class PagosController extends Controller
                 ->whereIn('dp.det_pago_pago_id', $pagoIds)
                 ->where('dp.det_pago_estado', 'VALIDO')
                 ->leftJoin('pro_metodos_pago as mp', 'mp.metpago_id', '=', 'dp.det_pago_metodo_pago')
-                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'dp.det_pago_banco') // Join banks
+                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'dp.det_pago_banco_id') // Join banks
                 ->select([
                     'dp.det_pago_id',
                     'dp.det_pago_pago_id',
