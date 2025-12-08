@@ -111,71 +111,58 @@ class DeudasController extends Controller
                 return response()->json(['success' => false, 'message' => 'Deuda no encontrada.'], 404);
             }
 
-            // Handle file upload
-            $comprobantePath = null;
-            if ($request->hasFile('comprobante')) {
-                $comprobantePath = $request->file('comprobante')->store('comprobantes', 'public');
+        // Handle file upload with compression
+        $comprobantePath = null;
+        if ($request->hasFile('comprobante')) {
+            $file = $request->file('comprobante');
+            $filename = 'pagos_subidos/' . uniqid() . '.' . $file->getClientOriginalExtension();
+            
+            // Simple compression using GD
+            if (in_array(strtolower($file->getClientOriginalExtension()), ['jpg', 'jpeg', 'png'])) {
+                $image = match(strtolower($file->getClientOriginalExtension())) {
+                    'jpg', 'jpeg' => imagecreatefromjpeg($file->getRealPath()),
+                    'png' => imagecreatefrompng($file->getRealPath()),
+                    default => null,
+                };
+
+                if ($image) {
+                    // Save with 75% quality
+                    imagejpeg($image, storage_path('app/public/' . $filename), 75);
+                    imagedestroy($image);
+                    $comprobantePath = $filename;
+                } else {
+                    $comprobantePath = $file->store('pagos_subidos', 'public');
+                }
+            } else {
+                $comprobantePath = $file->store('pagos_subidos', 'public');
             }
-
-            // Registrar abono
-            DB::table('pro_deudas_abonos')->insert([
-                'deuda_id' => $id,
-                'user_id' => auth()->id(),
-                'monto' => $request->monto,
-                'metodo_pago' => $request->metodo_pago,
-                'referencia' => $request->referencia,
-                'nota' => $request->nota,
-                'banco_id' => $request->banco_id,
-                'comprobante_path' => $comprobantePath,
-                'created_at' => $request->fecha_pago ? Carbon::parse($request->fecha_pago) : now(),
-                'updated_at' => now(),
-            ]);
-
-            // Actualizar deuda
-            $nuevoPagado = $deuda->monto_pagado + $request->monto;
-            $nuevoSaldo = $deuda->monto - $nuevoPagado;
-            $estado = $nuevoSaldo <= 0 ? 'PAGADO' : 'PENDIENTE';
-
-            DB::table('pro_deudas_clientes')->where('deuda_id', $id)->update([
-                'monto_pagado' => $nuevoPagado,
-                'saldo_pendiente' => $nuevoSaldo,
-                'estado' => $estado,
-                'updated_at' => now(),
-            ]);
-
-            // Registrar en historial de caja
-            // Buscar ID de método de pago
-            $metodoId = DB::table('pro_metodos_pago')
-                ->where('metpago_descripcion', $request->metodo_pago)
-                ->value('metpago_id');
-
-            if (!$metodoId) {
-                // Fallback o error, asumimos 1 (Efectivo) o buscamos similar
-                $metodoId = 1; 
-            }
-
-            DB::table('cja_historial')->insert([
-                'cja_tipo' => 'DEPOSITO', // O 'INGRESO'
-                'cja_id_venta' => null,
-                'cja_usuario' => auth()->id(),
-                'cja_monto' => $request->monto,
-                'cja_fecha' => $request->fecha_pago ? Carbon::parse($request->fecha_pago)->toDateString() : now()->toDateString(),
-                'cja_metodo_pago' => $metodoId,
-                'cja_tipo_banco' => $request->banco_id,
-                'cja_no_referencia' => $request->referencia,
-                'cja_observaciones' => 'Abono a deuda #' . $id . '. ' . $request->nota,
-                'created_at' => now(),
-            ]);
-
-            DB::commit();
-
-            return response()->json(['success' => true, 'message' => 'Pago registrado correctamente.']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error al registrar pago: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error al procesar el pago.'], 500);
         }
+
+        // Registrar en pagos subidos (Pendiente de Validación)
+        DB::table('pro_pagos_subidos')->insert([
+            'ps_deuda_id' => $id,
+            'ps_cliente_user_id' => auth()->id(),
+            'ps_estado' => 'PENDIENTE_VALIDACION',
+            'ps_canal' => 'WEB',
+            'ps_fecha_comprobante' => $request->fecha_pago ? Carbon::parse($request->fecha_pago) : now(),
+            'ps_monto_comprobante' => $request->monto,
+            'ps_banco_id' => $request->banco_id,
+            'ps_referencia' => $request->referencia,
+            'ps_concepto' => $request->nota,
+            'ps_imagen_path' => $comprobantePath,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::commit();
+
+        return response()->json(['success' => true, 'message' => 'Pago enviado a validación correctamente.']);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error al registrar pago: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'Error al procesar el pago.'], 500);
     }
+}
 
     public function historial($id)
     {
