@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\MetodoPago;
 use App\Models\Clientes;
 use App\Models\ProCliente;
-
+use Carbon\Carbon; 
 use App\Models\Producto;
 use App\Models\SerieProducto;
 use App\Models\Lote;
@@ -2452,7 +2452,7 @@ public function procesarReserva(Request $request): JsonResponse
 // }
 
 
-use Carbon\Carbon; // Add this at the top of the file if not already present
+
 
 public function procesarVenta(Request $request): JsonResponse
 {
@@ -2468,7 +2468,7 @@ public function procesarVenta(Request $request): JsonResponse
         // 0. VALIDACIÓN
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
-            'empresa_id' => 'required|exists:pro_clientes_empresas,emp_id',
+            // 'empresa_id' => 'required|exists:pro_clientes_empresas,emp_id', no se tiene que validar empresa id por clientes individuales 
             'fecha_venta' => 'required|date',
             'subtotal' => 'required|numeric|min:0',
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
