@@ -2513,7 +2513,8 @@ if (checkboxDoc) {
             abrirModalDocumentacion();
         } else {
             documentoSeleccionado = null;
-            document.getElementById('documentoSeleccionadoId').value = '';
+            const docInput = document.getElementById('documentoSeleccionadoId');
+            if (docInput) docInput.value = '';
         }
     });
 }
@@ -2586,7 +2587,8 @@ window.seleccionarDocumento = function (el, id) {
     el.insertAdjacentHTML('beforeend', '<i class="fas fa-check-circle text-green-600 ml-2"></i>');
 
     documentoSeleccionado = id;
-    document.getElementById('documentoSeleccionadoId').value = id;
+    const docInput = document.getElementById('documentoSeleccionadoId');
+    if (docInput) docInput.value = id;
     document.getElementById('btnConfirmarDocumento').disabled = false;
 };
 
