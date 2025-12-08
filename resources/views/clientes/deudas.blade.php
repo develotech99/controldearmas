@@ -212,7 +212,7 @@
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Comprobante (Opcional)</label>
-                <input type="file" id="pago_comprobante" accept="image/*,application/pdf" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                <input type="file" id="pago_comprobante" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white">
             </div>
 
             <div class="flex justify-end pt-4">
