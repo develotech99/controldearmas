@@ -193,4 +193,23 @@ class DeudasController extends Controller
 
         return response()->json($abonos);
     }
+
+    public function getBancos()
+    {
+        // Hardcoded list for now to match frontend expectations and avoid DB migration if not needed yet
+        $bancos = [
+            ['banco_id' => 1, 'banco_nombre' => 'Banrural'],
+            ['banco_id' => 2, 'banco_nombre' => 'Banco Industrial'],
+            ['banco_id' => 3, 'banco_nombre' => 'G&T Continental'],
+            ['banco_id' => 4, 'banco_nombre' => 'BAM'],
+            ['banco_id' => 5, 'banco_nombre' => 'Interbanco'],
+            ['banco_id' => 6, 'banco_nombre' => 'BAC Credomatic'],
+            ['banco_id' => 7, 'banco_nombre' => 'Promerica'],
+            ['banco_id' => 8, 'banco_nombre' => 'Banco de Antigua'],
+            ['banco_id' => 9, 'banco_nombre' => 'Vivant'],
+            ['banco_id' => 10, 'banco_nombre' => 'CHN'],
+        ];
+
+        return response()->json($bancos);
+    }
 }
