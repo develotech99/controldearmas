@@ -481,8 +481,7 @@
                     <div class="info-row">
                         <span class="info-label">Dirección del comprador:</span>
                         <span class="info-value" style="text-align: right;">
-                            {{ $factura->fac_receptor_direccion }}<br>
-                            Mixco, Guatemala, Guatemala
+                            {{ $factura->fac_receptor_direccion }}
                         </span>
                     </div>
                 @endif
