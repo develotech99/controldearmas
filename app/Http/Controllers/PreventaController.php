@@ -35,7 +35,7 @@ class PreventaController extends Controller
             'productos.*.precio' => 'required|numeric|min:0',
             // Payment fields validation
             'metodo_pago' => 'nullable|string',
-            'banco_id' => 'nullable|integer',
+            'banco_id' => 'nullable|integer|exists:pro_bancos,banco_id',
             'fecha_pago' => 'nullable|date',
             'referencia' => 'nullable|string',
         ]);

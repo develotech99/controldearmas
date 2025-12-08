@@ -101,6 +101,7 @@ class AdminPagosController extends Controller
                 ->leftJoin('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
                 ->leftJoin('users as u', 'u.user_id', '=', 'ps.ps_cliente_user_id')
                 ->leftJoin('pro_clientes as c', 'c.cliente_user_id', '=', 'ps.ps_cliente_user_id')
+                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'ps.ps_banco_id') // Join banks
                 ->select([
                     'ps.ps_id',
                     'ps.ps_venta_id',
@@ -112,7 +113,9 @@ class AdminPagosController extends Controller
                     'ps.ps_monto_comprobante',
                     'ps.ps_monto_total_cuotas_front',
                     'ps.ps_cuotas_json',
+                    'ps.ps_cuotas_json',
                     'ps.created_at',
+                    'b.banco_nombre', // Select bank name
 
                     'v.ven_id',
                     'v.ven_fecha',

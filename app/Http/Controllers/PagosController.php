@@ -187,6 +187,7 @@ class PagosController extends Controller
                 ->whereIn('dp.det_pago_pago_id', $pagoIds)
                 ->where('dp.det_pago_estado', 'VALIDO')
                 ->leftJoin('pro_metodos_pago as mp', 'mp.metpago_id', '=', 'dp.det_pago_metodo_pago')
+                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'dp.det_pago_banco') // Join banks
                 ->select([
                     'dp.det_pago_id',
                     'dp.det_pago_pago_id',
@@ -195,7 +196,8 @@ class PagosController extends Controller
                     'dp.det_pago_tipo_pago',
                     'dp.det_pago_numero_autorizacion',
                     'dp.det_pago_imagen_boucher',
-                    'mp.metpago_descripcion as metodo'
+                    'mp.metpago_descripcion as metodo',
+                    'b.banco_nombre' // Select bank name
                 ])
                 ->orderBy('dp.det_pago_fecha', 'asc')
                 ->get()->groupBy('det_pago_pago_id');
@@ -234,6 +236,7 @@ class PagosController extends Controller
                     'monto' => (float) $p->det_pago_monto,
                     'tipo' => $p->det_pago_tipo_pago,
                     'metodo' => $p->metodo ?? 'N/D',
+                    'banco' => $p->banco_nombre ?? null, // Add bank name
                     'no_referencia' => $p->det_pago_numero_autorizacion,
                     'comprobante' => $p->det_pago_imagen_boucher,
                 ])->values();

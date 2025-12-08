@@ -26,13 +26,53 @@ const badge = (estado) => {
 };
 
 
-const BANKS = { '1': 'Banrural', '2': 'Banco Industrial', '3': 'BANTRAB' };
+let BANKS = {};
+let BANKS_LIST = [];
+
+const fetchBanks = async () => {
+    try {
+        const res = await fetch('/api/bancos');
+        const data = await res.json();
+        BANKS = {};
+        BANKS_LIST = data;
+        data.forEach(b => {
+            BANKS[String(b.banco_id)] = b.banco_nombre;
+        });
+        // Update select if exists
+        const select = document.getElementById('bancoSelectTop');
+        if (select) {
+            const current = select.value;
+            select.innerHTML = '<option value="">Seleccione un banco...</option>';
+            data.forEach(b => {
+                select.innerHTML += `<option value="${b.banco_id}">${b.banco_nombre}</option>`;
+            });
+            select.value = current;
+        }
+    } catch (e) {
+        console.error('Error fetching banks:', e);
+    }
+};
+
+fetchBanks();
 
 const detectBanco = (text) => {
     const t = (text || '').toLowerCase().replace(/\s+/g, ' ');
+    // Simple heuristic matching against loaded banks
+    // This is less precise than regex but works for dynamic lists
+    // We could enhance this by adding 'aliases' or 'regex' to the DB in the future
+
+    // Legacy hardcoded regex for common banks (fallback/priority)
     if (/(banrural|banco de desarrollo rural|b\s*\.?\s*rural)/.test(t)) return { id: '1', nombre: 'Banrural' };
     if (/(banco industrial|bi en l[ií]nea|b\s*\.?\s*industrial|\bbi\b(?!.*rural))/.test(t)) return { id: '2', nombre: 'Banco Industrial' };
     if (/(bantrab|banco de los trabajadores)/.test(t)) return { id: '3', nombre: 'BANTRAB' };
+
+    // Dynamic search
+    for (const b of BANKS_LIST) {
+        if (t.includes(b.banco_nombre.toLowerCase())) {
+            return { id: String(b.banco_id), nombre: b.banco_nombre };
+        }
+    }
+
     return { id: null, nombre: '' };
 };
 

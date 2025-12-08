@@ -184,21 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } catch (e) {
             console.error('Error cargando bancos', e);
-            // Fallback hardcoded si falla API
-            const bancos = [
-                { banco_id: 1, banco_nombre: 'Banrural' },
-                { banco_id: 2, banco_nombre: 'Banco Industrial' },
-                { banco_id: 3, banco_nombre: 'G&T Continental' },
-                { banco_id: 4, banco_nombre: 'BAM' },
-                { banco_id: 5, banco_nombre: 'Interbanco' }
-            ];
-            pagoBanco.innerHTML = '<option value="">Seleccione un banco...</option>';
-            bancos.forEach(b => {
-                const option = document.createElement('option');
-                option.value = b.banco_id;
-                option.textContent = b.banco_nombre;
-                pagoBanco.appendChild(option);
-            });
+            pagoBanco.innerHTML = '<option value="">Error al cargar bancos</option>';
         }
     }
     cargarBancos();

@@ -163,7 +163,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes/deudas', [DeudasController::class, 'store'])->name('clientes.deudas.store');
     Route::post('/clientes/deudas/{id}/pagar', [DeudasController::class, 'pagar'])->name('clientes.deudas.pagar');
     Route::get('/clientes/deudas/{id}/historial', [DeudasController::class, 'historial'])->name('clientes.deudas.historial');
-    Route::get('/api/bancos', [DeudasController::class, 'getBancos'])->name('api.bancos');
+    Route::get('/clientes/deudas/{id}/historial', [DeudasController::class, 'historial'])->name('clientes.deudas.historial');
+    
+    // Bancos API
+    Route::get('/api/bancos', [\App\Http\Controllers\BancoController::class, 'index'])->name('api.bancos.index');
+    Route::post('/api/bancos', [\App\Http\Controllers\BancoController::class, 'store'])->name('api.bancos.store');
+    Route::put('/api/bancos/{id}', [\App\Http\Controllers\BancoController::class, 'update'])->name('api.bancos.update');
 
     // Preventas
     Route::get('/preventas', [PreventaController::class, 'index'])->name('preventas.index');
