@@ -1137,30 +1137,83 @@ const seleccionarVenta = (venta) => {
     ventaSeleccionadaInfo.classList.remove('hidden');
     resultadosVenta.classList.add('hidden');
     busquedaVenta.value = '';
+
+    // Llenar items
+    contenedorItems.innerHTML = '';
+    if (venta.detalles && venta.detalles.length > 0) {
+        venta.detalles.forEach(det => {
+            if (det.series && det.series.length > 0) {
+                // Calcular descuento unitario
+                const descuentoTotal = parseFloat(det.det_descuento || 0);
+                const cantidadTotal = parseFloat(det.det_cantidad || 1);
+                const descuentoUnitario = cantidadTotal > 0 ? (descuentoTotal / cantidadTotal) : 0;
+
+                // Agregar una línea por cada serie
+                det.series.forEach(serie => {
+                    agregarItem({
+                        descripcion: `${det.producto_nombre} (Serie: ${serie})`,
+                        cantidad: 1,
+                        precio: det.det_precio,
+                        descuento: descuentoUnitario.toFixed(2),
+                        producto_id: det.det_producto_id,
+                        max: 1
+                    });
+                });
+            } else {
+                // Producto normal sin series
+                const cantidadTotal = parseFloat(det.det_cantidad || 0);
+                const cantidadFacturada = parseFloat(det.det_cantidad_facturada || 0);
+                const pendiente = cantidadTotal - cantidadFacturada;
+
+                if (pendiente > 0) {
+                    agregarItem({
+                        descripcion: det.producto_nombre,
+                        cantidad: pendiente,
+                        precio: det.det_precio,
+                        descuento: det.det_descuento,
+                        producto_id: det.det_producto_id,
+                        max: pendiente,
+                        pendiente: pendiente
+                    });
+                }
+            }
+        });
+    }
 };
 
 const buscarVenta = async () => {
-    const ventaId = busquedaVenta?.value?.trim();
-    if (!ventaId) {
-        Swal.fire({ icon: 'warning', title: 'Ingrese ID de venta', text: 'Por favor ingrese el ID de la venta a buscar.' });
+    const q = busquedaVenta?.value?.trim();
+    if (!q || q.length < 2) {
+        // Swal.fire({ icon: 'warning', title: 'Ingrese búsqueda', text: 'Ingrese al menos 2 caracteres.' });
         return;
     }
 
     setBtnLoading(btnBuscarVenta, true);
+    resultadosVenta.innerHTML = '';
+    resultadosVenta.classList.remove('hidden');
 
     try {
-        const res = await fetch(`/api/ventas/${ventaId}`, {
-            headers: { 'X-CSRF-TOKEN': token }
-        });
-        const json = await res.json();
+        const res = await fetch(`/facturacion/buscar-venta?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
 
-        if (!res.ok || !json.success) {
-            throw new Error(json.message || 'Venta no encontrada');
+        if (data.codigo === 1 && data.data.length > 0) {
+            data.data.forEach(venta => {
+                const div = document.createElement('div');
+                div.className = 'p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm';
+                div.innerHTML = `
+                    <div class="font-bold text-blue-800">Venta #${venta.ven_id} - ${venta.ven_fecha}</div>
+                    <div class="text-gray-600">${venta.cliente_nombre1} ${venta.cliente_apellido1} (${venta.cliente_nit})</div>
+                    <div class="text-xs text-gray-500">Total: Q ${venta.ven_total_vendido}</div>
+                `;
+                div.addEventListener('click', () => seleccionarVenta(venta));
+                resultadosVenta.appendChild(div);
+            });
+        } else {
+            resultadosVenta.innerHTML = '<div class="p-2 text-gray-500 text-sm">No se encontraron ventas pendientes.</div>';
         }
-
-        seleccionarVenta(json.data);
     } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'No se pudo buscar la venta' });
+        console.error(err);
+        resultadosVenta.innerHTML = '<div class="p-2 text-red-500 text-sm">Error al buscar ventas.</div>';
     } finally {
         setBtnLoading(btnBuscarVenta, false);
     }
