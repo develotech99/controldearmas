@@ -439,91 +439,133 @@ public function verFacturaCambiaria($id)
                      // 1. Finalize Stock Movements (Reserved -> Sold)
                      $refVenta = 'VENTA-' . $venta->ven_id;
 
-                     // a) Series reservadas (mov_situacion = 3) -> Vendidas (mov_situacion = 1)
-                     $seriesMovs = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $refVenta)
-                        ->where('mov_situacion', 3)
-                        ->whereNotNull('mov_serie_id')
-                        ->get();
+                     // Iterate through billed items to finalize their specific movements
+                     foreach ($items as $billedItem) {
+                         $prodId = $billedItem['producto_id'];
+                         $qtyBilled = $billedItem['cantidad'];
+                         $seriesIds = $billedItem['series_ids'] ?? [];
 
-                     foreach ($seriesMovs as $mov) {
-                        // Actualizar serie a vendida
-                        DB::table('pro_series_productos')
-                            ->where('serie_id', $mov->mov_serie_id)
-                            ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
-                        
-                        // Actualizar movimiento a confirmado
-                        DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update(['mov_situacion' => 1]);
-                        
-                        // Descontar de stock (reservado y total)
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
-                     }
+                         // A) Serialized Items
+                         if (!empty($seriesIds)) {
+                             foreach ($seriesIds as $serieId) {
+                                 // Find the reserved movement for this series
+                                 $mov = DB::table('pro_movimientos')
+                                     ->where('mov_documento_referencia', $refVenta)
+                                     ->where('mov_situacion', 3) // Reserved
+                                     ->where('mov_serie_id', $serieId)
+                                     ->first();
 
-                     // b) Lotes reservados -> Confirmados
-                     $lotesMovs = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $refVenta)
-                        ->where('mov_situacion', 3)
-                        ->whereNotNull('mov_lote_id')
-                        ->get();
+                                 if ($mov) {
+                                     // Update series status
+                                     DB::table('pro_series_productos')
+                                         ->where('serie_id', $serieId)
+                                         ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
 
-                     foreach ($lotesMovs as $mov) {
-                        // Actualizar movimiento
-                        DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update(['mov_situacion' => 1]);
+                                     // Update movement status
+                                     DB::table('pro_movimientos')
+                                         ->where('mov_id', $mov->mov_id)
+                                         ->update(['mov_situacion' => 1]); // Confirmed/Sold
 
-                        // Descontar de stock
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
-                     }
+                                     // Decrement Reserved, Decrement Total, Decrement Available
+                                     // Note: "Available" was already decremented when reserved? 
+                                     // Usually: Available = Total - Reserved.
+                                     // When Reserved -> Sold:
+                                     // Reserved decreases. Total decreases. Available stays same (0).
+                                     // Let's check previous logic:
+                                     // decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                                     // decrement('stock_cantidad_disponible', $mov->mov_cantidad); <--- This seems wrong if it was already reserved?
+                                     // If it was reserved, it's NOT available. So decrementing available again seems double counting?
+                                     // WAIT: The previous code did:
+                                     // decrement('stock_cantidad_reservada')
+                                     // decrement('stock_cantidad_disponible')
+                                     // decrement('stock_cantidad_total')
+                                     
+                                     // Let's assume the previous logic was "correct" for the business rules, 
+                                     // OR it was buggy. 
+                                     // Standard logic:
+                                     // Reserve: Available -1, Reserved +1. Total same.
+                                     // Sell (from Reserve): Reserved -1, Total -1. Available same.
+                                     
+                                     // However, if the previous code decremented ALL three, maybe "Available" includes Reserved in this system?
+                                     // Let's stick to the previous logic to avoid breaking inventory, 
+                                     // BUT apply it only to the specific item.
+                                     
+                                     DB::table('pro_stock_actual')
+                                         ->where('stock_producto_id', $prodId)
+                                         ->decrement('stock_cantidad_reservada', 1);
+                                         
+                                     DB::table('pro_stock_actual')
+                                         ->where('stock_producto_id', $prodId)
+                                         ->decrement('stock_cantidad_disponible', 1);
+                                         
+                                     DB::table('pro_stock_actual')
+                                         ->where('stock_producto_id', $prodId)
+                                         ->decrement('stock_cantidad_total', 1);
+                                 }
+                             }
+                         } 
+                         // B) Non-Serialized Items (Bulk)
+                         else {
+                             // Find reserved movements for this product in this sale
+                             $movs = DB::table('pro_movimientos')
+                                 ->where('mov_documento_referencia', $refVenta)
+                                 ->where('mov_situacion', 3) // Reserved
+                                 ->where('mov_producto_id', $prodId)
+                                 ->whereNull('mov_serie_id') // Only bulk
+                                 ->orderBy('mov_id') // FIFOish
+                                 ->get();
 
-                     // c) Stock General (Sin serie ni lote)
-                     $generalStockMovs = DB::table('pro_movimientos')
-                        ->where('mov_documento_referencia', $refVenta)
-                        ->where('mov_situacion', 3)
-                        ->whereNull('mov_serie_id')
-                        ->whereNull('mov_lote_id')
-                        ->get();
+                             $qtyRemainingToFinalize = $qtyBilled;
 
-                     foreach ($generalStockMovs as $mov) {
-                        // Actualizar movimiento
-                        DB::table('pro_movimientos')
-                            ->where('mov_id', $mov->mov_id)
-                            ->update(['mov_situacion' => 1]);
+                             foreach ($movs as $mov) {
+                                 if ($qtyRemainingToFinalize <= 0) break;
 
-                        // Descontar de stock
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
-                            
-                        DB::table('pro_stock_actual')
-                            ->where('stock_producto_id', $mov->mov_producto_id)
-                            ->decrement('stock_cantidad_total', $mov->mov_cantidad);
+                                 $qtyToTake = min($mov->mov_cantidad, $qtyRemainingToFinalize);
+
+                                 // If we take the full movement amount
+                                 if (abs($mov->mov_cantidad - $qtyToTake) < 0.0001) {
+                                     // Just update status
+                                     DB::table('pro_movimientos')
+                                         ->where('mov_id', $mov->mov_id)
+                                         ->update(['mov_situacion' => 1]);
+                                 } else {
+                                     // Partial take from this movement
+                                     // 1. Decrease original reserved movement
+                                     DB::table('pro_movimientos')
+                                         ->where('mov_id', $mov->mov_id)
+                                         ->decrement('mov_cantidad', $qtyToTake);
+
+                                     // 2. Create new "Sold" movement
+                                     DB::table('pro_movimientos')->insert([
+                                         'mov_tipo' => $mov->mov_tipo, // SALIDA?
+                                         'mov_producto_id' => $mov->mov_producto_id,
+                                         'mov_cantidad' => $qtyToTake,
+                                         'mov_fecha' => now(),
+                                         'mov_documento_referencia' => $refVenta,
+                                         'mov_situacion' => 1, // Sold
+                                         'mov_origen_destino' => $mov->mov_origen_destino,
+                                         'mov_user_id' => auth()->id(),
+                                         'created_at' => now(),
+                                         'updated_at' => now(),
+                                     ]);
+                                 }
+
+                                 // Update Stock
+                                 DB::table('pro_stock_actual')
+                                     ->where('stock_producto_id', $prodId)
+                                     ->decrement('stock_cantidad_reservada', $qtyToTake);
+                                     
+                                 DB::table('pro_stock_actual')
+                                     ->where('stock_producto_id', $prodId)
+                                     ->decrement('stock_cantidad_disponible', $qtyToTake);
+                                     
+                                 DB::table('pro_stock_actual')
+                                     ->where('stock_producto_id', $prodId)
+                                     ->decrement('stock_cantidad_total', $qtyToTake);
+
+                                 $qtyRemainingToFinalize -= $qtyToTake;
+                             }
+                         }
                      }
 
                      // 2. Update Sale Status
@@ -1240,6 +1282,7 @@ public function certificarCambiaria(Request $request)
                 ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
                 ->where('d.det_ven_id', $venta->ven_id)
                 ->select(
+                    'd.det_id', // Added det_id
                     'd.det_producto_id',
                     'p.producto_nombre',
                     'p.producto_requiere_serie',
@@ -1272,7 +1315,7 @@ public function certificarCambiaria(Request $request)
                     // Filter out invoiced series
                     $availableSeries = $series->filter(function($s) use ($invoicedSeriesIds) {
                         return !in_array($s->serie_id, $invoicedSeriesIds);
-                    })->pluck('serie_numero_serie')->values()->toArray();
+                    })->values()->toArray(); // Return full objects, not just strings
 
                     $det->series = $availableSeries;
                 } else {

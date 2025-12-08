@@ -1123,6 +1123,177 @@ const agregarItem = (prefill = {}) => {
     reindexItems();
 };
 
+// =============================
+// SELECCIÓN DE PRODUCTOS (PARCIAL)
+// =============================
+const modalSeleccionProductos = document.getElementById('modalSeleccionProductos');
+const tbodySeleccionProductos = document.getElementById('tbodySeleccionProductos');
+const btnConfirmarSeleccion = document.getElementById('btnConfirmarSeleccion');
+const btnCancelarSeleccion = document.getElementById('btnCancelarSeleccion');
+const btnCerrarSeleccion = document.getElementById('btnCerrarSeleccion');
+const chkSelectAll = document.getElementById('chkSelectAll');
+
+let currentVentaData = null; // Store full sale data
+
+const abrirModalSeleccion = () => {
+    modalSeleccionProductos.classList.remove('hidden');
+    modalSeleccionProductos.classList.add('flex');
+};
+
+const cerrarModalSeleccion = () => {
+    modalSeleccionProductos.classList.add('hidden');
+    modalSeleccionProductos.classList.remove('flex');
+    currentVentaData = null;
+};
+
+btnCancelarSeleccion?.addEventListener('click', cerrarModalSeleccion);
+btnCerrarSeleccion?.addEventListener('click', cerrarModalSeleccion);
+
+chkSelectAll?.addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    tbodySeleccionProductos.querySelectorAll('.chk-item-select').forEach(chk => {
+        chk.checked = checked;
+        // Trigger change to update row styling or logic if needed
+        chk.dispatchEvent(new Event('change'));
+    });
+});
+
+const renderSeleccionProductos = (venta) => {
+    currentVentaData = venta;
+    tbodySeleccionProductos.innerHTML = '';
+    chkSelectAll.checked = true;
+
+    if (!venta.detalles || venta.detalles.length === 0) {
+        tbodySeleccionProductos.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No hay productos pendientes.</td></tr>';
+        return;
+    }
+
+    venta.detalles.forEach((det, index) => {
+        // Calculate pending quantity
+        const cantidadTotal = parseFloat(det.det_cantidad || 0);
+        const cantidadFacturada = parseFloat(det.det_cantidad_facturada || 0);
+        const pendiente = cantidadTotal - cantidadFacturada;
+
+        if (pendiente <= 0.0001) return; // Skip fully billed items
+
+        // Check if serialized
+        if (det.series && det.series.length > 0) {
+            // Render one row per series
+            det.series.forEach(serieObj => {
+                const serie = serieObj.serie_numero_serie;
+                const serieId = serieObj.serie_id;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <input type="checkbox" checked class="chk-item-select rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            data-index="${index}" data-serie-id="${serieId}" data-serie="${serie}" data-type="serialized">
+                    </td>
+                    <td class="p-3">
+                        <div class="font-medium text-gray-800">${det.producto_nombre}</div>
+                        <div class="text-xs text-gray-500">Serie: <span class="font-mono bg-gray-100 px-1 rounded">${serie}</span></div>
+                    </td>
+                    <td class="p-3 text-center">1</td>
+                    <td class="p-3">
+                        <input type="number" value="1" readonly class="w-20 text-center bg-gray-100 border-gray-200 rounded text-sm text-gray-500">
+                    </td>
+                    <td class="p-3 text-xs text-gray-500">
+                        ${serie}
+                    </td>
+                `;
+                tbodySeleccionProductos.appendChild(tr);
+            });
+        } else {
+            // Render one row for bulk item
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+            tr.innerHTML = `
+                <td class="p-3">
+                    <input type="checkbox" checked class="chk-item-select rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        data-index="${index}" data-type="bulk">
+                </td>
+                <td class="p-3">
+                    <div class="font-medium text-gray-800">${det.producto_nombre}</div>
+                </td>
+                <td class="p-3 text-center font-medium">${pendiente}</td>
+                <td class="p-3">
+                    <input type="number" value="${pendiente}" min="0.01" max="${pendiente}" step="0.01"
+                        class="input-qty-bill w-24 rounded border-gray-300 focus:border-blue-400 focus:ring-blue-400 text-sm">
+                </td>
+                <td class="p-3 text-xs text-gray-400 italic">
+                    N/A
+                </td>
+            `;
+            tbodySeleccionProductos.appendChild(tr);
+        }
+    });
+};
+
+btnConfirmarSeleccion?.addEventListener('click', () => {
+    if (!currentVentaData) return;
+
+    // Clear existing items in invoice
+    contenedorItems.innerHTML = '';
+
+    const rows = tbodySeleccionProductos.querySelectorAll('tr');
+    let itemsAdded = 0;
+
+    rows.forEach(tr => {
+        const chk = tr.querySelector('.chk-item-select');
+        if (!chk || !chk.checked) return;
+
+        const index = chk.dataset.index;
+        const type = chk.dataset.type;
+        const det = currentVentaData.detalles[index];
+
+        // Calculate unit discount
+        const descuentoTotal = parseFloat(det.det_descuento || 0);
+        const cantidadTotal = parseFloat(det.det_cantidad || 1);
+        const descuentoUnitario = cantidadTotal > 0 ? (descuentoTotal / cantidadTotal) : 0;
+
+        if (type === 'serialized') {
+            const serie = chk.dataset.serie;
+            const serieId = chk.dataset.serieId;
+
+            agregarItem({
+                descripcion: `${det.producto_nombre} (Serie: ${serie})`,
+                cantidad: 1,
+                precio: det.det_precio,
+                descuento: descuentoUnitario.toFixed(2),
+                producto_id: det.det_producto_id,
+                detalle_venta_id: det.det_id,
+                series_ids: [serieId],
+                max: 1
+            });
+        } else {
+            const inputQty = tr.querySelector('.input-qty-bill');
+            const qtyToBill = parseFloat(inputQty.value);
+
+            if (qtyToBill > 0) {
+                agregarItem({
+                    descripcion: det.producto_nombre,
+                    cantidad: qtyToBill,
+                    precio: det.det_precio,
+                    descuento: (descuentoUnitario * qtyToBill).toFixed(2),
+                    producto_id: det.det_producto_id,
+                    detalle_venta_id: det.det_id,
+                    max: parseFloat(inputQty.max),
+                    pendiente: parseFloat(inputQty.max)
+                });
+            }
+        }
+        itemsAdded++;
+    });
+
+    if (itemsAdded === 0) {
+        Swal.fire({ icon: 'warning', title: 'Sin selección', text: 'Seleccione al menos un producto.' });
+        return;
+    }
+
+    cerrarModalSeleccion();
+});
+
 const seleccionarVenta = (venta) => {
     // Llenar datos cliente
     nitInput.value = venta.cliente_nit || 'CF';
@@ -1138,47 +1309,9 @@ const seleccionarVenta = (venta) => {
     resultadosVenta.classList.add('hidden');
     busquedaVenta.value = '';
 
-    // Llenar items
-    contenedorItems.innerHTML = '';
-    if (venta.detalles && venta.detalles.length > 0) {
-        venta.detalles.forEach(det => {
-            if (det.series && det.series.length > 0) {
-                // Calcular descuento unitario
-                const descuentoTotal = parseFloat(det.det_descuento || 0);
-                const cantidadTotal = parseFloat(det.det_cantidad || 1);
-                const descuentoUnitario = cantidadTotal > 0 ? (descuentoTotal / cantidadTotal) : 0;
-
-                // Agregar una línea por cada serie
-                det.series.forEach(serie => {
-                    agregarItem({
-                        descripcion: `${det.producto_nombre} (Serie: ${serie})`,
-                        cantidad: 1,
-                        precio: det.det_precio,
-                        descuento: descuentoUnitario.toFixed(2),
-                        producto_id: det.det_producto_id,
-                        max: 1
-                    });
-                });
-            } else {
-                // Producto normal sin series
-                const cantidadTotal = parseFloat(det.det_cantidad || 0);
-                const cantidadFacturada = parseFloat(det.det_cantidad_facturada || 0);
-                const pendiente = cantidadTotal - cantidadFacturada;
-
-                if (pendiente > 0) {
-                    agregarItem({
-                        descripcion: det.producto_nombre,
-                        cantidad: pendiente,
-                        precio: det.det_precio,
-                        descuento: det.det_descuento,
-                        producto_id: det.det_producto_id,
-                        max: pendiente,
-                        pendiente: pendiente
-                    });
-                }
-            }
-        });
-    }
+    // Open Selection Modal
+    renderSeleccionProductos(venta);
+    abrirModalSeleccion();
 };
 
 const buscarVenta = async () => {

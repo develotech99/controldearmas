@@ -221,3 +221,53 @@
             </form>
         </div>
     </div>
+
+    <!-- MODAL SELECCIONAR PRODUCTOS (PARCIAL) -->
+    <div id="modalSeleccionProductos" class="hidden fixed inset-0 z-[60] overflow-y-auto">
+        <div class="absolute inset-0 bg-black/50"></div>
+        <div class="relative mx-auto mt-10 w-11/12 max-w-5xl bg-white rounded-xl shadow-2xl overflow-hidden">
+            
+            <div class="px-5 py-4 border-b bg-blue-50 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-blue-800">
+                    Seleccionar Productos a Facturar
+                </h3>
+                <button type="button" id="btnCerrarSeleccion" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-5 max-h-[70vh] overflow-y-auto">
+                <div class="mb-4 bg-blue-50 p-3 rounded border border-blue-100 text-sm text-blue-800">
+                    <p>Seleccione los productos que desea incluir en esta factura. Puede ajustar las cantidades si desea realizar una facturación parcial.</p>
+                </div>
+
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-700 uppercase font-semibold">
+                        <tr>
+                            <th class="p-3 border-b w-10">
+                                <input type="checkbox" id="chkSelectAll" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            </th>
+                            <th class="p-3 border-b">Producto</th>
+                            <th class="p-3 border-b text-center">Pendiente</th>
+                            <th class="p-3 border-b w-32">A Facturar</th>
+                            <th class="p-3 border-b">Series</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodySeleccionProductos" class="divide-y divide-gray-100">
+                        <!-- Items dinámicos -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-5 py-4 border-t bg-gray-50 flex justify-end gap-3">
+                <button type="button" id="btnCancelarSeleccion" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button type="button" id="btnConfirmarSeleccion" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm">
+                    Confirmar y Agregar
+                </button>
+            </div>
+        </div>
+    </div>
