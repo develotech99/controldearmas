@@ -105,7 +105,7 @@ class DeudasController extends Controller
         try {
             DB::beginTransaction();
 
-            $deuda = DB::table('pro_deudas_clientes')->where('id', $id)->first();
+            $deuda = DB::table('pro_deudas_clientes')->where('deuda_id', $id)->first();
             if (!$deuda) {
                 return response()->json(['success' => false, 'message' => 'Deuda no encontrada.'], 404);
             }
@@ -133,9 +133,9 @@ class DeudasController extends Controller
             // Actualizar deuda
             $nuevoPagado = $deuda->monto_pagado + $request->monto;
             $nuevoSaldo = $deuda->monto - $nuevoPagado;
-            $estado = $nuevoSaldo <= 0 ? 'PAGADA' : 'PENDIENTE';
+            $estado = $nuevoSaldo <= 0 ? 'PAGADO' : 'PENDIENTE';
 
-            DB::table('pro_deudas_clientes')->where('id', $id)->update([
+            DB::table('pro_deudas_clientes')->where('deuda_id', $id)->update([
                 'monto_pagado' => $nuevoPagado,
                 'saldo_pendiente' => $nuevoSaldo,
                 'estado' => $estado,
