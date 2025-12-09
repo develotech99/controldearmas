@@ -265,11 +265,10 @@ const datatable = new DataTable('#tablaFacturas', {
                     const disponibles = Number(row.cuotas_disponibles ?? (totalPend - bloquearSolo));
                     const canPay = disponibles > 0;
 
-                    const dis = canPay ? '' : 'disabled opacity-50 cursor-not-allowed';
-                    const btnClass = canPay ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 text-gray-600';
-                    const title = canPay
-                        ? `Pagar (${disponibles}/${totalPend} disponibles)`
-                        : 'No hay cuotas disponibles (algunas en revisión)';
+                    // FIX: Siempre habilitar si hay saldo pendiente, el modal manejará la disponibilidad
+                    const dis = '';
+                    const btnClass = 'bg-blue-600 hover:bg-blue-700 text-white';
+                    const title = `Pagar (${disponibles}/${totalPend} cuotas disponibles)`;
 
                     return `
                         <div class="flex gap-2 items-center">
