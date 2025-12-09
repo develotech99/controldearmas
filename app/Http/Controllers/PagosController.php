@@ -627,50 +627,92 @@ class PagosController extends Controller
                 return response()->json(['success' => false, 'message' => 'No se encontró registro de pago para esta venta.'], 404);
             }
 
-            // 2. Eliminar pagos subidos (pendientes de validación) PRIMERO para evitar FK errors
+            // 2. Verificar si existen pagos VALIDADOS
+            $pagosValidados = DB::table('pro_detalle_pagos')
+                ->where('det_pago_pago_id', $pago->pago_id)
+                ->where('det_pago_estado', 'VALIDO')
+                ->exists();
+
+            // 3. Eliminar pagos subidos (pendientes de validación) siempre
             DB::table('pro_pagos_subidos')
                 ->where('ps_venta_id', $ventaId)
                 ->delete();
 
-            // 3. Eliminar detalles de pagos (validos)
-            // Solo eliminamos los que NO sean abonos iniciales de cuotas validadas (aunque si se anula todo, se anula todo)
-            // Asumimos que se quiere resetear el pago completo para cambiar método.
-            DB::table('pro_detalle_pagos')
-                ->where('det_pago_pago_id', $pago->pago_id)
-                ->delete();
-
-            // 4. Resetear el registro maestro de pagos
-            // NOTA: pago_tipo_pago es enum ['UNICO', 'CUOTAS'], no acepta 'PENDIENTE'.
-            // Lo dejamos en 'UNICO' por defecto al resetear.
-            DB::table('pro_pagos')
-                ->where('pago_id', $pago->pago_id)
-                ->update([
-                    'pago_monto_pagado' => 0,
-                    'pago_monto_pendiente' => $pago->pago_monto_total,
-                    'pago_estado' => 'PENDIENTE',
-                    'pago_tipo_pago' => 'UNICO', // Resetear a un valor válido
-                    'pago_cantidad_cuotas' => 0,
-                    'pago_abono_inicial' => 0,
-                    'updated_at' => now()
-                ]);
-
-            // 5. Eliminar cuotas generadas (si las hay)
+            // 4. Eliminar cuotas generadas (si las hay) siempre, se regenerarán
             DB::table('pro_cuotas')
                 ->where('cuota_control_id', $pago->pago_id)
                 ->delete();
 
-            // 6. Anular registro en caja (si existe)
-            DB::table('cja_historial')
-                ->where('cja_id_venta', $ventaId)
-                ->where('cja_tipo', 'VENTA')
-                ->update([
-                    'cja_situacion' => 'ANULADA', // Corregido: Enum es 'ANULADA'
-                    'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - ANULADO: $motivo')")
-                ]);
+            if ($pagosValidados) {
+                // ESCENARIO B: Existen pagos validados -> RESET PARCIAL (Refinanciamiento)
+                
+                // Recalcular lo pagado realmente
+                $totalPagado = DB::table('pro_detalle_pagos')
+                    ->where('det_pago_pago_id', $pago->pago_id)
+                    ->where('det_pago_estado', 'VALIDO')
+                    ->sum('det_pago_monto');
+
+                $nuevoPendiente = $pago->pago_monto_total - $totalPagado;
+
+                // Actualizar maestro
+                DB::table('pro_pagos')
+                    ->where('pago_id', $pago->pago_id)
+                    ->update([
+                        'pago_monto_pagado' => $totalPagado,
+                        'pago_monto_pendiente' => $nuevoPendiente,
+                        'pago_estado' => 'PENDIENTE', // Vuelve a pendiente para definir cómo pagar el resto
+                        'pago_tipo_pago' => 'UNICO', // Reset a default temporalmente
+                        'pago_cantidad_cuotas' => 0,
+                        'pago_abono_inicial' => 0,
+                        'updated_at' => now()
+                    ]);
+
+                // No tocamos cja_historial porque los pagos validados ya están ahí y son correctos.
+                // Solo agregamos una observación de que se solicitó corrección del saldo pendiente.
+                 DB::table('pro_ventas')
+                    ->where('ven_id', $ventaId)
+                    ->update([
+                        'ven_observaciones' => DB::raw("CONCAT(COALESCE(ven_observaciones,''), ' | Reajuste de pago solicitado: $motivo')")
+                    ]);
+
+                $message = 'Se ha habilitado la edición del saldo pendiente. Los pagos ya validados se mantuvieron.';
+
+            } else {
+                // ESCENARIO A: No hay pagos validados -> RESET TOTAL (Lógica original)
+
+                // Eliminar cualquier detalle de pago (que no sea válido, aunque el filtro arriba ya lo cubría, por seguridad borramos todo)
+                DB::table('pro_detalle_pagos')
+                    ->where('det_pago_pago_id', $pago->pago_id)
+                    ->delete();
+
+                // Resetear el registro maestro de pagos a cero
+                DB::table('pro_pagos')
+                    ->where('pago_id', $pago->pago_id)
+                    ->update([
+                        'pago_monto_pagado' => 0,
+                        'pago_monto_pendiente' => $pago->pago_monto_total,
+                        'pago_estado' => 'PENDIENTE',
+                        'pago_tipo_pago' => 'UNICO',
+                        'pago_cantidad_cuotas' => 0,
+                        'pago_abono_inicial' => 0,
+                        'updated_at' => now()
+                    ]);
+
+                // Anular registro en caja (si existe)
+                DB::table('cja_historial')
+                    ->where('cja_id_venta', $ventaId)
+                    ->where('cja_tipo', 'VENTA')
+                    ->update([
+                        'cja_situacion' => 'ANULADA',
+                        'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - ANULADO: $motivo')")
+                    ]);
+                
+                $message = 'Pago anulado correctamente. Ahora puede registrar el pago nuevamente.';
+            }
 
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => 'Pago anulado correctamente. Ahora puede registrar el pago nuevamente.']);
+            return response()->json(['success' => true, 'message' => $message]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -708,16 +750,20 @@ class PagosController extends Controller
             // Limpiar cuotas anteriores
             DB::table('pro_cuotas')->where('cuota_control_id', $pago->pago_id)->delete();
 
+            // DETERMINAR MONTO BASE (Refinanciamiento vs Pago Total)
+            // Si hay pagos validados previos, el monto a financiar es el pendiente.
+            // Si no, es el total.
+            $montoBase = ($pago->pago_monto_pagado > 0) ? $pago->pago_monto_pendiente : $pago->pago_monto_total;
+
             if ($metodoPago == '6') { // CUOTAS
                 $cantidad = $request->cantidad_cuotas;
                 $abono = $request->abono_inicial ?? 0;
-                $montoTotal = $pago->pago_monto_total;
                 
-                if ($abono >= $montoTotal) {
-                    return response()->json(['success' => false, 'message' => 'El abono no puede cubrir el total'], 422);
+                if ($abono >= $montoBase) {
+                    return response()->json(['success' => false, 'message' => 'El abono no puede cubrir el total pendiente'], 422);
                 }
 
-                $saldoFinanciar = $montoTotal - $abono;
+                $saldoFinanciar = $montoBase - $abono;
                 $montoCuota = round($saldoFinanciar / $cantidad, 2);
                 
                 // Ajustar última cuota
@@ -751,11 +797,6 @@ class PagosController extends Controller
                     ]);
                 }
 
-                // Si hay abono, ¿se debe generar un registro de pago para el abono?
-                // Por ahora solo actualizamos el maestro. El usuario deberá "Pagar" el abono o las cuotas.
-                // TODO: Si el abono se paga con transferencia, podríamos registrarlo en pro_pagos_subidos automáticamente?
-                // Por simplicidad, dejamos que el usuario suba el comprobante después.
-
             } else { // PAGO UNICO (Transferencia, Cheque, Deposito)
                 DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
                     'pago_tipo_pago' => 'UNICO',
@@ -780,7 +821,7 @@ class PagosController extends Controller
                     DB::table('pro_pagos_subidos')->insert([
                         'ps_venta_id' => $ventaId,
                         'ps_banco_id' => $request->banco_id,
-                        'ps_monto' => $pago->pago_monto_total,
+                        'ps_monto' => $montoBase, // Usamos el monto base (pendiente)
                         'ps_fecha_pago' => $request->fecha_pago ?? now(),
                         'ps_no_comprobante' => $request->numero_autorizacion,
                         'ps_comprobante_path' => $path,

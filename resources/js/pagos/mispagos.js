@@ -520,13 +520,13 @@ const mostrarDetalleVenta = async (ventaId) => {
 
 const anularPago = async (ventaId) => {
     const { isConfirmed } = await Swal.fire({
-        title: '¿Anular Pago y Reiniciar?',
-        text: "Esta acción eliminará el registro de pago actual (incluyendo comprobantes subidos) y dejará la venta como PENDIENTE. Podrá registrar el pago nuevamente eligiendo otro método (ej. Cuotas).",
+        title: '¿Anular/Corregir Pago?',
+        text: "Si existen pagos ya validados, estos SE MANTENDRÁN y solo se anulará el saldo pendiente para que pueda elegir otro método de pago. Si no hay pagos validados, se anulará todo el registro.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#EF4444',
         cancelButtonColor: '#6B7280',
-        confirmButtonText: 'Sí, Anular y Corregir',
+        confirmButtonText: 'Sí, Corregir',
         cancelButtonText: 'Cancelar'
     });
 
