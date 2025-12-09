@@ -203,22 +203,54 @@ class PagosController extends Controller
                 ->get()->groupBy('det_pago_pago_id');
 
             // ===== Cuotas EN REVISIÓN por venta =====
-            $pendRows = DB::table('pro_pagos_subidos')
-                ->whereIn('ps_venta_id', $ventaIds)
-                ->where('ps_estado', 'PENDIENTE_VALIDACION')
-                ->get(['ps_venta_id', 'ps_cuotas_json', 'ps_imagen_path']);
+            $pendRows = DB::table('pro_pagos_subidos as ps')
+                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'ps.ps_banco_id')
+                ->whereIn('ps.ps_venta_id', $ventaIds)
+                ->where('ps.ps_estado', 'PENDIENTE_VALIDACION')
+                ->select([
+                    'ps.ps_id',
+                    'ps.ps_venta_id',
+                    'ps.ps_cuotas_json',
+                    'ps.ps_imagen_path',
+                    'ps.ps_monto_comprobante',
+                    'ps.ps_referencia',
+                    'ps.ps_concepto',
+                    'ps.ps_banco_id',
+                    'ps.ps_fecha_comprobante',
+                    'b.banco_nombre'
+                ])
+                ->get();
 
             $cuotasEnRevisionPorVenta = [];
             $comprobantesEnRevisionPorVenta = [];
+            $pagosEnRevisionPorVenta = []; // Nuevo array para detalles completos
 
             foreach ($pendRows as $row) {
                 $lista = json_decode($row->ps_cuotas_json, true) ?: [];
                 $vid = (int) $row->ps_venta_id;
+                
+                // IDs de cuotas
                 $cuotasEnRevisionPorVenta[$vid] = array_values(array_unique(array_merge($cuotasEnRevisionPorVenta[$vid] ?? [], array_map('intval', $lista))));
                 
+                // Path del comprobante (último)
                 if ($row->ps_imagen_path) {
                     $comprobantesEnRevisionPorVenta[$vid] = $row->ps_imagen_path;
                 }
+
+                // Detalle completo del pago en revisión
+                if (!isset($pagosEnRevisionPorVenta[$vid])) {
+                    $pagosEnRevisionPorVenta[$vid] = [];
+                }
+                $pagosEnRevisionPorVenta[$vid][] = [
+                    'id' => $row->ps_id,
+                    'monto' => (float) $row->ps_monto_comprobante,
+                    'referencia' => $row->ps_referencia,
+                    'concepto' => $row->ps_concepto,
+                    'banco_id' => $row->ps_banco_id,
+                    'banco_nombre' => $row->banco_nombre,
+                    'fecha' => $row->ps_fecha_comprobante,
+                    'comprobante' => $row->ps_imagen_path
+                ];
             }
 
             // ===== Clasificación =====
@@ -295,6 +327,7 @@ class PagosController extends Controller
                     ],
 
                     'cuotas_en_revision' => $enRevIds->values(),
+                    'pagos_en_revision_detalles' => $pagosEnRevisionPorVenta[$v->ven_id] ?? [], // Nuevo campo
                     'comprobante_revision' => $comprobantesEnRevisionPorVenta[$v->ven_id] ?? null,
                     'cuotas_disponibles' => $disponibles,
 
@@ -526,4 +559,37 @@ class PagosController extends Controller
     }
 
 
+    public function actualizarPagoSubido(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'ps_id' => 'required|integer',
+                'banco_id' => 'nullable|integer',
+                'referencia' => 'required|string|max:100',
+                'concepto' => 'nullable|string|max:255',
+            ]);
+
+            $pago = DB::table('pro_pagos_subidos')->where('ps_id', $data['ps_id'])->first();
+
+            if (!$pago) {
+                return response()->json(['success' => false, 'message' => 'Pago no encontrado'], 404);
+            }
+
+            if ($pago->ps_estado !== 'PENDIENTE_VALIDACION' && $pago->ps_estado !== 'PENDIENTE_CARGA') {
+                return response()->json(['success' => false, 'message' => 'Solo se pueden editar pagos pendientes'], 400);
+            }
+
+            DB::table('pro_pagos_subidos')->where('ps_id', $data['ps_id'])->update([
+                'ps_banco_id' => $data['banco_id'],
+                'ps_referencia' => $data['referencia'],
+                'ps_concepto' => $data['concepto'],
+                'updated_at' => now()
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Pago actualizado correctamente']);
+        } catch (\Exception $e) {
+            Log::error('Error actualizando pago subido: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al actualizar el pago'], 500);
+        }
+    }
 }

@@ -331,6 +331,8 @@ const mostrarDetalleVenta = async (ventaId) => {
     const pagosRealizados = venta.pagos_realizados || [];
     const cuotasPendientes = venta.cuotas_pendientes || [];
 
+    const pagosEnRevision = venta.pagos_en_revision_detalles || [];
+
     let cuotasHTML = '';
     if (cuotasPendientes.length > 0) {
         cuotasHTML = `
@@ -342,6 +344,32 @@ const mostrarDetalleVenta = async (ventaId) => {
                             <span class="text-sm">Cuota #${c.numero} ${c.en_revision ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800">En revisión</span>' : ''}</span>
                             <span class="font-semibold">${fmtQ(c.monto)}</span>
                             <span class="text-xs text-gray-600">${c.vence}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    let revisionHTML = '';
+    if (pagosEnRevision.length > 0) {
+        revisionHTML = `
+            <div class="mt-4">
+                <h4 class="font-semibold text-amber-800 mb-2">Pagos en Revisión:</h4>
+                <div class="space-y-2">
+                    ${pagosEnRevision.map(p => `
+                        <div class="flex justify-between items-center p-2 bg-amber-50 rounded border border-amber-100">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium">${p.fecha ? new Date(p.fecha).toLocaleDateString() : 'N/D'}</span>
+                                <span class="text-xs text-gray-600">${p.banco_nombre || 'Sin Banco'} - ${p.referencia}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-amber-700">${fmtQ(p.monto)}</span>
+                                <button class="btn-editar-pago bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs transition-colors"
+                                        data-pago='${JSON.stringify(p)}'>
+                                    <i class="fas fa-edit mr-1"></i>Editar
+                                </button>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -451,6 +479,7 @@ const mostrarDetalleVenta = async (ventaId) => {
                 </div>
 
                 ${cuotasHTML}
+                ${revisionHTML}
                 ${historialHTML}
             </div>
         `,
@@ -459,8 +488,90 @@ const mostrarDetalleVenta = async (ventaId) => {
         confirmButtonColor: '#3B82F6',
         customClass: {
             popup: 'rounded-lg'
+        },
+        didOpen: () => {
+            // Listener para editar pago
+            const popup = Swal.getPopup();
+            popup.querySelectorAll('.btn-editar-pago').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pago = JSON.parse(btn.dataset.pago);
+                    editarPagoSubido(pago, ventaId);
+                });
+            });
         }
     });
+};
+
+const editarPagoSubido = async (pago, ventaId) => {
+    // Generar opciones de bancos
+    let bancosOpts = '<option value="">Seleccione un banco...</option>';
+    BANKS_LIST.forEach(b => {
+        const sel = String(b.banco_id) === String(pago.banco_id) ? 'selected' : '';
+        bancosOpts += `<option value="${b.banco_id}" ${sel}>${b.banco_nombre}</option>`;
+    });
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Editar Pago en Revisión',
+        html: `
+            <div class="text-left space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Banco</label>
+                    <select id="edit_banco" class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        ${bancosOpts}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Referencia / Boleta</label>
+                    <input id="edit_referencia" type="text" class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="${pago.referencia || ''}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Concepto / Nota</label>
+                    <input id="edit_concepto" type="text" class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="${pago.concepto || ''}">
+                </div>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar Cambios',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return {
+                ps_id: pago.id,
+                banco_id: document.getElementById('edit_banco').value,
+                referencia: document.getElementById('edit_referencia').value,
+                concepto: document.getElementById('edit_concepto').value
+            };
+        }
+    });
+
+    if (formValues) {
+        try {
+            showLoading('Actualizando pago...');
+            const res = await fetch('/pagos/actualizar-subido', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(formValues)
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                await Swal.fire('Actualizado', 'El pago ha sido actualizado correctamente.', 'success');
+                // Recargar datos
+                GetFacturas();
+                // Reabrir detalle si es necesario, o dejar que el usuario lo abra
+                mostrarDetalleVenta(ventaId);
+            } else {
+                showError('Error', data.message || 'No se pudo actualizar el pago');
+            }
+        } catch (e) {
+            console.error(e);
+            showError('Error', 'Ocurrió un error al conectar con el servidor');
+        }
+    }
 };
 
 // Actualizar el event listener de la tabla

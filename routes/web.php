@@ -303,6 +303,7 @@ Route::middleware('auth')->group(function () {
         Route::get('movimientos', [AdminPagosController::class, 'movimientos'])->name('pagos.movimientos'); // New route
         Route::get('obtener/mispagos', [PagosController::class, 'MisFacturasPendientes'])->name('misfacturas.pendientes');
         Route::post('cuotas/pagar', [PagosController::class, 'pagarCuotas']);
+        Route::post('actualizar-subido', [PagosController::class, 'actualizarPagoSubido']);
     });
 
 
