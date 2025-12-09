@@ -649,7 +649,7 @@ class PagosController extends Controller
                 ->where('cja_id_venta', $ventaId)
                 ->where('cja_tipo', 'VENTA')
                 ->update([
-                    'cja_situacion' => 'ANULADO',
+                    'cja_situacion' => 'ANULADA', // Corregido: Enum es 'ANULADA'
                     'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - ANULADO: $motivo')")
                 ]);
 
