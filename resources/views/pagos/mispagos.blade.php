@@ -587,5 +587,127 @@
             <button id="btnSubirPago" type="button" class="hidden"></button>
         </div>
     </div>
-@endsection
+
+    <!-- Template para Selección de Método de Pago (Estilo Ventas) -->
+    <div id="payment-method-template" class="hidden">
+        <div class="text-left">
+            <div class="grid gap-2" id="listaMetodosPago">
+                @if(isset($metodopago))
+                    @foreach ($metodopago as $metodo)
+                        @if(strtolower($metodo->metpago_descripcion) !== 'saldo a favor')
+                        <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="radio" name="metodoPago" value="{{ $metodo->metpago_id }}" class="mr-3 w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <i class="fas fa-credit-card mr-3 text-blue-600 text-lg"></i>
+                            <span class="text-base font-medium text-gray-700">{{ $metodo->metpago_descripcion }}</span>
+                        </label>
+                        @endif
+                    @endforeach
+                @endif
+            </div>
+
+            <!-- Contenedor dinámico para detalles del método -->
+            <div id="detallesMetodoContainer" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hidden">
+                
+                <!-- Autorización (para métodos 1–5 excepto efectivo) -->
+                <div id="autorizacionContainer" class="hidden space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 border-b pb-2 mb-2">Detalles del Pago</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Banco</label>
+                            <select id="selectBanco" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="">Seleccione un banco</option>
+                                <option value="banrural">Banrural</option>
+                                <option value="banco_industrial">Banco Industrial</option>
+                                <option value="banco_bam">Banco BAM</option>
+                                <option value="banco_gyt">Banco GYT</option>
+                                <option value="interbanco">Interbanco</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+                            <input type="datetime-local" id="fechaPago" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">No. Autorización / Cheque</label>
+                            <input type="text" id="numeroAutorizacion" placeholder="Ej: 123456" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagos en cuotas (para método 6) -->
+                <div id="cuotasContainer" class="hidden space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 border-b pb-2 mb-2">Configuración de Cuotas</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Abono -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Abono Inicial (Opcional)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-500 text-sm">Q</span>
+                                <input type="number" id="abonoInicial" step="0.01" min="0" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 text-right" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <!-- Método de Abono -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Método de Abono</label>
+                            <select id="metodoAbono" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Detalles extra para abono (si no es efectivo) -->
+                    <div id="detallesAbonoContainer" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-white rounded border border-gray-200">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Banco (Abono)</label>
+                            <select id="bancoAbono" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                <option value="">Seleccione...</option>
+                                <option value="banrural">Banrural</option>
+                                <option value="banco_industrial">Banco Industrial</option>
+                                <option value="banco_bam">Banco BAM</option>
+                                <option value="banco_gyt">Banco GYT</option>
+                                <option value="interbanco">Interbanco</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">No. Autorización</label>
+                            <input type="text" id="authAbono" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-2 pt-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Cantidad de Cuotas</label>
+                            <input type="number" id="cuotasNumero" min="2" max="48" value="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button type="button" id="btnCalcularCuotas" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors h-[38px]">
+                            <i class="fas fa-calculator mr-1"></i> Calcular
+                        </button>
+                    </div>
+
+                    <!-- Resumen de Cuotas -->
+                    <div id="resumenCuotas" class="hidden mt-3 p-3 bg-blue-50 rounded border border-blue-100 text-sm text-blue-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <span>Monto Total:</span>
+                            <span class="font-bold" id="lblMontoTotal">Q0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span>Abono Inicial:</span>
+                            <span class="font-bold text-green-600" id="lblAbono">-Q0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-blue-200 pt-1 mt-1">
+                            <span>Saldo a Financiar:</span>
+                            <span class="font-bold" id="lblSaldoFinanciar">Q0.00</span>
+                        </div>
+                        <div class="mt-2 text-center font-medium bg-white p-2 rounded border border-blue-100 shadow-sm">
+                            <span id="lblDetalleCuotas">3 cuotas de Q0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @vite('resources/js/pagos/mispagos.js')

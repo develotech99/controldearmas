@@ -20,7 +20,8 @@ class PagosController extends Controller
      */
     public function index()
     {
-        return view('pagos.mispagos');
+        $metodopago = \App\Models\ProMetodoPago::where('metpago_estado', 'ACTIVO')->get();
+        return view('pagos.mispagos', compact('metodopago'));
     }
 
     public function index2()
@@ -683,11 +684,14 @@ class PagosController extends Controller
         try {
             $request->validate([
                 'venta_id' => 'required|integer',
-                'cantidad_cuotas' => 'required|integer|min:2|max:48'
+                'metodo_pago' => 'required',
+                // Validación condicional para cuotas
+                'cantidad_cuotas' => 'required_if:metodo_pago,6|integer|min:2|max:48',
+                'abono_inicial' => 'nullable|numeric|min:0',
             ]);
 
             $ventaId = $request->venta_id;
-            $cantidad = $request->cantidad_cuotas;
+            $metodoPago = $request->metodo_pago;
 
             DB::beginTransaction();
 
@@ -701,50 +705,87 @@ class PagosController extends Controller
                 return response()->json(['success' => false, 'message' => 'El pago no está pendiente'], 422);
             }
 
-            // Eliminar cuotas existentes
+            // Limpiar cuotas anteriores
             DB::table('pro_cuotas')->where('cuota_control_id', $pago->pago_id)->delete();
 
-            // Actualizar maestro
-            $montoTotal = $pago->pago_monto_total;
-            $montoCuota = round($montoTotal / $cantidad, 2);
-            
-            // Ajustar última cuota por decimales
-            $totalCalculado = $montoCuota * $cantidad;
-            $diferencia = round($montoTotal - $totalCalculado, 2);
-
-            DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
-                'pago_tipo_pago' => 'CUOTAS',
-                'pago_cantidad_cuotas' => $cantidad,
-                'updated_at' => now()
-            ]);
-
-            // Generar cuotas
-            $fechaBase = now();
-            for ($i = 1; $i <= $cantidad; $i++) {
-                $monto = $montoCuota;
-                if ($i === $cantidad) {
-                    $monto += $diferencia;
+            if ($metodoPago == '6') { // CUOTAS
+                $cantidad = $request->cantidad_cuotas;
+                $abono = $request->abono_inicial ?? 0;
+                $montoTotal = $pago->pago_monto_total;
+                
+                if ($abono >= $montoTotal) {
+                    return response()->json(['success' => false, 'message' => 'El abono no puede cubrir el total'], 422);
                 }
 
-                DB::table('pro_cuotas')->insert([
-                    'cuota_control_id' => $pago->pago_id,
-                    'cuota_numero' => $i,
-                    'cuota_monto' => $monto,
-                    'cuota_fecha_vencimiento' => $fechaBase->copy()->addMonths($i),
-                    'cuota_estado' => 'PENDIENTE',
-                    'created_at' => now(),
+                $saldoFinanciar = $montoTotal - $abono;
+                $montoCuota = round($saldoFinanciar / $cantidad, 2);
+                
+                // Ajustar última cuota
+                $totalCalculado = $montoCuota * $cantidad;
+                $diferencia = round($saldoFinanciar - $totalCalculado, 2);
+
+                DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
+                    'pago_tipo_pago' => 'CUOTAS',
+                    'pago_metodo_pago' => 6, // ID de Visacuotas/Credicuotas
+                    'pago_cantidad_cuotas' => $cantidad,
+                    'pago_abono_inicial' => $abono,
                     'updated_at' => now()
                 ]);
+
+                // Generar cuotas
+                $fechaBase = now();
+                for ($i = 1; $i <= $cantidad; $i++) {
+                    $monto = $montoCuota;
+                    if ($i === $cantidad) {
+                        $monto += $diferencia;
+                    }
+
+                    DB::table('pro_cuotas')->insert([
+                        'cuota_control_id' => $pago->pago_id,
+                        'cuota_numero' => $i,
+                        'cuota_monto' => $monto,
+                        'cuota_fecha_vencimiento' => $fechaBase->copy()->addMonths($i),
+                        'cuota_estado' => 'PENDIENTE',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+
+                // Si hay abono, ¿se debe generar un registro de pago para el abono?
+                // Por ahora solo actualizamos el maestro. El usuario deberá "Pagar" el abono o las cuotas.
+                // TODO: Si el abono se paga con transferencia, podríamos registrarlo en pro_pagos_subidos automáticamente?
+                // Por simplicidad, dejamos que el usuario suba el comprobante después.
+
+            } else { // PAGO ÚNICO (Transferencia, Cheque, etc.)
+                $updateData = [
+                    'pago_tipo_pago' => 'UNICO',
+                    'pago_metodo_pago' => $metodoPago,
+                    'pago_cantidad_cuotas' => 0,
+                    'pago_abono_inicial' => 0,
+                    'updated_at' => now()
+                ];
+
+                // Si viene información de banco (para transferencia/cheque)
+                if ($request->has('banco_id')) {
+                    // Aquí podríamos actualizar pro_detalle_pagos si existiera, 
+                    // pero como está en estado PENDIENTE, probablemente no hay detalle aún.
+                    // O si lo hay, deberíamos actualizarlo.
+                    // Sin embargo, pro_pagos no tiene columnas de banco.
+                    // La info de banco se guarda usualmente al "Subir Pago" (pro_pagos_subidos).
+                    // Así que aquí solo cambiamos el método preferido.
+                }
+
+                DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update($updateData);
             }
 
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => 'Plan de cuotas generado correctamente']);
+            return response()->json(['success' => true, 'message' => 'Método de pago actualizado correctamente']);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error generando cuotas: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error al generar cuotas'], 500);
+            Log::error('Error actualizando método de pago: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
     }
 }

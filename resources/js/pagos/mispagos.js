@@ -1385,76 +1385,179 @@ const renderCuotas = (venta) => {
         }
     });
 
-    // Listener para botón "Cambiar a Cuotas" o "Definir Método"
+    // Listener para botón "Definir Método de Pago"
     const btnCambiar = listDiv.querySelector('.btn-cambiar-cuotas');
     if (btnCambiar) {
         btnCambiar.addEventListener('click', async (e) => {
             e.stopPropagation();
             const ventaId = btnCambiar.dataset.venta;
+            const montoTotal = parseFloat(venta.total); // Asumimos que venta.total está disponible y es correcto
 
-            // 1. Seleccionar Método
-            const { value: metodo } = await Swal.fire({
-                title: 'Seleccione Método de Pago',
-                input: 'radio',
-                inputOptions: {
-                    '1': 'Contado / Transferencia / Cheque',
-                    '6': 'Visacuotas / CrediCuotas'
-                },
-                inputValue: '1',
+            // Obtener template
+            const template = document.getElementById('payment-method-template');
+            if (!template) return;
+
+            const content = template.content.cloneNode(true); // Use .content for template
+            const wrapper = document.createElement('div'); // Create a wrapper to hold the cloned content
+            wrapper.appendChild(content); // Append the cloned content to the wrapper
+            wrapper.id = 'payment-method-modal-content'; // Set ID on the wrapper
+
+            // Mostrar Swal
+            const result = await Swal.fire({
+                title: 'Definir Método de Pago',
+                html: wrapper, // Pass the wrapper to Swal
+                width: '800px',
                 showCancelButton: true,
-                confirmButtonText: 'Continuar',
-                cancelButtonText: 'Cancelar'
+                confirmButtonText: 'Confirmar Método',
+                cancelButtonText: 'Cancelar',
+                didOpen: () => {
+                    const modal = Swal.getHtmlContainer();
+                    const radios = modal.querySelectorAll('input[name="metodoPago"]');
+                    const detallesContainer = modal.querySelector('#detallesMetodoContainer');
+                    const authContainer = modal.querySelector('#autorizacionContainer');
+                    const cuotasContainer = modal.querySelector('#cuotasContainer');
+                    const metodoAbono = modal.querySelector('#metodoAbono');
+                    const detallesAbonoContainer = modal.querySelector('#detallesAbonoContainer');
+                    const btnCalcular = modal.querySelector('#btnCalcularCuotas');
+
+                    // Populate Banks
+                    const populateBanks = (select) => {
+                        select.innerHTML = '<option value="">Seleccione un banco...</option>';
+                        BANKS_LIST.forEach(b => {
+                            select.innerHTML += `<option value="${b.banco_id}">${b.banco_nombre}</option>`;
+                        });
+                    };
+                    populateBanks(modal.querySelector('#selectBanco'));
+                    populateBanks(modal.querySelector('#bancoAbono'));
+
+                    // Inicializar estado
+                    detallesContainer.classList.add('hidden');
+                    authContainer.classList.add('hidden');
+                    cuotasContainer.classList.add('hidden');
+
+                    // Listener Radios
+                    radios.forEach(radio => {
+                        radio.addEventListener('change', (e) => {
+                            detallesContainer.classList.remove('hidden');
+                            authContainer.classList.add('hidden');
+                            cuotasContainer.classList.add('hidden');
+
+                            const val = e.target.value;
+                            // 1: Efectivo, 2-5: Bancos, 6: Cuotas
+                            if (val === '6') {
+                                cuotasContainer.classList.remove('hidden');
+                            } else if (val !== '1') { // 2,3,4,5
+                                authContainer.classList.remove('hidden');
+                            }
+                        });
+                    });
+
+                    // Listener Metodo Abono
+                    if (metodoAbono) {
+                        metodoAbono.addEventListener('change', (e) => {
+                            if (e.target.value === 'efectivo') {
+                                detallesAbonoContainer.classList.add('hidden');
+                            } else {
+                                detallesAbonoContainer.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    // Listener Calcular Cuotas
+                    if (btnCalcular) {
+                        btnCalcular.addEventListener('click', () => {
+                            const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
+                            const nCuotas = parseInt(modal.querySelector('#cuotasNumero').value) || 0;
+
+                            if (abono >= montoTotal) {
+                                Swal.showValidationMessage('El abono no puede ser mayor o igual al total');
+                                return;
+                            }
+
+                            const saldo = montoTotal - abono;
+                            const montoCuota = saldo / nCuotas;
+
+                            modal.querySelector('#lblMontoTotal').textContent = fmtQ(montoTotal);
+                            modal.querySelector('#lblAbono').textContent = '-' + fmtQ(abono);
+                            modal.querySelector('#lblSaldoFinanciar').textContent = fmtQ(saldo);
+                            modal.querySelector('#lblDetalleCuotas').textContent = `${nCuotas} cuotas de ${fmtQ(montoCuota)}`;
+                            modal.querySelector('#resumenCuotas').classList.remove('hidden');
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const modal = Swal.getHtmlContainer();
+                    const metodo = modal.querySelector('input[name="metodoPago"]:checked')?.value;
+
+                    if (!metodo) {
+                        Swal.showValidationMessage('Debe seleccionar un método de pago');
+                        return false;
+                    }
+
+                    const data = {
+                        venta_id: ventaId,
+                        metodo_pago: metodo
+                    };
+
+                    if (metodo === '6') { // Cuotas
+                        const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
+                        const nCuotas = parseInt(modal.querySelector('#cuotasNumero').value) || 0;
+
+                        if (nCuotas < 2) {
+                            Swal.showValidationMessage('El número de cuotas debe ser al menos 2');
+                            return false;
+                        }
+
+                        data.cantidad_cuotas = nCuotas;
+                        data.abono_inicial = abono;
+                        data.metodo_abono = modal.querySelector('#metodoAbono').value;
+
+                        if (data.metodo_abono !== 'efectivo') {
+                            data.banco_abono = modal.querySelector('#bancoAbono').value;
+                            data.auth_abono = modal.querySelector('#authAbono').value;
+                            if (!data.banco_abono) {
+                                Swal.showValidationMessage('Seleccione el banco del abono');
+                                return false;
+                            }
+                        }
+                    } else if (metodo !== '1') { // Bancos
+                        data.banco_id = modal.querySelector('#selectBanco').value;
+                        data.fecha_pago = modal.querySelector('#fechaPago').value;
+                        data.numero_autorizacion = modal.querySelector('#numeroAutorizacion').value;
+
+                        if (!data.banco_id) {
+                            Swal.showValidationMessage('Seleccione un banco');
+                            return false;
+                        }
+                    }
+
+                    return data;
+                }
             });
 
-            if (!metodo) return;
+            if (result.isConfirmed && result.value) {
+                try {
+                    showLoading('Procesando...');
+                    const res = await fetch('/pagos/generar-cuotas', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify(result.value)
+                    });
+                    const data = await res.json();
 
-            if (metodo === '1') {
-                // Si es Contado, ya está en estado UNICO/PENDIENTE, así que solo abrimos el modal de pago normal
-                // Simulamos click en "Pagar" de la cuota virtual
-                const btnPagarVirtual = listDiv.querySelector('.btn-pagar-una');
-                if (btnPagarVirtual) btnPagarVirtual.click();
-            } else if (metodo === '6') {
-                // Si es Cuotas, pedimos la cantidad
-                const { value: cantidad } = await Swal.fire({
-                    title: 'Configurar Plan de Pagos',
-                    input: 'number',
-                    inputLabel: 'Ingrese la cantidad de cuotas (2-48)',
-                    inputPlaceholder: 'Ej: 3, 6, 12...',
-                    inputAttributes: { min: 2, max: 48, step: 1 },
-                    showCancelButton: true,
-                    confirmButtonText: 'Generar Cuotas',
-                    cancelButtonText: 'Cancelar',
-                    inputValidator: (value) => {
-                        if (!value || value < 2 || value > 48) {
-                            return 'Por favor ingrese un número entre 2 y 48';
-                        }
+                    if (data.success) {
+                        await Swal.fire('Éxito', data.message, 'success');
+                        closeModal();
+                        GetFacturas(); // Recargar todo
+                    } else {
+                        showError('Error', data.message);
                     }
-                });
-
-                if (cantidad) {
-                    try {
-                        showLoading('Generando cuotas...');
-                        const res = await fetch('/pagos/generar-cuotas', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({ venta_id: ventaId, cantidad_cuotas: cantidad })
-                        });
-                        const data = await res.json();
-
-                        if (data.success) {
-                            await Swal.fire('Éxito', data.message, 'success');
-                            closeModal();
-                            GetFacturas(); // Recargar todo
-                        } else {
-                            showError('Error', data.message);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        showError('Error', 'No se pudo conectar con el servidor');
-                    }
+                } catch (err) {
+                    console.error(err);
+                    showError('Error', 'No se pudo conectar con el servidor');
                 }
             }
         });
