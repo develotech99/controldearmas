@@ -81,48 +81,56 @@ class EstadoCuentaController extends Controller
 
     public function detalle(Request $request, $id)
     {
-        // 1. Historial de Saldo a Favor
-        $historialSaldo = DB::table('pro_clientes_saldo_historial')
-            ->where('hist_cliente_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // 2. Deudas Manuales
-        $deudas = DB::table('pro_deudas_clientes')
-            ->where('cliente_id', $id)
-            ->orderBy('fecha_deuda', 'desc')
-            ->get();
-
-        // 3. Ventas al Crédito (Pagos Pendientes)
-        $ventasCredito = DB::table('pro_pagos as p')
-            ->join('pro_ventas as v', 'p.pago_venta_id', '=', 'v.ven_id')
-            ->where('v.ven_cliente', $id)
-            ->whereIn('p.pago_estado', ['PENDIENTE', 'PARCIAL', 'VENCIDO'])
-            ->select(
-                'v.ven_id',
-                'v.ven_fecha',
-                'v.ven_total_vendido',
-                'p.pago_monto_pendiente',
-                'p.pago_estado',
-                'p.pago_fecha_inicio',
-                'p.pago_fecha_completado'
-            )
-            ->orderBy('v.ven_fecha', 'desc')
-            ->get();
-
-        // Agregar detalles de productos a cada venta
-        foreach ($ventasCredito as $venta) {
-            $venta->productos = DB::table('pro_detalle_ventas as dv')
-                ->join('pro_productos as prod', 'dv.det_producto_id', '=', 'prod.producto_id')
-                ->where('dv.det_ven_id', $venta->ven_id)
-                ->select('prod.producto_nombre', 'dv.det_cantidad', 'dv.det_precio')
+        try {
+            // 1. Historial de Saldo a Favor
+            $historialSaldo = DB::table('pro_clientes_saldo_historial')
+                ->where('hist_cliente_id', $id)
+                ->orderBy('created_at', 'desc')
                 ->get();
-        }
 
-        return response()->json([
-            'historial_saldo' => $historialSaldo,
-            'deudas' => $deudas,
-            'ventas_credito' => $ventasCredito
-        ]);
+            // 2. Deudas Manuales
+            $deudas = DB::table('pro_deudas_clientes')
+                ->where('cliente_id', $id)
+                ->orderBy('fecha_deuda', 'desc')
+                ->get();
+
+            // 3. Ventas al Crédito (Pagos Pendientes)
+            $ventasCredito = DB::table('pro_pagos as p')
+                ->join('pro_ventas as v', 'p.pago_venta_id', '=', 'v.ven_id')
+                ->where('v.ven_cliente', $id)
+                ->whereIn('p.pago_estado', ['PENDIENTE', 'PARCIAL', 'VENCIDO'])
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_total_vendido',
+                    'p.pago_monto_pendiente',
+                    'p.pago_estado',
+                    'p.pago_fecha_inicio',
+                    'p.pago_fecha_completado'
+                )
+                ->orderBy('v.ven_fecha', 'desc')
+                ->get();
+
+            // Agregar detalles de productos a cada venta
+            foreach ($ventasCredito as $venta) {
+                $venta->productos = DB::table('pro_detalle_ventas as dv')
+                    ->join('pro_productos as prod', 'dv.det_producto_id', '=', 'prod.producto_id')
+                    ->where('dv.det_ven_id', $venta->ven_id)
+                    ->select('prod.producto_nombre', 'dv.det_cantidad', 'dv.det_precio')
+                    ->get();
+            }
+
+            return response()->json([
+                'historial_saldo' => $historialSaldo,
+                'deudas' => $deudas,
+                'ventas_credito' => $ventasCredito
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error en EstadoCuentaController@detalle: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener estado de cuenta: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
