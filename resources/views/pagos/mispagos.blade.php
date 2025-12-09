@@ -631,6 +631,10 @@
                             <label class="block text-xs font-medium text-gray-600 mb-1">No. Autorización / Cheque</label>
                             <input type="text" id="numeroAutorizacion" placeholder="Ej: 123456" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                         </div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Comprobante (Opcional)</label>
+                            <input type="file" id="comprobantePago" accept="image/*,application/pdf" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
                     </div>
                 </div>
 

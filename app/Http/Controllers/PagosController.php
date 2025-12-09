@@ -756,26 +756,39 @@ class PagosController extends Controller
                 // TODO: Si el abono se paga con transferencia, podríamos registrarlo en pro_pagos_subidos automáticamente?
                 // Por simplicidad, dejamos que el usuario suba el comprobante después.
 
-            } else { // PAGO ÚNICO (Transferencia, Cheque, etc.)
-                $updateData = [
+            } else { // PAGO UNICO (Transferencia, Cheque, Deposito)
+                DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
                     'pago_tipo_pago' => 'UNICO',
                     'pago_metodo_pago' => $metodoPago,
-                    'pago_cantidad_cuotas' => 0,
+                    'pago_cantidad_cuotas' => 1,
                     'pago_abono_inicial' => 0,
                     'updated_at' => now()
-                ];
+                ]);
 
-                // Si viene información de banco (para transferencia/cheque)
+                // Si viene información de banco, crear registro en pagos_subidos
                 if ($request->has('banco_id')) {
-                    // Aquí podríamos actualizar pro_detalle_pagos si existiera, 
-                    // pero como está en estado PENDIENTE, probablemente no hay detalle aún.
-                    // O si lo hay, deberíamos actualizarlo.
-                    // Sin embargo, pro_pagos no tiene columnas de banco.
-                    // La info de banco se guarda usualmente al "Subir Pago" (pro_pagos_subidos).
-                    // Así que aquí solo cambiamos el método preferido.
-                }
+                    $estado = 'PENDIENTE_CARGA';
+                    $path = null;
 
-                DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update($updateData);
+                    if ($request->hasFile('comprobante')) {
+                        $file = $request->file('comprobante');
+                        $filename = 'pago_' . $ventaId . '_' . time() . '.' . $file->getClientOriginalExtension();
+                        $path = $file->storeAs('comprobantes', $filename, 'public');
+                        $estado = 'PENDIENTE_VALIDACION';
+                    }
+
+                    DB::table('pro_pagos_subidos')->insert([
+                        'ps_venta_id' => $ventaId,
+                        'ps_banco_id' => $request->banco_id,
+                        'ps_monto' => $pago->pago_monto_total,
+                        'ps_fecha_pago' => $request->fecha_pago ?? now(),
+                        'ps_no_comprobante' => $request->numero_autorizacion,
+                        'ps_comprobante_path' => $path,
+                        'ps_estado' => $estado,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
             }
 
             DB::commit();

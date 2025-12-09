@@ -559,8 +559,24 @@ const anularPago = async (ventaId) => {
                 const data = await res.json();
 
                 if (data.success) {
-                    await Swal.fire('Anulado', data.message, 'success');
-                    GetFacturas(); // Recargar tabla
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Anulado',
+                        text: data.message,
+                        showCancelButton: true,
+                        confirmButtonText: 'Definir Nuevo Método Ahora',
+                        cancelButtonText: 'Cerrar'
+                    }).then((result) => {
+                        GetFacturas(); // Recargar tabla siempre
+                        if (result.isConfirmed) {
+                            // Buscar el botón de cambiar cuotas de esta venta y hacer click
+                            // Necesitamos esperar a que se renderice la tabla
+                            setTimeout(() => {
+                                const btn = document.querySelector(`.btn-cambiar-cuotas[data-venta="${ventaId}"]`);
+                                if (btn) btn.click();
+                            }, 1000);
+                        }
+                    });
                 } else {
                     showError('Error', data.message || 'No se pudo anular el pago');
                 }
@@ -1495,10 +1511,9 @@ const renderCuotas = (venta) => {
                         return false;
                     }
 
-                    const data = {
-                        venta_id: ventaId,
-                        metodo_pago: metodo
-                    };
+                    const formData = new FormData();
+                    formData.append('venta_id', ventaId);
+                    formData.append('metodo_pago', metodo);
 
                     if (metodo === '6') { // Cuotas
                         const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
@@ -1509,30 +1524,36 @@ const renderCuotas = (venta) => {
                             return false;
                         }
 
-                        data.cantidad_cuotas = nCuotas;
-                        data.abono_inicial = abono;
-                        data.metodo_abono = modal.querySelector('#metodoAbono').value;
+                        formData.append('cantidad_cuotas', nCuotas);
+                        formData.append('abono_inicial', abono);
+                        formData.append('metodo_abono', modal.querySelector('#metodoAbono').value);
 
-                        if (data.metodo_abono !== 'efectivo') {
-                            data.banco_abono = modal.querySelector('#bancoAbono').value;
-                            data.auth_abono = modal.querySelector('#authAbono').value;
-                            if (!data.banco_abono) {
+                        if (modal.querySelector('#metodoAbono').value !== 'efectivo') {
+                            const bancoAbono = modal.querySelector('#bancoAbono').value;
+                            if (!bancoAbono) {
                                 Swal.showValidationMessage('Seleccione el banco del abono');
                                 return false;
                             }
+                            formData.append('banco_abono', bancoAbono);
+                            formData.append('auth_abono', modal.querySelector('#authAbono').value);
                         }
                     } else if (metodo !== '1') { // Bancos
-                        data.banco_id = modal.querySelector('#selectBanco').value;
-                        data.fecha_pago = modal.querySelector('#fechaPago').value;
-                        data.numero_autorizacion = modal.querySelector('#numeroAutorizacion').value;
-
-                        if (!data.banco_id) {
+                        const bancoId = modal.querySelector('#selectBanco').value;
+                        if (!bancoId) {
                             Swal.showValidationMessage('Seleccione un banco');
                             return false;
                         }
+                        formData.append('banco_id', bancoId);
+                        formData.append('fecha_pago', modal.querySelector('#fechaPago').value);
+                        formData.append('numero_autorizacion', modal.querySelector('#numeroAutorizacion').value);
+
+                        const fileInput = modal.querySelector('#comprobantePago');
+                        if (fileInput && fileInput.files[0]) {
+                            formData.append('comprobante', fileInput.files[0]);
+                        }
                     }
 
-                    return data;
+                    return formData;
                 }
             });
 
@@ -1542,10 +1563,10 @@ const renderCuotas = (venta) => {
                     const res = await fetch('/pagos/generar-cuotas', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            // No Content-Type header for FormData, browser sets it
                         },
-                        body: JSON.stringify(result.value)
+                        body: result.value
                     });
                     const data = await res.json();
 
