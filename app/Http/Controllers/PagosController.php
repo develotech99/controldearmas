@@ -592,4 +592,73 @@ class PagosController extends Controller
             return response()->json(['success' => false, 'message' => 'Error al actualizar el pago'], 500);
         }
     }
+
+    public function anularPago(Request $request)
+    {
+        try {
+            $request->validate([
+                'venta_id' => 'required|integer',
+                'motivo' => 'required|string|max:255'
+            ]);
+
+            $ventaId = $request->venta_id;
+            $motivo = $request->motivo;
+
+            DB::beginTransaction();
+
+            // 1. Obtener el pago asociado a la venta
+            $pago = DB::table('pro_pagos')->where('pago_venta_id', $ventaId)->first();
+            if (!$pago) {
+                return response()->json(['success' => false, 'message' => 'No se encontró registro de pago para esta venta.'], 404);
+            }
+
+            // 2. Eliminar detalles de pagos (validos)
+            // Solo eliminamos los que NO sean abonos iniciales de cuotas validadas (aunque si se anula todo, se anula todo)
+            // Asumimos que se quiere resetear el pago completo para cambiar método.
+            DB::table('pro_detalle_pagos')
+                ->where('det_pago_pago_id', $pago->pago_id)
+                ->delete();
+
+            // 3. Eliminar pagos subidos (pendientes de validación)
+            DB::table('pro_pagos_subidos')
+                ->where('ps_venta_id', $ventaId)
+                ->delete();
+
+            // 4. Resetear el registro maestro de pagos
+            DB::table('pro_pagos')
+                ->where('pago_id', $pago->pago_id)
+                ->update([
+                    'pago_monto_pagado' => 0,
+                    'pago_monto_pendiente' => $pago->pago_monto_total,
+                    'pago_estado' => 'PENDIENTE',
+                    'pago_tipo_pago' => 'PENDIENTE', // Resetear tipo para que elija de nuevo
+                    'pago_cantidad_cuotas' => 0,
+                    'pago_abono_inicial' => 0,
+                    'updated_at' => now()
+                ]);
+
+            // 5. Eliminar cuotas generadas (si las hay)
+            DB::table('pro_cuotas')
+                ->where('cuota_control_id', $pago->pago_id)
+                ->delete();
+
+            // 6. Anular registro en caja (si existe)
+            DB::table('cja_historial')
+                ->where('cja_id_venta', $ventaId)
+                ->where('cja_tipo', 'VENTA')
+                ->update([
+                    'cja_situacion' => 'ANULADO',
+                    'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - ANULADO: $motivo')")
+                ]);
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Pago anulado correctamente. Ahora puede registrar el pago nuevamente.']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error anulando pago: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al anular el pago.'], 500);
+        }
+    }
 }

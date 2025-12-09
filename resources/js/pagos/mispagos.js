@@ -481,6 +481,16 @@ const mostrarDetalleVenta = async (ventaId) => {
                 ${cuotasHTML}
                 ${revisionHTML}
                 ${historialHTML}
+
+                <!-- Botón de Anular / Corregir -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <button id="btnAnularPago" class="w-full text-red-600 hover:text-red-800 text-sm font-medium transition-colors flex justify-center items-center">
+                        <i class="fas fa-undo-alt mr-2"></i>Solicitar Corrección / Cambiar Método de Pago
+                    </button>
+                    <p class="text-xs text-gray-500 text-center mt-1">
+                        Utilice esta opción si desea anular el pago registrado para cambiar el método (ej. Transferencia a Cuotas) o corregir errores mayores.
+                    </p>
+                </div>
             </div>
         `,
         width: '600px',
@@ -498,8 +508,68 @@ const mostrarDetalleVenta = async (ventaId) => {
                     editarPagoSubido(pago, ventaId);
                 });
             });
+
+            // Listener para anular pago
+            const btnAnular = popup.querySelector('#btnAnularPago');
+            if (btnAnular) {
+                btnAnular.addEventListener('click', () => anularPago(ventaId));
+            }
         }
     });
+};
+
+const anularPago = async (ventaId) => {
+    const { isConfirmed } = await Swal.fire({
+        title: '¿Anular Pago y Reiniciar?',
+        text: "Esta acción eliminará el registro de pago actual (incluyendo comprobantes subidos) y dejará la venta como PENDIENTE. Podrá registrar el pago nuevamente eligiendo otro método (ej. Cuotas).",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Sí, Anular y Corregir',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (isConfirmed) {
+        const { value: motivo } = await Swal.fire({
+            title: 'Motivo de la corrección',
+            input: 'text',
+            inputLabel: 'Ingrese el motivo (ej. Error en método de pago)',
+            inputPlaceholder: 'Motivo...',
+            showCancelButton: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Debe ingresar un motivo';
+                }
+            }
+        });
+
+        if (motivo) {
+            try {
+                showLoading('Anulando pago...');
+                const res = await fetch('/pagos/anular', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ venta_id: ventaId, motivo })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    await Swal.fire('Anulado', data.message, 'success');
+                    GetFacturas(); // Recargar tabla
+                } else {
+                    showError('Error', data.message || 'No se pudo anular el pago');
+                }
+            } catch (e) {
+                console.error(e);
+                showError('Error', 'Ocurrió un error al conectar con el servidor');
+            }
+        }
+    }
 };
 
 const editarPagoSubido = async (pago, ventaId) => {
