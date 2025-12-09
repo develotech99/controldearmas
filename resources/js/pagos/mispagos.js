@@ -1348,13 +1348,23 @@ const renderCuotas = (venta) => {
         <div class="flex items-center space-x-4">
           <input type="checkbox" class="cuota-check w-5 h-5 accent-blue-600" ${enRev ? 'disabled' : ''} data-id="${c.cuota_id}" data-numero="${c.numero}" data-monto="${c.monto}" data-vence="${c.vence}">
           <div>
-            <div class="text-lg font-semibold text-gray-800">Cuota #${c.numero} ${enRev ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 align-middle">EN REVISIÓN</span>' : ''}</div>
+            <div class="text-lg font-semibold text-gray-800">
+                ${Number(c.cuota_id) < 0 ? 'Pago Único (Pendiente)' : `Cuota #${c.numero}`} 
+                ${enRev ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 align-middle">EN REVISIÓN</span>' : ''}
+            </div>
             <div class="text-sm text-gray-600">Vence: ${c.vence} • Estado: ${c.estado}</div>
           </div>
         </div>
         <div class="text-right">
           <div class="text-xl font-bold text-blue-600">${fmtQ(c.monto)}</div>
-          <button class="btn-pagar-una ${enRev ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'} px-4 py-2 rounded-lg text-sm font-medium mt-2" data-id="${c.cuota_id}" data-monto="${c.monto}" ${enRev ? 'disabled title="Comprobante en revisión"' : ''}>Pagar Solo Esta</button>
+          
+          ${Number(c.cuota_id) < 0 ? `
+            <button class="btn-cambiar-cuotas bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg text-sm font-medium mt-2 mr-2" data-venta="${venta.venta_id}">
+                <i class="fas fa-credit-card mr-1"></i>Definir Método de Pago
+            </button>
+          ` : ''}
+
+          <button class="btn-pagar-una ${enRev ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'} px-4 py-2 rounded-lg text-sm font-medium mt-2" data-id="${c.cuota_id}" data-monto="${c.monto}" ${enRev ? 'disabled title="Comprobante en revisión"' : ''}>Pagar</button>
         </div>
       </div>`;
 
@@ -1374,6 +1384,81 @@ const renderCuotas = (venta) => {
             });
         }
     });
+
+    // Listener para botón "Cambiar a Cuotas" o "Definir Método"
+    const btnCambiar = listDiv.querySelector('.btn-cambiar-cuotas');
+    if (btnCambiar) {
+        btnCambiar.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const ventaId = btnCambiar.dataset.venta;
+
+            // 1. Seleccionar Método
+            const { value: metodo } = await Swal.fire({
+                title: 'Seleccione Método de Pago',
+                input: 'radio',
+                inputOptions: {
+                    '1': 'Contado / Transferencia / Cheque',
+                    '6': 'Visacuotas / CrediCuotas'
+                },
+                inputValue: '1',
+                showCancelButton: true,
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!metodo) return;
+
+            if (metodo === '1') {
+                // Si es Contado, ya está en estado UNICO/PENDIENTE, así que solo abrimos el modal de pago normal
+                // Simulamos click en "Pagar" de la cuota virtual
+                const btnPagarVirtual = listDiv.querySelector('.btn-pagar-una');
+                if (btnPagarVirtual) btnPagarVirtual.click();
+            } else if (metodo === '6') {
+                // Si es Cuotas, pedimos la cantidad
+                const { value: cantidad } = await Swal.fire({
+                    title: 'Configurar Plan de Pagos',
+                    input: 'number',
+                    inputLabel: 'Ingrese la cantidad de cuotas (2-48)',
+                    inputPlaceholder: 'Ej: 3, 6, 12...',
+                    inputAttributes: { min: 2, max: 48, step: 1 },
+                    showCancelButton: true,
+                    confirmButtonText: 'Generar Cuotas',
+                    cancelButtonText: 'Cancelar',
+                    inputValidator: (value) => {
+                        if (!value || value < 2 || value > 48) {
+                            return 'Por favor ingrese un número entre 2 y 48';
+                        }
+                    }
+                });
+
+                if (cantidad) {
+                    try {
+                        showLoading('Generando cuotas...');
+                        const res = await fetch('/pagos/generar-cuotas', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({ venta_id: ventaId, cantidad_cuotas: cantidad })
+                        });
+                        const data = await res.json();
+
+                        if (data.success) {
+                            await Swal.fire('Éxito', data.message, 'success');
+                            closeModal();
+                            GetFacturas(); // Recargar todo
+                        } else {
+                            showError('Error', data.message);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showError('Error', 'No se pudo conectar con el servidor');
+                    }
+                }
+            }
+        });
+    }
 
     calcTotalSeleccionado();
 };

@@ -305,6 +305,7 @@ Route::middleware('auth')->group(function () {
         Route::post('cuotas/pagar', [PagosController::class, 'pagarCuotas']);
         Route::post('actualizar-subido', [PagosController::class, 'actualizarPagoSubido']);
         Route::post('anular', [PagosController::class, 'anularPago']);
+        Route::post('generar-cuotas', [PagosController::class, 'generarCuotas']);
     });
 
 

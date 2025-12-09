@@ -290,6 +290,20 @@ class PagosController extends Controller
                     ];
                 })->values();
 
+                // FIX: Si es pago ÚNICO y no hay cuotas (porque se borraron o nunca hubo), 
+                // pero hay saldo pendiente, generar una "cuota virtual" para permitir el pago.
+                if ($cuotasPend->isEmpty() && $pendiente > 0 && ($v->pago_tipo_pago === 'UNICO' || $v->pago_tipo_pago === 'PENDIENTE')) {
+                    $cuotasPend->push([
+                        'cuota_id' => -1 * $v->pago_id, // ID negativo para identificar virtual sin romper tipos
+                        'numero' => 1,
+                        'monto' => $pendiente,
+                        'vence' => $v->ven_fecha, // Vence el mismo día de la venta
+                        'estado' => 'PENDIENTE',
+                        'en_revision' => false,
+                        'is_virtual' => true // Flag para el frontend si se necesita
+                    ]);
+                }
+
                 $disponibles = $cuotasPend->filter(fn($q) => !$q['en_revision'])->count();
 
                 $base = [
@@ -661,6 +675,76 @@ class PagosController extends Controller
             DB::rollBack();
             Log::error('Error anulando pago: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error al anular el pago: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function generarCuotas(Request $request)
+    {
+        try {
+            $request->validate([
+                'venta_id' => 'required|integer',
+                'cantidad_cuotas' => 'required|integer|min:2|max:48'
+            ]);
+
+            $ventaId = $request->venta_id;
+            $cantidad = $request->cantidad_cuotas;
+
+            DB::beginTransaction();
+
+            $pago = DB::table('pro_pagos')->where('pago_venta_id', $ventaId)->first();
+            if (!$pago) {
+                return response()->json(['success' => false, 'message' => 'Pago no encontrado'], 404);
+            }
+
+            // Validar que esté pendiente
+            if ($pago->pago_estado !== 'PENDIENTE') {
+                return response()->json(['success' => false, 'message' => 'El pago no está pendiente'], 422);
+            }
+
+            // Eliminar cuotas existentes
+            DB::table('pro_cuotas')->where('cuota_control_id', $pago->pago_id)->delete();
+
+            // Actualizar maestro
+            $montoTotal = $pago->pago_monto_total;
+            $montoCuota = round($montoTotal / $cantidad, 2);
+            
+            // Ajustar última cuota por decimales
+            $totalCalculado = $montoCuota * $cantidad;
+            $diferencia = round($montoTotal - $totalCalculado, 2);
+
+            DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
+                'pago_tipo_pago' => 'CUOTAS',
+                'pago_cantidad_cuotas' => $cantidad,
+                'updated_at' => now()
+            ]);
+
+            // Generar cuotas
+            $fechaBase = now();
+            for ($i = 1; $i <= $cantidad; $i++) {
+                $monto = $montoCuota;
+                if ($i === $cantidad) {
+                    $monto += $diferencia;
+                }
+
+                DB::table('pro_cuotas')->insert([
+                    'cuota_control_id' => $pago->pago_id,
+                    'cuota_numero' => $i,
+                    'cuota_monto' => $monto,
+                    'cuota_fecha_vencimiento' => $fechaBase->copy()->addMonths($i),
+                    'cuota_estado' => 'PENDIENTE',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Plan de cuotas generado correctamente']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error generando cuotas: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al generar cuotas'], 500);
         }
     }
 }
