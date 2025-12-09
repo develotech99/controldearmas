@@ -612,26 +612,28 @@ class PagosController extends Controller
                 return response()->json(['success' => false, 'message' => 'No se encontró registro de pago para esta venta.'], 404);
             }
 
-            // 2. Eliminar detalles de pagos (validos)
+            // 2. Eliminar pagos subidos (pendientes de validación) PRIMERO para evitar FK errors
+            DB::table('pro_pagos_subidos')
+                ->where('ps_venta_id', $ventaId)
+                ->delete();
+
+            // 3. Eliminar detalles de pagos (validos)
             // Solo eliminamos los que NO sean abonos iniciales de cuotas validadas (aunque si se anula todo, se anula todo)
             // Asumimos que se quiere resetear el pago completo para cambiar método.
             DB::table('pro_detalle_pagos')
                 ->where('det_pago_pago_id', $pago->pago_id)
                 ->delete();
 
-            // 3. Eliminar pagos subidos (pendientes de validación)
-            DB::table('pro_pagos_subidos')
-                ->where('ps_venta_id', $ventaId)
-                ->delete();
-
             // 4. Resetear el registro maestro de pagos
+            // NOTA: pago_tipo_pago es enum ['UNICO', 'CUOTAS'], no acepta 'PENDIENTE'.
+            // Lo dejamos en 'UNICO' por defecto al resetear.
             DB::table('pro_pagos')
                 ->where('pago_id', $pago->pago_id)
                 ->update([
                     'pago_monto_pagado' => 0,
                     'pago_monto_pendiente' => $pago->pago_monto_total,
                     'pago_estado' => 'PENDIENTE',
-                    'pago_tipo_pago' => 'PENDIENTE', // Resetear tipo para que elija de nuevo
+                    'pago_tipo_pago' => 'UNICO', // Resetear a un valor válido
                     'pago_cantidad_cuotas' => 0,
                     'pago_abono_inicial' => 0,
                     'updated_at' => now()
@@ -658,7 +660,7 @@ class PagosController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error anulando pago: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error al anular el pago.'], 500);
+            return response()->json(['success' => false, 'message' => 'Error al anular el pago: ' . $e->getMessage()], 500);
         }
     }
 }
