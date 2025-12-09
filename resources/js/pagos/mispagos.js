@@ -260,6 +260,17 @@ const datatable = new DataTable('#tablaFacturas', {
                         </button>`;
                 }
 
+                // Botón para definir método de pago (si fue anulado o está pendiente sin método definido)
+                // Se muestra si hay saldo pendiente y el estado es PENDIENTE (lo que ocurre tras anular)
+                if (Number(row.pendiente) > 0 && row.estado_pago === 'PENDIENTE') {
+                    extraBtns += `
+                        <button class="btn-cambiar-cuotas bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                data-venta="${row.venta_id}"
+                                title="Definir Método de Pago">
+                            <i class="fas fa-credit-card mr-1"></i>Método
+                        </button>`;
+                }
+
                 if (Number(row.pendiente) > 0) {
                     const totalPend = Array.isArray(row.cuotas_pendientes) ? row.cuotas_pendientes.length : 0;
                     const bloquearSolo = (Array.isArray(row.cuotas_en_revision) ? row.cuotas_en_revision.length : 0);
