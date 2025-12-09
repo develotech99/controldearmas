@@ -710,4 +710,8 @@
             </div>
         </div>
     </template>
-@vite('resources/js/pagos/mispagos.js')
+@endsection
+
+@section('scripts')
+    @vite('resources/js/pagos/mispagos.js')
+@endsection
