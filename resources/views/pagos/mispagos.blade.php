@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
-        /* REEMPLAZA SOLO TU SECCIÓN <style> CON ESTO */
+
 
         /* Animaciones suaves */
         @keyframes slideInUp {
@@ -589,7 +589,7 @@
     </div>
 
     <!-- Template para Selección de Método de Pago (Estilo Ventas) -->
-    <div id="payment-method-template" class="hidden">
+    <template id="payment-method-template">
         <div class="text-left">
             <div class="grid gap-2" id="listaMetodosPago">
                 @if(isset($metodopago))
@@ -709,5 +709,5 @@
                 </div>
             </div>
         </div>
-    </div>
+    </template>
 @vite('resources/js/pagos/mispagos.js')
