@@ -103,7 +103,8 @@ const confirmAction = async (title, text) => {
 const datatable = new DataTable('#tablaFacturas', {
     data: [],
     pageLength: 10,
-    responsive: true,
+    scrollX: true,
+    responsive: false,
     language: ES_LANG,
     order: [[1, 'desc']], // Ordenar por fecha descendente
     columns: [
