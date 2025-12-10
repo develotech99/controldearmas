@@ -784,7 +784,7 @@ class PagosController extends Controller
 
                 DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
                     'pago_tipo_pago' => 'CUOTAS',
-                    'pago_metodo_pago' => 6, // ID de Visacuotas/Credicuotas
+                    // 'pago_metodo_pago' => 6, // Column does not exist
                     'pago_cantidad_cuotas' => $cantidad,
                     'pago_abono_inicial' => $abono,
                     'updated_at' => now()
@@ -833,7 +833,7 @@ class PagosController extends Controller
             } else { // PAGO UNICO (Transferencia, Cheque, Deposito)
                 DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
                     'pago_tipo_pago' => 'UNICO',
-                    'pago_metodo_pago' => $metodoPago,
+                    // 'pago_metodo_pago' => $metodoPago, // Column does not exist
                     'pago_cantidad_cuotas' => 1,
                     'pago_abono_inicial' => 0,
                     'updated_at' => now()
