@@ -20,13 +20,14 @@ class PagosController extends Controller
      */
     public function index()
     {
-        $metodopago = \App\Models\ProMetodoPago::where('metpago_estado', 'ACTIVO')->get();
+        $metodopago = \App\Models\ProMetodoPago::where('metpago_situacion', 1)->get();
         return view('pagos.mispagos', compact('metodopago'));
     }
 
     public function index2()
     {
-        return view('pagos.mispagos');
+        $metodopago = \App\Models\ProMetodoPago::where('metpago_situacion', 1)->get();
+        return view('pagos.mispagos', compact('metodopago'));
     }
 
     public function index3()
