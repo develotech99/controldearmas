@@ -550,9 +550,15 @@ class PagosController extends Controller
                     'ps_id' => $psId,
                     'comprobante_path' => $path,
                 ];
-                $destinatario = env('PAYMENTS_TO', env('MAIL_FROM_ADMIN') ?: config('mail.from.address'));
-                if ($destinatario) {
-                    Mail::to($destinatario)->send(new NotificarpagoMail($payload, $request->file('comprobante')));
+                // Enviar correo a administradores
+                $admins = \App\Models\User::whereHas('rol', function($q){
+                    $q->where('nombre', 'administrador');
+                })->get();
+
+                foreach ($admins as $admin) {
+                    if ($admin->email) {
+                        Mail::to($admin->email)->send(new NotificarpagoMail($payload, $request->file('comprobante')));
+                    }
                 }
             } catch (\Throwable $me) {
                 Log::warning('Fallo al enviar correo de pago pendiente', ['error' => $me->getMessage()]);
@@ -862,6 +868,29 @@ class PagosController extends Controller
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
+
+                    // Enviar correo a administradores
+                    try {
+                        $admins = \App\Models\User::whereHas('rol', function($q){
+                            $q->where('nombre', 'administrador');
+                        })->get();
+
+                        $pagoData = [
+                            'venta_id' => $ventaId,
+                            'monto' => $montoBase,
+                            'banco' => DB::table('pro_bancos')->where('banco_id', $request->banco_id)->value('banco_nombre'),
+                            'no_autorizacion' => $request->numero_autorizacion,
+                            'fecha_pago' => $request->fecha_pago ?? now(),
+                        ];
+
+                        foreach ($admins as $admin) {
+                            if ($admin->email) {
+                                \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\PaymentUploadedNotification($pagoData, $path));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error enviando correo de pago: ' . $e->getMessage());
+                    }
                 }
             }
 

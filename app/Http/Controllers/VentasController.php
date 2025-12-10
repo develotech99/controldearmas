@@ -3167,6 +3167,43 @@ public function procesarVenta(Request $request): JsonResponse
 
         DB::commit();
 
+        // Enviar correo a administradores
+        try {
+            $admins = \App\Models\User::whereHas('rol', function($q){
+                $q->where('nombre', 'administrador');
+            })->get();
+
+            $clienteNombre = DB::table('pro_clientes')->where('cliente_id', $request->cliente_id)->value(DB::raw("CONCAT(cliente_nombre1, ' ', cliente_apellido1)"));
+            $vendedorNombre = auth()->user()->name;
+
+            $productosDetalle = [];
+            foreach ($request->productos as $prod) {
+                $nombreProd = DB::table('pro_productos')->where('producto_id', $prod['producto_id'])->value('producto_nombre');
+                $productosDetalle[] = [
+                    'nombre' => $nombreProd,
+                    'cantidad' => $prod['cantidad'],
+                    'subtotal' => $prod['subtotal_producto']
+                ];
+            }
+
+            $ventaData = [
+                'ven_id' => $ventaId,
+                'cliente' => $clienteNombre,
+                'total' => $request->total,
+                'vendedor' => $vendedorNombre,
+                'fecha' => now()->format('d/m/Y H:i'),
+                'productos' => $productosDetalle
+            ];
+
+            foreach ($admins as $admin) {
+                if ($admin->email) {
+                    \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\NewSaleNotification($ventaData));
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error enviando correo de venta: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success'           => true,
             'message'           => 'Venta procesada exitosamente',
