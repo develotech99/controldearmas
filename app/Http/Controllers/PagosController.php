@@ -764,12 +764,23 @@ class PagosController extends Controller
                     return response()->json(['success' => false, 'message' => 'El abono no puede cubrir el total pendiente'], 422);
                 }
 
-                $saldoFinanciar = $montoBase - $abono;
-                $montoCuota = round($saldoFinanciar / $cantidad, 2);
-                
-                // Ajustar última cuota
-                $totalCalculado = $montoCuota * $cantidad;
-                $diferencia = round($saldoFinanciar - $totalCalculado, 2);
+                $saldoFinanciar = round($montoBase - $abono, 2);
+
+                // Verificar si vienen cuotas personalizadas
+                $cuotasCustom = $request->input('cuotas_custom'); // Array de montos
+                if (is_array($cuotasCustom) && count($cuotasCustom) > 0) {
+                    if (count($cuotasCustom) != $cantidad) {
+                        return response()->json(['success' => false, 'message' => 'La cantidad de montos personalizados no coincide con el número de cuotas'], 422);
+                    }
+
+                    $sumCustom = array_sum($cuotasCustom);
+                    // Permitir una pequeña diferencia por redondeo (0.05)
+                    if (abs($sumCustom - $saldoFinanciar) > 0.05) {
+                        return response()->json(['success' => false, 'message' => "La suma de las cuotas (Q$sumCustom) no coincide con el saldo a financiar (Q$saldoFinanciar)"], 422);
+                    }
+                } else {
+                    $cuotasCustom = null;
+                }
 
                 DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->update([
                     'pago_tipo_pago' => 'CUOTAS',
@@ -781,21 +792,42 @@ class PagosController extends Controller
 
                 // Generar cuotas
                 $fechaBase = now();
-                for ($i = 1; $i <= $cantidad; $i++) {
-                    $monto = $montoCuota;
-                    if ($i === $cantidad) {
-                        $monto += $diferencia;
+                
+                if ($cuotasCustom) {
+                    // Usar montos personalizados
+                    foreach ($cuotasCustom as $index => $monto) {
+                        DB::table('pro_cuotas')->insert([
+                            'cuota_control_id' => $pago->pago_id,
+                            'cuota_numero' => $index + 1,
+                            'cuota_monto' => $monto,
+                            'cuota_fecha_vencimiento' => $fechaBase->copy()->addMonths($index + 1),
+                            'cuota_estado' => 'PENDIENTE',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
                     }
+                } else {
+                    // Cálculo automático
+                    $montoCuota = round($saldoFinanciar / $cantidad, 2);
+                    $totalCalculado = $montoCuota * $cantidad;
+                    $diferencia = round($saldoFinanciar - $totalCalculado, 2);
 
-                    DB::table('pro_cuotas')->insert([
-                        'cuota_control_id' => $pago->pago_id,
-                        'cuota_numero' => $i,
-                        'cuota_monto' => $monto,
-                        'cuota_fecha_vencimiento' => $fechaBase->copy()->addMonths($i),
-                        'cuota_estado' => 'PENDIENTE',
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+                    for ($i = 1; $i <= $cantidad; $i++) {
+                        $monto = $montoCuota;
+                        if ($i === $cantidad) {
+                            $monto += $diferencia;
+                        }
+
+                        DB::table('pro_cuotas')->insert([
+                            'cuota_control_id' => $pago->pago_id,
+                            'cuota_numero' => $i,
+                            'cuota_monto' => $monto,
+                            'cuota_fecha_vencimiento' => $fechaBase->copy()->addMonths($i),
+                            'cuota_estado' => 'PENDIENTE',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
                 }
 
             } else { // PAGO UNICO (Transferencia, Cheque, Deposito)

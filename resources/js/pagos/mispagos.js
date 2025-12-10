@@ -2089,6 +2089,7 @@ const abrirModalDefinirMetodo = async (ventaId, montoTotal) => {
             const metodoAbono = modal.querySelector('#metodoAbono');
             const detallesAbonoContainer = modal.querySelector('#detallesAbonoContainer');
             const btnCalcular = modal.querySelector('#btnCalcularCuotas');
+            const resumenCuotas = modal.querySelector('#resumenCuotas');
 
             // Populate Banks
             const populateBanks = (select) => {
@@ -2151,8 +2152,65 @@ const abrirModalDefinirMetodo = async (ventaId, montoTotal) => {
                     modal.querySelector('#lblMontoTotal').textContent = fmtQ(montoTotal);
                     modal.querySelector('#lblAbono').textContent = '-' + fmtQ(abono);
                     modal.querySelector('#lblSaldoFinanciar').textContent = fmtQ(saldo);
-                    modal.querySelector('#lblDetalleCuotas').textContent = `${nCuotas} cuotas de ${fmtQ(montoCuota)}`;
-                    modal.querySelector('#resumenCuotas').classList.remove('hidden');
+
+                    // Generar inputs para cuotas editables
+                    const detalleContainer = modal.querySelector('#lblDetalleCuotas').parentElement;
+                    detalleContainer.innerHTML = ''; // Limpiar contenido anterior
+                    detalleContainer.className = 'mt-2 bg-white p-2 rounded border border-blue-100 shadow-sm max-h-60 overflow-y-auto';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between text-xs font-bold text-gray-500 mb-2';
+                    header.innerHTML = '<span>#</span><span>Monto (Q)</span>';
+                    detalleContainer.appendChild(header);
+
+                    let totalEditado = 0;
+
+                    for (let i = 1; i <= nCuotas; i++) {
+                        let monto = montoCuota;
+                        // Ajuste simple para la última cuota en la visualización inicial
+                        if (i === nCuotas) {
+                            monto = saldo - (montoCuota * (nCuotas - 1));
+                        }
+                        // Redondear a 2 decimales
+                        monto = Math.round(monto * 100) / 100;
+                        totalEditado += monto;
+
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center gap-2 mb-2';
+                        row.innerHTML = `
+                            <span class="text-sm font-medium w-6">${i}</span>
+                            <input type="number" step="0.01" class="input-cuota-custom w-full px-2 py-1 border rounded text-right text-sm" value="${monto.toFixed(2)}">
+                        `;
+                        detalleContainer.appendChild(row);
+                    }
+
+                    // Agregar validador de suma
+                    const inputs = detalleContainer.querySelectorAll('.input-cuota-custom');
+                    const validationMsg = document.createElement('div');
+                    validationMsg.id = 'cuotasValidationMsg';
+                    validationMsg.className = 'text-xs mt-2 font-bold text-right';
+                    detalleContainer.appendChild(validationMsg);
+
+                    const validateSum = () => {
+                        let sum = 0;
+                        inputs.forEach(inp => sum += parseFloat(inp.value) || 0);
+                        const diff = Math.abs(sum - saldo);
+
+                        if (diff > 0.05) {
+                            validationMsg.textContent = `Suma: ${fmtQ(sum)} (Diferencia: ${fmtQ(sum - saldo)})`;
+                            validationMsg.className = 'text-xs mt-2 font-bold text-right text-red-600';
+                            return false;
+                        } else {
+                            validationMsg.textContent = `Suma Correcta: ${fmtQ(sum)}`;
+                            validationMsg.className = 'text-xs mt-2 font-bold text-right text-green-600';
+                            return true;
+                        }
+                    };
+
+                    inputs.forEach(inp => inp.addEventListener('input', validateSum));
+                    validateSum(); // Validar inicial
+
+                    resumenCuotas.classList.remove('hidden');
                 });
             }
         },
@@ -2178,9 +2236,38 @@ const abrirModalDefinirMetodo = async (ventaId, montoTotal) => {
                     return false;
                 }
 
+                // Validar suma de cuotas personalizadas
+                const inputs = modal.querySelectorAll('.input-cuota-custom');
+                let sum = 0;
+                let cuotasArr = [];
+                inputs.forEach(inp => {
+                    const val = parseFloat(inp.value) || 0;
+                    sum += val;
+                    cuotasArr.push(val);
+                });
+
+                // Calcular saldo esperado
+                const montoTotal = Number(ventaIndex.get(Number(ventaId))?.pendiente || 0) > 0
+                    ? Number(ventaIndex.get(Number(ventaId)).pendiente)
+                    : Number(ventaIndex.get(Number(ventaId)).monto_total);
+
+                // Usamos el montoTotal pasado a la función si es posible, o recalculamos
+                // Pero ojo, montoTotal venía como argumento. Usémoslo.
+                // Sin embargo, el argumento montoTotal es local a la función abrirModal...
+                // Necesitamos el saldo calculado en el momento del click 'Calcular'.
+                // Recalculemos:
+                const saldoEsperado = montoTotal - abono;
+
+                if (Math.abs(sum - saldoEsperado) > 0.05) {
+                    Swal.showValidationMessage(`La suma de las cuotas (${fmtQ(sum)}) no coincide con el saldo a financiar (${fmtQ(saldoEsperado)})`);
+                    return false;
+                }
+
                 formData.append('cantidad_cuotas', nCuotas);
                 formData.append('abono_inicial', abono);
                 formData.append('metodo_abono', modal.querySelector('#metodoAbono').value);
+
+                cuotasArr.forEach(m => formData.append('cuotas_custom[]', m));
 
                 if (modal.querySelector('#metodoAbono').value !== 'efectivo') {
                     const bancoAbono = modal.querySelector('#bancoAbono').value;
