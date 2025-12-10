@@ -651,38 +651,74 @@ class PagosController extends Controller
                 ->delete();
 
             if ($pagosValidados) {
-                // ESCENARIO B: Existen pagos validados -> RESET PARCIAL (Refinanciamiento)
-                
-                // Recalcular lo pagado realmente
+                // Calcular cuánto está validado
                 $totalPagado = DB::table('pro_detalle_pagos')
                     ->where('det_pago_pago_id', $pago->pago_id)
                     ->where('det_pago_estado', 'VALIDO')
                     ->sum('det_pago_monto');
 
-                $nuevoPendiente = $pago->pago_monto_total - $totalPagado;
+                // Si el pago validado cubre el total (o más), y se está anulando,
+                // asumimos que se quiere corregir TODO el pago (ej. cambiar de Transferencia a Cuotas).
+                // Por tanto, forzamos el RESET TOTAL (Escenario A) en lugar del parcial.
+                if ($totalPagado >= $pago->pago_monto_total) {
+                    // ESCENARIO A (Forzado): Reset Total
+                    
+                    // Eliminar pagos validados (se borrarán del historial de pagos)
+                    DB::table('pro_detalle_pagos')
+                        ->where('det_pago_pago_id', $pago->pago_id)
+                        ->delete();
 
-                // Actualizar maestro
-                DB::table('pro_pagos')
-                    ->where('pago_id', $pago->pago_id)
-                    ->update([
-                        'pago_monto_pagado' => $totalPagado,
-                        'pago_monto_pendiente' => $nuevoPendiente,
-                        'pago_estado' => 'PENDIENTE', // Vuelve a pendiente para definir cómo pagar el resto
-                        'pago_tipo_pago' => 'UNICO', // Reset a default temporalmente
-                        'pago_cantidad_cuotas' => 0,
-                        'pago_abono_inicial' => 0,
-                        'updated_at' => now()
-                    ]);
+                    // Resetear maestro
+                    DB::table('pro_pagos')
+                        ->where('pago_id', $pago->pago_id)
+                        ->update([
+                            'pago_monto_pagado' => 0,
+                            'pago_monto_pendiente' => $pago->pago_monto_total,
+                            'pago_estado' => 'PENDIENTE',
+                            'pago_tipo_pago' => 'UNICO',
+                            'pago_cantidad_cuotas' => 0,
+                            'pago_abono_inicial' => 0,
+                            'updated_at' => now()
+                        ]);
 
-                // No tocamos cja_historial porque los pagos validados ya están ahí y son correctos.
-                // Solo agregamos una observación de que se solicitó corrección del saldo pendiente.
-                 DB::table('pro_ventas')
-                    ->where('ven_id', $ventaId)
-                    ->update([
-                        'ven_observaciones' => DB::raw("CONCAT(COALESCE(ven_observaciones,''), ' | Reajuste de pago solicitado: $motivo')")
-                    ]);
+                    // Anular en caja
+                    DB::table('cja_historial')
+                        ->where('cja_id_venta', $ventaId)
+                        ->where('cja_tipo', 'VENTA')
+                        ->update([
+                            'cja_situacion' => 'ANULADA',
+                            'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - ANULADO (Corrección Total): $motivo')")
+                        ]);
 
-                $message = 'Se ha habilitado la edición del saldo pendiente. Los pagos ya validados se mantuvieron.';
+                    $message = 'Pago anulado completamente. Se ha liberado el saldo para registrar el nuevo método.';
+
+                } else {
+                    // ESCENARIO B: Existen pagos validados PARCIALES -> RESET PARCIAL (Refinanciamiento)
+                    
+                    $nuevoPendiente = $pago->pago_monto_total - $totalPagado;
+
+                    // Actualizar maestro
+                    DB::table('pro_pagos')
+                        ->where('pago_id', $pago->pago_id)
+                        ->update([
+                            'pago_monto_pagado' => $totalPagado,
+                            'pago_monto_pendiente' => $nuevoPendiente,
+                            'pago_estado' => 'PENDIENTE', // Vuelve a pendiente para definir cómo pagar el resto
+                            'pago_tipo_pago' => 'UNICO', // Reset a default temporalmente
+                            'pago_cantidad_cuotas' => 0,
+                            'pago_abono_inicial' => 0,
+                            'updated_at' => now()
+                        ]);
+
+                    // No tocamos cja_historial porque los pagos validados se mantienen.
+                    DB::table('pro_ventas')
+                        ->where('ven_id', $ventaId)
+                        ->update([
+                            'ven_observaciones' => DB::raw("CONCAT(COALESCE(ven_observaciones,''), ' | Reajuste parcial solicitado: $motivo')")
+                        ]);
+
+                    $message = 'Se ha habilitado la edición del saldo pendiente. Los pagos parciales validados se mantuvieron.';
+                }
 
             } else {
                 // ESCENARIO A: No hay pagos validados -> RESET TOTAL (Lógica original)
