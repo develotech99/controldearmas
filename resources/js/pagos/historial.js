@@ -57,6 +57,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (e.target.hasAttribute('data-modal-backdrop')) {
             cerrarModal("modalDetalleVenta");
         }
+
+        // Ver Factura desde Modal
+        if (e.target.closest('.btn-ver-factura-modal')) {
+            const btn = e.target.closest('.btn-ver-factura-modal');
+            const facId = btn.dataset.facturaId;
+            if (facId) {
+                window.open(`/facturacion/${facId}/vista`, '_blank');
+            }
+        }
     });
 });
 
@@ -65,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 const CargarMetodosPago = async () => {
     try {
         // Fallback: Usar stats para sacar métodos
-        const respStats = await fetch("/admin/pagos/stats");
+        const respStats = await fetch("/admin/pagos/dashboard-stats");
         if (respStats.ok) {
             const json = await respStats.json();
             if (json.codigo === 1 && json.data.saldos) {
@@ -404,7 +413,8 @@ const mostrarDetalleCompleto = async (ventaId) => {
                             </div>
                         </div>
                         <p class="text-green-800 font-medium text-sm">Venta Facturada</p>
-                        <button class="mt-2 text-xs bg-white border border-green-200 text-green-700 px-3 py-1.5 rounded hover:bg-green-50 transition-colors shadow-sm">
+                        <button class="btn-ver-factura-modal mt-2 text-xs bg-white border border-green-200 text-green-700 px-3 py-1.5 rounded hover:bg-green-50 transition-colors shadow-sm"
+                            data-factura-id="${venta.factura ? venta.factura.id : ''}">
                             Ver Factura
                         </button>
                     </div>

@@ -3242,6 +3242,10 @@ public function procesarVenta(Request $request): JsonResponse
             $venta = DB::table('pro_ventas as v')
                 ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
                 ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->leftJoin('facturacion as f', function($join) {
+                    $join->on('v.ven_id', '=', 'f.fac_venta_id')
+                         ->where('f.fac_estado', '!=', 'ANULADO');
+                })
                 ->where('v.ven_id', $id)
                 ->select(
                     'v.ven_id',
@@ -3255,7 +3259,10 @@ public function procesarVenta(Request $request): JsonResponse
                     'c.cliente_direccion',
                     'c.cliente_nom_empresa',
                     'u.user_primer_nombre',
-                    'u.user_primer_apellido'
+                    'u.user_primer_apellido',
+                    'f.fac_id',
+                    'f.fac_serie',
+                    'f.fac_numero'
                 )
                 ->first();
 
@@ -3298,6 +3305,11 @@ public function procesarVenta(Request $request): JsonResponse
                 'vendedor' => $vendedorNombre ?: 'Sin asignar',
                 'ven_total_vendido' => $venta->ven_total_vendido,
                 'ven_situacion' => $venta->ven_situacion,
+                'factura' => [
+                    'id' => $venta->fac_id,
+                    'serie' => $venta->fac_serie,
+                    'numero' => $venta->fac_numero
+                ],
                 'total_items' => $detalles->sum('det_cantidad'),
                 'productos_resumen' => $detalles->pluck('producto_nombre')->join(', '),
                 'detalles' => $detalles
@@ -3614,6 +3626,10 @@ public function procesarVenta(Request $request): JsonResponse
             $venta = DB::table('pro_ventas as v')
                 ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
                 ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->leftJoin('facturacion as f', function($join) {
+                    $join->on('v.ven_id', '=', 'f.fac_venta_id')
+                         ->where('f.fac_estado', '!=', 'ANULADO');
+                })
                 ->where('v.ven_id', $id)
                 ->select(
                     'v.ven_id',
@@ -3624,7 +3640,10 @@ public function procesarVenta(Request $request): JsonResponse
                     'c.cliente_apellido1',
                     'c.cliente_nit',
                     'c.cliente_nom_empresa',
-                    'u.user_primer_nombre as vendedor_nombre'
+                    'u.user_primer_nombre as vendedor_nombre',
+                    'f.fac_id',
+                    'f.fac_serie',
+                    'f.fac_numero'
                 )
                 ->first();
 
@@ -3671,6 +3690,11 @@ public function procesarVenta(Request $request): JsonResponse
                 ],
                 'vendedor' => [
                     'nombre' => $venta->vendedor_nombre
+                ],
+                'factura' => [
+                    'id' => $venta->fac_id,
+                    'serie' => $venta->fac_serie,
+                    'numero' => $venta->fac_numero
                 ],
                 'detalles' => $detalles,
                 'pagos' => $pagos
