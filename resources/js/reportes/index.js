@@ -834,6 +834,7 @@ class ReportesManager {
                             class="text-blue-600 hover:text-blue-900 mr-2" title="Ver Detalle">
                             <i class="fas fa-eye"></i>
                         </button>
+                        ${['PENDIENTE', 'RESERVADA', 'EDITABLE'].includes((venta.ven_situacion || '').toUpperCase()) ? `
                         <a href="/ventas/${venta.ven_id}/editar" 
                            class="text-amber-600 hover:text-amber-900 mr-2" title="Editar Venta">
                             <i class="fas fa-edit"></i>
@@ -842,6 +843,7 @@ class ReportesManager {
                             class="text-red-600 hover:text-red-900 mr-2" title="Eliminar Venta">
                             <i class="fas fa-trash-alt"></i>
                         </button>
+                        ` : ''}
                         <a href="/reportes/ventas/${venta.ven_id}/imprimir" target="_blank"
                             class="text-gray-600 hover:text-gray-900" title="Imprimir Comprobante">
                             <i class="fas fa-print"></i>
