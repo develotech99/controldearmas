@@ -685,7 +685,30 @@ public function guardarCliente(Request $request)
                 $venta = ProVenta::findOrFail($venId);
                 
                 if ($venta->ven_situacion !== 'EDITABLE') {
-                    throw new \Exception('La venta no está en estado EDITABLE.');
+                    // throw new \Exception('La venta no está en estado EDITABLE.');
+                }
+
+                // 1. Validar Factura
+                $factura = DB::table('facturacion')
+                    ->where('fac_venta_id', $venId)
+                    ->where('fac_estado', '!=', 'ANULADO')
+                    ->first();
+
+                if ($factura) {
+                    throw new \Exception('No se puede editar una venta facturada. Debe anular la factura primero.');
+                }
+
+                // 2. Validar Pagos
+                $pago = DB::table('pro_pagos')->where('pago_venta_id', $venId)->first();
+                if ($pago) {
+                    $pagosValidados = DB::table('pro_detalle_pagos')
+                        ->where('det_pago_pago_id', $pago->pago_id)
+                        ->where('det_pago_estado', 'VALIDO')
+                        ->exists();
+                    
+                    if ($pagosValidados) {
+                        throw new \Exception('No se puede editar porque hay pagos validados. Primero debe eliminar el método de pago en la sección de Subir Pagos.');
+                    }
                 }
 
                 foreach ($cambios as $cambio) {
@@ -1566,8 +1589,18 @@ public function procesarReserva(Request $request): JsonResponse
             }
 
             // Permitir cancelar PENDIENTE o ACTIVA (si fue autorizada pero aún no entregada)
-            if (!in_array($venta->ven_situacion, ['PENDIENTE', 'ACTIVA','RESERVADA'])) {
-                throw new \RuntimeException('Solo se pueden cancelar ventas en estado PENDIENTE o ACTIVA.');
+            if (!in_array($venta->ven_situacion, ['PENDIENTE', 'ACTIVA','RESERVADA', 'EDITABLE'])) {
+                throw new \RuntimeException('Solo se pueden cancelar ventas en estado PENDIENTE, ACTIVA o EDITABLE.');
+            }
+
+            // Validar que no tenga factura activa
+            $factura = DB::table('facturacion')
+                ->where('fac_venta_id', $venId)
+                ->where('fac_estado', '!=', 'ANULADO')
+                ->first();
+
+            if ($factura) {
+                throw new \RuntimeException('No se puede eliminar la venta porque tiene una factura activa. Debe anular la factura primero.');
             }
 
             $ref = 'VENTA-' . $venId;
@@ -1752,25 +1785,62 @@ public function procesarReserva(Request $request): JsonResponse
             }
 
             // ========================================
-            // 5. CANCELAR DETALLES DE VENTA
+            // 3. ELIMINAR PAGOS Y CAJA (NUEVO)
             // ========================================
-            // ========================================
-            // 5. CANCELAR DETALLES DE VENTA
-            // ========================================
-            DB::table('pro_detalle_ventas')
-                ->where('det_ven_id', $venId)
-                ->update(['det_situacion' => 'CANCELADO']);
+            
+            // 3.1 Eliminar Pagos
+            $pago = DB::table('pro_pagos')->where('pago_venta_id', $venId)->first();
+            if ($pago) {
+                // Eliminar detalles de pago
+                DB::table('pro_detalle_pagos')->where('det_pago_pago_id', $pago->pago_id)->delete();
+                // Eliminar cuotas
+                DB::table('pro_cuotas')->where('cuota_control_id', $pago->pago_id)->delete();
+                // Eliminar pago maestro
+                DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->delete();
+            }
+            // Eliminar pagos subidos pendientes
+            DB::table('pro_pagos_subidos')->where('ps_venta_id', $venId)->delete();
+
+            // 3.2 Eliminar/Anular Caja
+            // Opción A: Eliminar físicamente el registro de caja para que no sume
+            DB::table('cja_historial')
+                ->where('cja_id_venta', $venId)
+                ->where('cja_tipo', 'VENTA')
+                ->delete();
+            
+            // Opción B (Si se prefiere historial en caja):
+            /*
+            DB::table('cja_historial')
+                ->where('cja_id_venta', $venId)
+                ->where('cja_tipo', 'VENTA')
+                ->update([
+                    'cja_situacion' => 'ANULADA',
+                    'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - VENTA ELIMINADA')")
+                ]);
+            */
 
             // ========================================
-            // 6. CANCELAR VENTA
+            // 4. ACTUALIZAR ESTADO Y SOFT DELETE
             // ========================================
+            
+            // Primero marcamos como CANCELADA/ELIMINADA para que quede el registro del estado final
             DB::table('pro_ventas')
                 ->where('ven_id', $venId)
                 ->update([
-                    'ven_situacion' => 'CANCELADA',
-                    'ven_observaciones' => $motivoCancelacion,
-                    'updated_at' => now()
+                    'ven_situacion' => 'ELIMINADA', // O 'CANCELADA'
+                    'ven_observaciones' => DB::raw("CONCAT(COALESCE(ven_observaciones,''), ' - Eliminada por: $motivoCancelacion')")
                 ]);
+            
+            // Soft Delete (requiere que el modelo use SoftDeletes)
+            $ventaModel = ProVenta::find($venId);
+            if ($ventaModel) {
+                $ventaModel->delete();
+            }
+
+            // Actualizar detalles a CANCELADO (aunque la venta esté soft deleted, los detalles quedan ahí pero marcados)
+            DB::table('pro_detalle_ventas')
+                ->where('det_ven_id', $venId)
+                ->update(['det_situacion' => 'CANCELADO']);
 
             // ========================================
             // 7. CANCELAR COMISIÓN DEL VENDEDOR
@@ -1783,9 +1853,6 @@ public function procesarReserva(Request $request): JsonResponse
                     'updated_at' => now()
                 ]);
 
-            // ========================================
-            // 8. ACTUALIZAR HISTORIAL DE CAJA
-            // ========================================
             DB::table('cja_historial')
                 ->where('cja_id_venta', $venId)
                 ->update([
@@ -3527,11 +3594,34 @@ public function procesarVenta(Request $request): JsonResponse
 
         if (!$venta) abort(404);
 
-        if ($venta->ven_situacion !== 'EDITABLE') {
-            // Optional: Allow editing if authorized but not invoiced?
-            // For now, restrict to EDITABLE (Frozen)
-            // abort(403, 'La venta no está en estado editable.');
+        // 1. Validar Factura
+        $factura = DB::table('facturacion')
+            ->where('fac_venta_id', $id)
+            ->where('fac_estado', '!=', 'ANULADO')
+            ->first();
+
+        if ($factura) {
+            return redirect()->route('ventas.index')
+                ->with('error', 'No se puede editar una venta facturada. Debe anular la factura primero.');
         }
+
+        // 2. Validar Pagos
+        $pago = DB::table('pro_pagos')->where('pago_venta_id', $id)->first();
+        if ($pago) {
+            $pagosValidados = DB::table('pro_detalle_pagos')
+                ->where('det_pago_pago_id', $pago->pago_id)
+                ->where('det_pago_estado', 'VALIDO')
+                ->exists();
+            
+            if ($pagosValidados) {
+                return redirect()->route('ventas.index')
+                    ->with('error', 'No se puede editar porque hay pagos validados. Primero debe eliminar el método de pago en la sección de Subir Pagos.');
+            }
+        }
+
+        // Si pasa las validaciones, permitir editar (aunque no esté en estado EDITABLE explícito, 
+        // asumimos que si no hay factura ni pagos validados, se puede corregir).
+        // if ($venta->ven_situacion !== 'EDITABLE') { ... }
 
         $detalles = DB::table('pro_detalle_ventas as d')
             ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')

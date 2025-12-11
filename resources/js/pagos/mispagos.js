@@ -291,6 +291,12 @@ const datatable = new DataTable('#tablaFacturas', {
                                   title="${title}">
                             <i class="fas fa-money-bill-wave mr-1"></i>Pagar
                           </button>
+                          ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(row.ven_situacion) ? `
+                            <a href="/ventas/${row.venta_id}/editar" 
+                               class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                               title="Editar Venta">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </a>` : ''}
                           <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                                   data-venta="${row.venta_id}">
                             <i class="fas fa-eye mr-1"></i>Ver
@@ -303,6 +309,12 @@ const datatable = new DataTable('#tablaFacturas', {
                         <i class="fas fa-check-circle mr-1"></i>PAGADA
                       </span>
                       ${extraBtns}
+                      ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(row.ven_situacion) ? `
+                        <a href="/ventas/${row.venta_id}/editar" 
+                           class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                           title="Editar Venta">
+                            <i class="fas fa-edit mr-1"></i>Editar
+                        </a>` : ''}
                       <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                               data-venta="${row.venta_id}">
                         <i class="fas fa-eye mr-1"></i>Ver

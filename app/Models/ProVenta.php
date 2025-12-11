@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProVenta extends Model 
 {
+    use SoftDeletes;
     protected $table = 'pro_ventas';
     protected $primaryKey = 'ven_id';
     public $timestamps = false;

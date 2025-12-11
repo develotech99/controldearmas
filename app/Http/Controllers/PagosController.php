@@ -101,6 +101,7 @@ class PagosController extends Controller
                     'v.ven_total_vendido',
                     'v.ven_descuento',
                     'v.ven_observaciones',
+                    'v.ven_situacion', // 🔥 Estado de la venta
                     'v.ven_user', // 🔥 ID del vendedor
 
                     // Información del cliente

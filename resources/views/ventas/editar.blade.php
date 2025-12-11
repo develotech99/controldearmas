@@ -106,6 +106,7 @@
 
 <script>
     const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const ventaId = {{ $venta->ven_id }};
 
     function cerrarModalSerie() {
         document.getElementById('modalCambiarSerie').classList.add('hidden');
@@ -127,16 +128,23 @@
 
         // Fetch available series for this product
         try {
-            const res = await fetch(`/api/productos/${productoId}/series-disponibles`);
+            // Updated route based on web.php: /inventario/productos/{id}/series-disponibles
+            const res = await fetch(`/inventario/productos/${productoId}/series-disponibles`);
             const data = await res.json();
             
-            select.innerHTML = '<option value="">Seleccione nueva serie...</option>';
-            data.forEach(s => {
-                select.innerHTML += `<option value="${s.serie_id}">${s.serie_numero}</option>`;
-            });
+            if (data.success) {
+                select.innerHTML = '<option value="">Seleccione nueva serie...</option>';
+                data.data.forEach(s => {
+                    select.innerHTML += `<option value="${s.serie_id}">${s.serie_numero_serie}</option>`;
+                });
+            } else {
+                 select.innerHTML = '<option value="">Error al cargar series</option>';
+                 console.error(data.message);
+            }
+
         } catch (e) {
             console.error(e);
-            select.innerHTML = '<option value="">Error al cargar</option>';
+            select.innerHTML = '<option value="">Error de conexión</option>';
         }
     }
 
@@ -144,6 +152,7 @@
         const detalleId = document.getElementById('inputDetalleId').value;
         const oldSerieId = document.getElementById('inputSerieIdActual').value;
         const newSerieId = document.getElementById('selectNuevaSerie').value;
+        const productoId = document.getElementById('inputProductoId').value;
 
         if (!newSerieId) {
             alert('Seleccione una nueva serie');
@@ -151,16 +160,21 @@
         }
 
         try {
-            const res = await fetch('/ventas/cambiar-serie', {
+            // Updated route to match VentasController::updateEditableSale
+            const res = await fetch('/ventas/update-editable', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': token
                 },
                 body: JSON.stringify({
-                    detalle_id: detalleId,
-                    old_serie_id: oldSerieId,
-                    new_serie_id: newSerieId
+                    ven_id: ventaId,
+                    cambios: [{
+                        det_id: detalleId,
+                        producto_id: productoId,
+                        old_serie_id: oldSerieId,
+                        new_serie_id: newSerieId
+                    }]
                 })
             });
 
@@ -170,7 +184,7 @@
                 alert('Serie cambiada exitosamente');
                 location.reload();
             } else {
-                alert('Error: ' + data.message);
+                alert('Error: ' + (data.message || 'Error desconocido'));
             }
         } catch (e) {
             console.error(e);

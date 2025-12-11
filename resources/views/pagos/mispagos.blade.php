@@ -209,9 +209,8 @@
     <!-- Encabezado -->
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Control de Pagos</h2>
-            <p class="text-gray-600 dark:text-gray-400">Aquí puedes ver todos los pagos, su estado y subir la transferencia del pago si
-                corresponde.</p>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Control de Pagos y Edición de Ventas</h2>
+            <p class="text-gray-600 dark:text-gray-400">Aquí puedes ver todos los pagos, su estado, subir transferencias y editar ventas pendientes.</p>
         </div>
         <div class="w-full md:w-64">
             <label for="filtroCliente" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtrar por Cliente</label>

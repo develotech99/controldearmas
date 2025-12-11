@@ -510,6 +510,7 @@ class ReportesManager {
     async cambiarSerie(venId, detId, productoId, oldSerieId, oldSerieNumero) {
         try {
             // 1. Fetch available series
+            // Updated route: /inventario/productos/{id}/series-disponibles
             const response = await fetch(`/inventario/productos/${productoId}/series-disponibles`);
             const data = await response.json();
 
@@ -560,6 +561,7 @@ class ReportesManager {
     async cambiarLote(venId, detId, productoId, oldLoteId, oldLoteCodigo) {
         try {
             // 1. Fetch available lotes
+            // Route is correct: /inventario/productos/{id}/stock-lotes
             const response = await fetch(`/inventario/productos/${productoId}/stock-lotes`);
             const data = await response.json();
 
@@ -695,6 +697,57 @@ class ReportesManager {
         this.loadReporteHistorialVentas(1);
     }
 
+    async eliminarVenta(venId) {
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Esta acción eliminará la venta, sus pagos y registros de caja. ¡No se puede deshacer!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/ventas/cancelar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        ven_id: venId,
+                        motivo: 'Eliminación desde Historial de Ventas'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire(
+                        '¡Eliminado!',
+                        'La venta ha sido eliminada correctamente.',
+                        'success'
+                    );
+                    // Recargar tablas
+                    this.loadReporteHistorialVentas(1);
+                    this.loadReporteVentas();
+                } else {
+                    throw new Error(data.message || 'Error al eliminar la venta');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire(
+                    'Error',
+                    error.message || 'Hubo un problema al eliminar la venta.',
+                    'error'
+                );
+            }
+        }
+    }
+
     renderTablaHistorialVentas(ventas) {
         const tbody = document.getElementById('tbody-historial-ventas');
         if (!tbody) return;
@@ -777,9 +830,17 @@ class ReportesManager {
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                         <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
+                        <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
                             class="text-blue-600 hover:text-blue-900 mr-2" title="Ver Detalle">
                             <i class="fas fa-eye"></i>
+                        </button>
+                        <a href="/ventas/${venta.ven_id}/editar" 
+                           class="text-amber-600 hover:text-amber-900 mr-2" title="Editar Venta">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button onclick="reportesManager.eliminarVenta(${venta.ven_id})"
+                            class="text-red-600 hover:text-red-900 mr-2" title="Eliminar Venta">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                         <a href="/reportes/ventas/${venta.ven_id}/imprimir" target="_blank"
                             class="text-gray-600 hover:text-gray-900" title="Imprimir Comprobante">
