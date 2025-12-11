@@ -296,7 +296,12 @@ const datatable = new DataTable('#tablaFacturas', {
                                class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                title="Editar Venta">
                                 <i class="fas fa-edit mr-1"></i>Editar
-                            </a>` : ''}
+                            </a>
+                            <button class="btn-eliminar bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                    data-venta="${row.venta_id}"
+                                    title="Eliminar Venta">
+                                <i class="fas fa-trash mr-1"></i>
+                            </button>` : ''}
                           <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                                   data-venta="${row.venta_id}">
                             <i class="fas fa-eye mr-1"></i>Ver
@@ -310,11 +315,16 @@ const datatable = new DataTable('#tablaFacturas', {
                       </span>
                       ${extraBtns}
                       ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(row.ven_situacion) ? `
-                        <a href="/ventas/${row.venta_id}/editar" 
-                           class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
-                           title="Editar Venta">
-                            <i class="fas fa-edit mr-1"></i>Editar
-                        </a>` : ''}
+                            <a href="/ventas/${row.venta_id}/editar" 
+                               class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                               title="Editar Venta">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </a>
+                            <button class="btn-eliminar bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                    data-venta="${row.venta_id}"
+                                    title="Eliminar Venta">
+                                <i class="fas fa-trash mr-1"></i>
+                            </button>` : ''}
                       <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                               data-venta="${row.venta_id}">
                         <i class="fas fa-eye mr-1"></i>Ver
@@ -740,7 +750,51 @@ document.getElementById('tablaFacturas')?.addEventListener('click', (ev) => {
         const ventaId = btn.dataset.venta;
         mostrarDetalleVenta(ventaId);
     }
+
+    if (btn.classList.contains('btn-eliminar')) {
+        const ventaId = btn.dataset.venta;
+        eliminarVenta(ventaId);
+    }
 });
+
+const eliminarVenta = async (venId) => {
+    const { isConfirmed } = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción eliminará la venta y todos sus registros asociados (pagos, movimientos, etc). No se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (isConfirmed) {
+        try {
+            showLoading('Eliminando venta...');
+            const response = await fetch('/ventas/cancelar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ ven_id: venId, motivo: 'Eliminación desde Mis Pagos' })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await Swal.fire('Eliminado!', 'La venta ha sido eliminada.', 'success');
+                GetFacturas(); // Recargar tabla
+            } else {
+                showError('Error', data.message || 'No se pudo eliminar la venta');
+            }
+        } catch (error) {
+            console.error(error);
+            showError('Error', 'Ocurrió un error al conectar con el servidor');
+        }
+    }
+};
 
 const GetFacturas = async () => {
     try {
