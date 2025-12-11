@@ -1854,12 +1854,7 @@ public function procesarReserva(Request $request): JsonResponse
                     'updated_at' => now()
                 ]);
 
-            DB::table('cja_historial')
-                ->where('cja_id_venta', $venId)
-                ->update([
-                    'cja_situacion' => 'CANCELADA',
-                    'cja_observaciones' => $motivoCancelacion
-                ]);
+
 
         }, 3);
 
