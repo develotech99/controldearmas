@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-use App\Models\ProVenta;
+use App\Models\Ventas;
 
 
 
@@ -1833,7 +1833,7 @@ public function procesarReserva(Request $request): JsonResponse
                 ]);
             
             // Soft Delete (requiere que el modelo use SoftDeletes)
-            $ventaModel = ProVenta::find($venId);
+            $ventaModel = Ventas::find($venId);
             if ($ventaModel) {
                 $ventaModel->delete();
             }
