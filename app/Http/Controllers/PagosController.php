@@ -318,6 +318,7 @@ class PagosController extends Controller
                     'pagado' => (float) $v->pago_monto_pagado,
                     'pendiente' => $pendiente,
                     'estado_pago' => $v->pago_estado ?? ($pendiente > 0 ? 'PENDIENTE' : 'COMPLETADO'),
+                    'ven_situacion' => $v->ven_situacion, // 🔥 Estado de la venta para frontend
                     'observaciones' => $v->ven_observaciones,
 
                     // 🔥 Información del cliente
