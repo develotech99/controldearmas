@@ -143,6 +143,9 @@
                                 <button data-step="6" class="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
                                     6. Clientes
                                 </button>
+                                <button data-step="7" class="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
+                                    7. Pagos y Historial
+                                </button>
                             </nav>
                         </div>
 
@@ -178,7 +181,7 @@
                                 <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
                                     <h5 class="font-semibold text-gray-900 dark:text-white mb-3">Guía Rápida</h5>
                                     <ol class="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300 text-sm">
-                                        <li>Para agregar, usa el botón <strong>"Agregar Arma"</strong>.</li>
+                                        <li>Para agregar, usa el botón <strong>"Agregar Producto"</strong>.</li>
                                         <li>Sube imágenes en formato JPG/PNG (Max 2MB).</li>
                                         <li>Usa el buscador para filtrar por código, nombre o categoría.</li>
                                     </ol>
@@ -198,6 +201,7 @@
                                     <h5 class="font-semibold text-green-800 dark:text-green-300 mb-2"><i class="fas fa-check-circle mr-2"></i>Proceso de Venta</h5>
                                     <ol class="list-decimal list-inside space-y-2 text-sm text-green-700 dark:text-green-200">
                                         <li><strong>Buscar Cliente:</strong> Por NIT o Nombre. Si no existe, créalo ahí mismo.</li>
+                                        <li><strong>Dirección de Facturación:</strong> El sistema selecciona automáticamente la dirección según el tipo de cliente (Empresa o Individual), pero puedes editarla manualmente si es necesario.</li>
                                         <li><strong>Agregar Productos:</strong> Busca por nombre o código.</li>
                                         <li><strong>Seleccionar Series/Lotes:</strong> Obligatorio para armas y municiones controladas.</li>
                                         <li><strong>Pago:</strong> Selecciona método (Efectivo, Tarjeta, Cheque, Mixto).</li>
@@ -320,6 +324,38 @@
                                         <p class="text-sm text-blue-700 dark:text-blue-200">
                                             Vista detallada de todas las transacciones del cliente: compras, pagos, abonos y saldo actual.
                                         </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 7: Pagos y Historial -->
+                            <div data-content="7" class="hidden space-y-6">
+                                <div>
+                                    <h4 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pagos y Historial</h4>
+                                    <p class="text-gray-600 dark:text-gray-300">
+                                        Gestiona tus pagos pendientes, visualiza el historial y descarga facturas.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+                                        <h5 class="font-semibold text-blue-800 dark:text-blue-300 mb-2"><i class="fas fa-history mr-2"></i>Historial de Pagos</h5>
+                                        <ul class="list-disc list-inside space-y-1 text-sm text-blue-700 dark:text-blue-200">
+                                            <li>Consulta todas tus compras y pagos realizados.</li>
+                                            <li><strong>Ver Factura:</strong> Si la venta ya fue facturada, aparecerá un botón verde "Ver Factura" para abrir el PDF.</li>
+                                            <li><strong>Estado:</strong> Verifica si tus pagos han sido validados por administración.</li>
+                                        </ul>
+                                    </div>
+                                    <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-100 dark:border-orange-800">
+                                        <h5 class="font-semibold text-orange-800 dark:text-orange-300 mb-2"><i class="fas fa-upload mr-2"></i>Mis Pagos (Carga de Boletas)</h5>
+                                        <p class="text-sm text-orange-700 dark:text-orange-200 mb-2">
+                                            Si tienes pagos pendientes (crédito), usa esta sección para subir tus boletas de depósito.
+                                        </p>
+                                        <ul class="list-disc list-inside space-y-1 text-sm text-orange-700 dark:text-orange-200">
+                                            <li>Sube la foto de la boleta o transferencia.</li>
+                                            <li>El pago quedará en revisión hasta que un administrador lo valide.</li>
+                                            <li><strong>Corrección:</strong> Si te equivocaste y el pago NO ha sido validado, puedes anularlo y subirlo de nuevo. Si ya fue validado, contacta a administración.</li>
+                                        </ul>
                                     </div>
                                 </div>
                             </div>

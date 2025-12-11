@@ -64,7 +64,8 @@ class ManualManager {
                 'preventas': '3',
                 'autorizacion': '4',
                 'facturacion': '5',
-                'clientes': '6'
+                'clientes': '6',
+                'pagos': '7'
             };
 
             const step = map[sectionId] || sectionId || '1';
