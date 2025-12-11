@@ -360,6 +360,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
     Route::get('/ventas/buscar-productos', [VentasController::class, 'buscarProductos'])->name('ventas.buscar-productos');
     Route::post('/ventas/update-editable', [VentasController::class, 'updateEditableSale'])->name('ventas.update-editable');
+    Route::get('/ventas/{id}/detalles-editables', [VentasController::class, 'getDetallesEditables']);
 
 
     Route::post('/reservas/procesar', [VentasController::class, 'procesarReserva'])

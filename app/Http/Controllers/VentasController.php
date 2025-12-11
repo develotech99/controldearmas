@@ -3644,6 +3644,46 @@ public function procesarVenta(Request $request): JsonResponse
         return view('ventas.editar', compact('venta', 'detalles'));
     }
 
+    public function getDetallesEditables($id)
+    {
+        $venta = DB::table('pro_ventas as v')
+            ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+            ->where('v.ven_id', $id)
+            ->select(
+                'v.ven_id', 'v.ven_fecha', 'v.ven_situacion',
+                'c.cliente_nombre1', 'c.cliente_apellido1', 'c.cliente_nit'
+            )
+            ->first();
+
+        if (!$venta) {
+            return response()->json(['success' => false, 'message' => 'Venta no encontrada'], 404);
+        }
+
+        $detalles = DB::table('pro_detalle_ventas as d')
+            ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+            ->where('d.det_ven_id', $id)
+            ->select('d.*', 'p.producto_nombre', 'p.producto_requiere_serie')
+            ->get();
+
+        foreach ($detalles as $det) {
+            if ($det->producto_requiere_serie) {
+                $det->series = DB::table('pro_movimientos as m')
+                    ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                    ->where('m.mov_documento_referencia', 'VENTA-' . $id)
+                    ->where('m.mov_producto_id', $det->det_producto_id)
+                    ->where('m.mov_tipo', 'salida')
+                    ->select('s.serie_id', 's.serie_numero_serie as serie_numero')
+                    ->get();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'venta' => $venta,
+            'detalles' => $detalles
+        ]);
+    }
+
     public function getSeriesDisponibles($productoId)
     {
         $series = DB::table('pro_series_productos')
