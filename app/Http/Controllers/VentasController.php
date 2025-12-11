@@ -1827,7 +1827,7 @@ public function procesarReserva(Request $request): JsonResponse
             DB::table('pro_ventas')
                 ->where('ven_id', $venId)
                 ->update([
-                    'ven_situacion' => 'ELIMINADA', // O 'CANCELADA'
+                    'ven_situacion' => 'ANULADA', // O 'CANCELADA'
                     'ven_observaciones' => DB::raw("CONCAT(COALESCE(ven_observaciones,''), ' - Eliminada por: $motivoCancelacion')")
                 ]);
             
