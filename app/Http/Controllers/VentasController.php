@@ -1841,7 +1841,7 @@ public function procesarReserva(Request $request): JsonResponse
             // Actualizar detalles a CANCELADO (aunque la venta esté soft deleted, los detalles quedan ahí pero marcados)
             DB::table('pro_detalle_ventas')
                 ->where('det_ven_id', $venId)
-                ->update(['det_situacion' => 'CANCELADO']);
+                ->update(['det_situacion' => 'ANULADA']);
 
             // ========================================
             // 7. CANCELAR COMISIÓN DEL VENDEDOR
