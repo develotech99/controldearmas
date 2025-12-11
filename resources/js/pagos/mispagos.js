@@ -230,6 +230,7 @@ const datatable = new DataTable('#tablaFacturas', {
             orderable: false,
             searchable: false,
             render: (_d, _t, row) => {
+                console.log('Row data:', row);
                 let extraBtns = '';
 
                 // Buscar comprobante en pagos realizados si no hay en revisión
@@ -282,6 +283,9 @@ const datatable = new DataTable('#tablaFacturas', {
                     const btnClass = 'bg-blue-600 hover:bg-blue-700 text-white';
                     const title = `Pagar (${disponibles}/${totalPend} cuotas disponibles)`;
 
+                    const situacion = (row.ven_situacion || '').toUpperCase();
+                    console.log('Venta:', row.venta_id, 'Situacion:', situacion);
+
                     return `
                         <div class="flex gap-2 items-center">
                           ${bloquearSolo ? '<span class="px-2 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800"><i class="fas fa-clock mr-1"></i>En revisión</span>' : ''}
@@ -291,7 +295,7 @@ const datatable = new DataTable('#tablaFacturas', {
                                   title="${title}">
                             <i class="fas fa-money-bill-wave mr-1"></i>Pagar
                           </button>
-                          ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(row.ven_situacion) ? `
+                          ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(situacion) ? `
                             <a href="/ventas/${row.venta_id}/editar" 
                                class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                title="Editar Venta">
@@ -308,13 +312,17 @@ const datatable = new DataTable('#tablaFacturas', {
                           </button>
                         </div>`;
                 }
+
+                const situacion = (row.ven_situacion || '').toUpperCase();
+                console.log('Venta (Pagada):', row.venta_id, 'Situacion:', situacion);
+
                 return `
                     <div class="flex gap-2">
                       <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">
                         <i class="fas fa-check-circle mr-1"></i>PAGADA
                       </span>
                       ${extraBtns}
-                      ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(row.ven_situacion) ? `
+                      ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(situacion) ? `
                             <a href="/ventas/${row.venta_id}/editar" 
                                class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                title="Editar Venta">
