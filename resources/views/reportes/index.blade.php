@@ -951,6 +951,7 @@
 
     @include('facturacion.modals.factura_cambiaria')
     @include('facturacion.modals.nueva_factura')
+    @include('ventas.partials.modal_editar_venta')
 
     <!-- Template para items (oculto) -->
     <template id="templateItem">

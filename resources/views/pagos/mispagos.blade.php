@@ -713,6 +713,7 @@
             </div>
         </div>
     </template>
+    @include('ventas.partials.modal_editar_venta')
 @endsection
 
 @section('scripts')

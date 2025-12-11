@@ -835,10 +835,10 @@ class ReportesManager {
                             <i class="fas fa-eye"></i>
                         </button>
                         ${['PENDIENTE', 'RESERVADA', 'EDITABLE'].includes((venta.ven_situacion || '').toUpperCase()) ? `
-                        <a href="/ventas/${venta.ven_id}/editar" 
+                        <button onclick="abrirModalEditarVenta(${venta.ven_id})" 
                            class="text-amber-600 hover:text-amber-900 mr-2" title="Editar Venta">
                             <i class="fas fa-edit"></i>
-                        </a>
+                        </button>
                         <button onclick="reportesManager.eliminarVenta(${venta.ven_id})"
                             class="text-red-600 hover:text-red-900 mr-2" title="Eliminar Venta">
                             <i class="fas fa-trash-alt"></i>

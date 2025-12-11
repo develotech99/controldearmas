@@ -296,11 +296,11 @@ const datatable = new DataTable('#tablaFacturas', {
                             <i class="fas fa-money-bill-wave mr-1"></i>Pagar
                           </button>
                           ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(situacion) ? `
-                            <a href="/ventas/${row.venta_id}/editar" 
+                            <button onclick="abrirModalEditarVenta(${row.venta_id})" 
                                class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                title="Editar Venta">
                                 <i class="fas fa-edit mr-1"></i>Editar
-                            </a>
+                            </button>
                             <button class="btn-eliminar bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                     data-venta="${row.venta_id}"
                                     title="Eliminar Venta">
@@ -323,11 +323,11 @@ const datatable = new DataTable('#tablaFacturas', {
                       </span>
                       ${extraBtns}
                       ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(situacion) ? `
-                            <a href="/ventas/${row.venta_id}/editar" 
+                            <button onclick="abrirModalEditarVenta(${row.venta_id})" 
                                class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                title="Editar Venta">
                                 <i class="fas fa-edit mr-1"></i>Editar
-                            </a>
+                            </button>
                             <button class="btn-eliminar bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                                     data-venta="${row.venta_id}"
                                     title="Eliminar Venta">
