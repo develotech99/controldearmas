@@ -3631,9 +3631,11 @@ public function procesarVenta(Request $request): JsonResponse
 
         foreach ($detalles as $det) {
             if ($det->producto_requiere_serie) {
-                $det->series = DB::table('pro_movimiento_series as ms')
-                    ->join('pro_series_productos as s', 'ms.mov_serie_serie_id', '=', 's.serie_id')
-                    ->where('ms.mov_serie_detalle_id', $det->det_id)
+                $det->series = DB::table('pro_movimientos as m')
+                    ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                    ->where('m.mov_documento_referencia', 'VENTA-' . $id)
+                    ->where('m.mov_producto_id', $det->det_producto_id)
+                    ->where('m.mov_tipo', 'salida') // Asegurar que es la salida de venta
                     ->select('s.serie_id', 's.serie_numero_serie as serie_numero')
                     ->get();
             }
@@ -3678,13 +3680,20 @@ public function procesarVenta(Request $request): JsonResponse
             }
 
             // 2. Update Movement
-            $updated = DB::table('pro_movimiento_series')
-                ->where('mov_serie_detalle_id', $request->detalle_id)
-                ->where('mov_serie_serie_id', $request->old_serie_id)
-                ->update(['mov_serie_serie_id' => $request->new_serie_id]);
+            // Primero obtener el ID de la venta desde el detalle
+            $detalle = DB::table('pro_detalle_ventas')->where('det_id', $request->detalle_id)->first();
+            if (!$detalle) throw new \Exception('Detalle de venta no encontrado.');
+
+            $ref = 'VENTA-' . $detalle->det_ven_id;
+
+            $updated = DB::table('pro_movimientos')
+                ->where('mov_documento_referencia', $ref)
+                ->where('mov_serie_id', $request->old_serie_id)
+                ->where('mov_tipo', 'salida')
+                ->update(['mov_serie_id' => $request->new_serie_id]);
 
             if (!$updated) {
-                throw new \Exception('No se encontró la asignación de la serie original.');
+                throw new \Exception('No se encontró el movimiento de la serie original para esta venta.');
             }
 
             // 3. Update Series Statuses
