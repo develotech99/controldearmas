@@ -193,3 +193,5 @@
     }
 </script>
 @endsection
+
+@vite('resources/js/ventas/index.js')
