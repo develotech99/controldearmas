@@ -1270,7 +1270,9 @@ public function certificarCambiaria(Request $request)
                 'c.cliente_nom_empresa',
                 'c.cliente_nit',
                 'c.cliente_direccion',
-                'c.cliente_correo'
+                'c.cliente_correo',
+                'c.cliente_tipo', // Added
+                'c.cliente_direccion_empresa' // Added
             )
             ->distinct()
             ->limit(10)

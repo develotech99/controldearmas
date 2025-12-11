@@ -1298,7 +1298,13 @@ const seleccionarVenta = (venta) => {
     // Llenar datos cliente
     nitInput.value = venta.cliente_nit || 'CF';
     nombreInput.value = `${venta.cliente_nombre1} ${venta.cliente_apellido1}`;
-    document.getElementById('fac_receptor_direccion').value = venta.cliente_direccion || '';
+
+    // Seleccionar dirección según tipo de cliente (3 = Empresa)
+    let direccion = venta.cliente_direccion || '';
+    if (String(venta.cliente_tipo) === '3' && venta.cliente_direccion_empresa) {
+        direccion = venta.cliente_direccion_empresa;
+    }
+    document.getElementById('fac_receptor_direccion').value = direccion;
 
     // Llenar info venta seleccionada
     facVentaId.value = venta.ven_id;
