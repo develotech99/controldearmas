@@ -134,8 +134,8 @@ class ClientesController extends Controller
             'cliente_nombre2' => ['nullable', 'string', 'max:50'],
             'cliente_apellido1' => ['required', 'string', 'max:50'],
             'cliente_apellido2' => ['nullable', 'string', 'max:50'],
-            'cliente_dpi' => ['nullable', 'string', 'max:20'],
-            'cliente_nit' => ['nullable', 'string', 'max:20'],
+            'cliente_dpi' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_dpi'],
+            'cliente_nit' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_nit'],
             'cliente_direccion' => ['nullable', 'string', 'max:255'],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_correo' => ['nullable', 'email', 'max:150'],
@@ -146,6 +146,10 @@ class ClientesController extends Controller
             'empresas.*.nombre' => ['required_if:cliente_tipo,3', 'string', 'max:250'],
             'empresas.*.nit' => ['nullable', 'string', 'max:20'],
             'empresas.*.licencia' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+        ], [
+            'cliente_dpi.unique' => 'Ya existe un cliente registrado con este DPI',
+            'cliente_nit.unique' => 'Ya existe un cliente registrado con este NIT',
+            'empresas.*.nombre.required_if' => 'El nombre de la empresa es obligatorio',
         ]);
 
         if ($validator->fails()) {
@@ -225,8 +229,8 @@ class ClientesController extends Controller
             'cliente_nombre2' => ['nullable', 'string', 'max:50'],
             'cliente_apellido1' => ['required', 'string', 'max:50'],
             'cliente_apellido2' => ['nullable', 'string', 'max:50'],
-            'cliente_dpi' => ['nullable', 'string', 'max:20'],
-            'cliente_nit' => ['nullable', 'string', 'max:20'],
+            'cliente_dpi' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_dpi,' . $cliente->cliente_id . ',cliente_id'],
+            'cliente_nit' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_nit,' . $cliente->cliente_id . ',cliente_id'],
             'cliente_direccion' => ['nullable', 'string', 'max:255'],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_correo' => ['nullable', 'email', 'max:150'],
@@ -244,6 +248,8 @@ class ClientesController extends Controller
             'cliente_correo.email' => 'El correo electrónico no es válido',
             'cliente_pdf_licencia.mimes' => 'El archivo debe ser un PDF',
             'cliente_pdf_licencia.max' => 'El archivo no debe superar los 10MB',
+            'cliente_dpi.unique' => 'Ya existe un cliente registrado con este DPI',
+            'cliente_nit.unique' => 'Ya existe un cliente registrado con este NIT',
         ]);
 
         if ($validator->fails()) {

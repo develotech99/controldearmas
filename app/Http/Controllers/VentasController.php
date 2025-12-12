@@ -3064,12 +3064,30 @@ public function procesarVenta(Request $request): JsonResponse
             if ($abonoInicial > 0) {
                 $fechaAbono = !empty($pagoData['fecha_pago_abono']) ? \Carbon\Carbon::parse($pagoData['fecha_pago_abono']) : now();
 
+                // Mapeo de método de abono (string a ID)
+                $metodoAbonoInput = $pagoData['metodo_abono'] ?? 'efectivo';
+                $metodoAbonoId = 1; // Default Efectivo
+
+                if (is_numeric($metodoAbonoInput)) {
+                    $metodoAbonoId = (int)$metodoAbonoInput;
+                } else {
+                    switch (strtolower($metodoAbonoInput)) {
+                        case 'efectivo': $metodoAbonoId = 1; break;
+                        case 'tarjeta': $metodoAbonoId = 2; break;
+                        case 'cheque': $metodoAbonoId = 3; break;
+                        case 'transferencia': $metodoAbonoId = 4; break;
+                        case 'deposito': 
+                        case 'depósito': $metodoAbonoId = 5; break;
+                        default: $metodoAbonoId = 1; break;
+                    }
+                }
+
                 DB::table('pro_detalle_pagos')->insert([
                     'det_pago_pago_id'          => $pagoId,
                     'det_pago_cuota_id'         => null,
                     'det_pago_fecha'            => $fechaAbono,
                     'det_pago_monto'            => $abonoInicial,
-                    'det_pago_metodo_pago'      => $pagoData['metodo_abono'] ?? 'efectivo', // ID o texto? Ajustar según front
+                    'det_pago_metodo_pago'      => $metodoAbonoId,
                     'det_pago_banco_id'         => $pagoData['banco_abono'] ?? null, // Note: front sends banco_abono
                     'det_pago_numero_autorizacion' => $pagoData['autorizacion_abono'] ?? null, // Note: front sends autorizacion_abono
                     'det_pago_tipo_pago'        => 'ABONO_INICIAL',

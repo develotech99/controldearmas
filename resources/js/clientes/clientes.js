@@ -747,20 +747,7 @@ class ClientesManager {
 
                 setTimeout(() => window.location.reload(), 1500);
             } else {
-                // Manejar errores
-                const errores = data.errores || data.errors;
-
-                if (errores) {
-                    // Convertir objeto de errores a texto legible
-                    const mensajesError = Object.values(errores)
-                        .flat()
-                        .join('<br>');
-
-                    this.showAlert('error', 'Error de validación', mensajesError);
-                } else {
-                    const mensaje = data.mensaje || data.message || 'Ocurrió un error al crear el cliente';
-                    this.showAlert('error', 'Error', mensaje);
-                }
+                this.handleErrors(data);
             }
         } catch (error) {
             console.error('Error al crear cliente:', error);
@@ -844,9 +831,12 @@ class ClientesManager {
     // Errores
     // ==========================
     handleErrors(data) {
-        if (data.errors) {
-            const errorMessages = Object.values(data.errors).flat().join('<br>');
-            this.showAlert('error', 'Error de validación', errorMessages);
+        const errors = data.errors || data.errores;
+
+        if (errors) {
+            const errorMessages = Object.values(errors).flat().join('<br>');
+            // Usamos 'warning' si es error de validación para que sea menos agresivo
+            this.showAlert('warning', 'Atención', errorMessages);
         } else {
             this.showAlert('error', 'Error', data.message || 'Ocurrió un error');
         }
