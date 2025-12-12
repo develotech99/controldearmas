@@ -3667,7 +3667,7 @@ public function procesarVenta(Request $request): JsonResponse
                     ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
                     ->where('m.mov_documento_referencia', 'VENTA-' . $id)
                     ->where('m.mov_producto_id', $det->det_producto_id)
-                    ->where('m.mov_tipo', 'salida')
+                    ->where('m.mov_tipo', 'venta')
                     ->select('s.serie_id', 's.serie_numero_serie as serie_numero')
                     ->get();
             }
