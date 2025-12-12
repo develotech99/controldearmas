@@ -7,6 +7,24 @@
 
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Editar Venta #<span id="lblVentaId"></span></h2>
 
+        <!-- Warning Alert -->
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        <span class="font-bold">Nota Importante:</span> 
+                        Únicamente se permite la edición de <strong>Series</strong> y <strong>Lotes</strong>. 
+                        <br>
+                        Por razones de trazabilidad contable, si desea cambiar productos o cantidades, debe 
+                        <strong>anular esta venta</strong> y crear una nueva.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Info Venta -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded border">
             <div>
@@ -31,7 +49,7 @@
                     <tr>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cant.</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Series</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Series / Lotes Asignados</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyDetallesVenta" class="bg-white divide-y divide-gray-200">
@@ -110,21 +128,26 @@
             // Render Details
             tbody.innerHTML = '';
             data.detalles.forEach(det => {
-                let seriesHtml = '<span class="text-xs text-gray-400 italic">No aplica</span>';
+                let seriesHtml = '<span class="text-xs text-gray-400 italic">No aplica (Sin serie/lote)</span>';
                 
                 if (det.producto_requiere_serie && det.series && det.series.length > 0) {
                     seriesHtml = `<div class="flex flex-col gap-2">`;
                     det.series.forEach(s => {
                         seriesHtml += `
-                            <div class="flex items-center justify-between bg-gray-50 p-1.5 rounded border">
-                                <span class="text-xs font-mono font-bold">${s.serie_numero}</span>
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-200">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-gray-500 uppercase">Serie Actual</span>
+                                    <span class="text-sm font-mono font-bold text-gray-800">${s.serie_numero}</span>
+                                </div>
                                 <button onclick="prepararCambioSerie(${v.ven_id}, ${det.det_id}, ${s.serie_id}, '${s.serie_numero}', ${det.det_producto_id})" 
-                                    class="text-blue-600 hover:text-blue-800 text-[10px] font-bold uppercase tracking-wide border border-blue-200 px-2 py-0.5 rounded bg-white hover:bg-blue-50">
-                                    Cambiar
+                                    class="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded text-xs font-semibold transition-colors shadow-sm">
+                                    <i class="fas fa-exchange-alt"></i> Cambiar
                                 </button>
                             </div>`;
                     });
                     seriesHtml += `</div>`;
+                } else if (det.producto_requiere_serie) {
+                     seriesHtml = '<span class="text-xs text-red-500 italic">Requiere serie pero no tiene asignada</span>';
                 }
 
                 tbody.innerHTML += `
