@@ -424,7 +424,7 @@
                 <div class="datos-empresa">
                     <h1>{{ $emisor['comercial'] ?? $emisor['nombre'] }}</h1>
                     <p><strong>NIT:</strong> {{ $emisor['nit'] }}</p>
-                    <p>{{ $emisor['direccion'] }}</p>
+                    <p>{{ $emisor['direccion'] }}, Guatemala, Guatemala</p>
                 </div>
             </div>
 
