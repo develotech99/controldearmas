@@ -280,6 +280,14 @@ class CategoriasController extends Controller
     public function destroySubcategoria(Subcategoria $subcategoria)
     {
         try {
+            // Verificar si hay productos asociados
+            if ($subcategoria->productos()->count() > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la subcategoría porque tiene productos asociados'
+                ], 400);
+            }
+
             $subcategoria->delete();
             
             return response()->json([
@@ -289,7 +297,7 @@ class CategoriasController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar la subcategoría'
+                'message' => 'Error al eliminar la subcategoría: ' . $e->getMessage()
             ], 500);
         }
     }
