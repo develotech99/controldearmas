@@ -386,7 +386,7 @@ public function guardarCliente(Request $request)
             $clienteId = $request->query('cliente_id');
 
             $query = DB::table('pro_ventas as v')
-                ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
                 ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
                 ->whereIn('v.ven_situacion', ['PENDIENTE', 'EDITABLE', 'AUTORIZADA', 'CANCELADA'])
                 ->select(
@@ -3155,6 +3155,8 @@ public function procesarVenta(Request $request): JsonResponse
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
+
+
 
             // 1. Registrar pago principal (si queda monto por pagar)
             if ($montoPrincipal > 0) {

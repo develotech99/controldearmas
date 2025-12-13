@@ -1245,6 +1245,7 @@ public function certificarCambiaria(Request $request)
             ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
             ->join('users as u', 'v.ven_user', '=', 'u.user_id')
             ->leftJoin('pro_detalle_ventas as d', 'v.ven_id', '=', 'd.det_ven_id')
+            ->leftJoin('pro_clientes_empresas as ce', 'v.ven_empresa_id', '=', 'ce.emp_id') // Join with company table
             ->leftJoin('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
             ->leftJoin('pro_movimientos as m', function($join) {
                 $join->on('m.mov_producto_id', '=', 'p.producto_id')
@@ -1272,7 +1273,7 @@ public function certificarCambiaria(Request $request)
                 'c.cliente_direccion',
                 'c.cliente_correo',
                 'c.cliente_tipo', // Added
-                'c.cliente_direccion_empresa' // Added
+                'ce.emp_direccion as cliente_direccion_empresa' // Added from company table
             )
             ->distinct()
             ->limit(10)
