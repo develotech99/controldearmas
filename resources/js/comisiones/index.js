@@ -247,7 +247,7 @@ const buscarResumen = async (filtros = {}) => {
                     currency: 'GTQ'
                 }).format(resumen.comisiones_pendientes || 0);
 
-                const porcentajePagado = resumen.total_comisiones > 0 ? 
+                const porcentajePagado = resumen.total_comisiones > 0 ?
                     ((resumen.comisiones_pagadas / resumen.total_comisiones) * 100).toFixed(1) : 0;
 
                 return [
@@ -320,7 +320,7 @@ const actualizarTotalesResumen = (totales) => {
 };
 
 const getEstadoBadge = (estado) => {
-    switch(estado) {
+    switch (estado) {
         case 'PAGADO':
             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -346,6 +346,13 @@ const getEstadoBadge = (estado) => {
 };
 
 const getAcciones = (comision, comisionStr) => {
+    // Si es vendedor, no mostrar acciones de pago/cancelación
+    if (window.isSeller) {
+        return `<div class="flex items-center justify-end gap-2">
+                  <span class="text-sm text-gray-500 dark:text-gray-400 italic">${comision.estado_pago}</span>
+                </div>`;
+    }
+
     if (comision.estado_pago === 'PENDIENTE') {
         return `<div class="flex items-center justify-end gap-2">
                    <button class="btn-pagar p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 rounded-md transition-colors" 
@@ -404,13 +411,13 @@ const configurarModalPagar = (comision) => {
     document.getElementById('comision_id').value = comision.id;
     document.getElementById('infoPagoVendedor').textContent = comision.vendedor_nombre;
     document.getElementById('infoPagoVenta').textContent = `#${comision.venta_id}`;
-    
+
     const gananciaFormateada = new Intl.NumberFormat('es-GT', {
         style: 'currency',
         currency: 'GTQ'
     }).format(comision.ganancia_calculada);
     document.getElementById('infoPagoGanancia').textContent = gananciaFormateada;
-    
+
     document.getElementById('observaciones_pago').value = '';
     currentComisionId = comision.id;
 };
@@ -463,7 +470,7 @@ document.addEventListener('click', (e) => {
                 html: `<div class="text-left">
                         <p class="mb-2"><strong>Vendedor:</strong> ${comision.vendedor_nombre}</p>
                         <p class="mb-2"><strong>Venta:</strong> #${comision.venta_id}</p>
-                        <p class="mb-4"><strong>Ganancia:</strong> <span class="text-red-600 font-semibold">${new Intl.NumberFormat('es-GT', {style: 'currency', currency: 'GTQ'}).format(comision.ganancia_calculada)}</span></p>
+                        <p class="mb-4"><strong>Ganancia:</strong> <span class="text-red-600 font-semibold">${new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(comision.ganancia_calculada)}</span></p>
                         <p class="text-sm text-gray-600">Esta acción no se puede deshacer.</p>
                        </div>`,
                 icon: 'warning',
@@ -510,7 +517,7 @@ if (formPagar) {
 }
 
 // Inicializar aplicación
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     initDataTable();
     // Cargar todas las comisiones sin filtros al inicio
     buscarComisiones();

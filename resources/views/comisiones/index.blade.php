@@ -4,6 +4,9 @@
 
 @section('content')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        window.isSeller = @json($usuarioLogueado->rol && strtolower($usuarioLogueado->rol->nombre) === 'vendedor');
+    </script>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {{-- Header --}}

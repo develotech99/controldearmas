@@ -198,6 +198,11 @@ class ComisionesController extends Controller
     public function update(Request $request)
     {
         try {
+            // Validar que solo admin pueda actualizar
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) !== 'administrador') {
+                return response()->json(['codigo' => 0, 'mensaje' => 'No tiene permisos para realizar esta acción'], 403);
+            }
+
             $id = $request->input('id');
             $estado = $request->input('estado', 'PAGADO');
             $comision = ProPorcentajeVendedor::findOrFail($id);
@@ -232,6 +237,11 @@ class ComisionesController extends Controller
     public function cancelar(Request $request)
     {
         try {
+            // Validar que solo admin pueda cancelar
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) !== 'administrador') {
+                return response()->json(['codigo' => 0, 'mensaje' => 'No tiene permisos para realizar esta acción'], 403);
+            }
+
             $id = $request->input('id');
             $comision = ProPorcentajeVendedor::findOrFail($id);
             
