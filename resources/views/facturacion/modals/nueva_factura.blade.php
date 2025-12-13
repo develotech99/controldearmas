@@ -239,8 +239,33 @@
             </div>
 
             <div class="p-5 max-h-[70vh] overflow-y-auto">
-                <div class="mb-4 bg-blue-50 p-3 rounded border border-blue-100 text-sm text-blue-800">
-                    <p>Seleccione los productos que desea incluir en esta factura. Puede ajustar las cantidades si desea realizar una facturación parcial.</p>
+                <!-- ALERTA 1: Advertencia sobre facturación parcial -->
+                <div class="mb-4 bg-amber-50 p-4 rounded-lg border border-amber-200 flex items-start gap-3 animate-pulse">
+                    <svg class="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <h4 class="font-bold text-amber-800 text-sm">¡ATENCIÓN! FACTURACIÓN MÚLTIPLE</h4>
+                        <p class="text-sm text-amber-700 mt-1">
+                            Si desmarca algún producto, la venta <strong>NO quedará finalizada</strong>. Esto es útil <strong>SOLO</strong> si planea realizar múltiples facturas para una misma venta.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ALERTA 2: Instrucción para eliminar items -->
+                <div class="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200 flex items-start gap-3">
+                    <svg class="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h4 class="font-bold text-blue-800 text-sm">¿DESEA FACTURAR TODO PERO ELIMINAR ALGÚN ÍTEM?</h4>
+                        <p class="text-sm text-blue-700 mt-1">
+                            Si su intención es finalizar la venta pero no facturar ciertos productos, por favor <strong>SELECCIONE TODOS</strong> aquí y elimínelos manualmente en la siguiente pantalla antes de certificar.
+                        </p>
+                        <p class="text-xs text-blue-600 mt-2 italic">
+                            Nota: La venta se marcará como "Finalizada" solo cuando se haya facturado la totalidad de los productos.
+                        </p>
+                    </div>
                 </div>
 
                 <table class="w-full text-sm text-left border-collapse">
