@@ -6,6 +6,29 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
+        /* Alerta Informativa de Pagos */
+        .payment-alert {
+            background-color: #eff6ff; /* blue-50 */
+            border-left: 4px solid #3b82f6; /* blue-500 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+        .payment-alert-content {
+            display: flex;
+        }
+        .payment-alert-icon {
+            flex-shrink: 0;
+            color: #3b82f6; /* blue-500 */
+        }
+        .payment-alert-text {
+            margin-left: 0.75rem;
+            font-size: 0.875rem; /* text-sm */
+            color: #1d4ed8; /* blue-700 */
+        }
+
+        /* Animaciones suaves */
 
 
         /* Animaciones suaves */
@@ -482,8 +505,55 @@
                     <div id="formWrap" class="hidden">
                         <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-6">
                             <div class="flex items-center mb-4">
-                                <div class="bg-violet-500 p-2 rounded-lg mr-3">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Alerta Informativa: Corrección de Pagos -->
+        <div class="payment-alert">
+            <div class="payment-alert-content">
+                <div class="payment-alert-icon">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="payment-alert-text">
+                    <p><strong>¿Necesitas cambiar un método de pago?</strong></p>
+                    <p class="mt-1">
+                        Si te equivocaste al subir un pago, sigue estos pasos:
+                        <br>
+                        1. Haz clic en <strong>"Ver Detalles"</strong> del pago incorrecto.
+                        <br>
+                        2. Selecciona la opción <strong>"Corregir / Eliminar"</strong> para borrar el método de pago actual.
+                        <br>
+                        3. Una vez eliminado, podrás seleccionar y subir el <strong>nuevo método de pago</strong> correcto.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerta Informativa: Anulación de Ventas -->
+        <div class="payment-alert" style="background-color: #fef2f2; border-left-color: #ef4444;">
+            <div class="payment-alert-content">
+                <div class="payment-alert-icon" style="color: #ef4444;">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div class="payment-alert-text" style="color: #b91c1c;">
+                    <p><strong>¿Necesitas Anular una Venta?</strong></p>
+                    <p class="mt-1">
+                        Para anular una venta, deben cumplirse estas condiciones:
+                        <br>
+                        • La venta <strong>NO</strong> debe estar facturada.
+                        <br>
+                        • El pago <strong>NO</strong> debe haber sido validado aún.
+                        <br>
+                        • Si ya existe un método de pago registrado, debes <strong>eliminarlo primero</strong> aquí antes de poder anular la venta.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->                          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
                                         </path>

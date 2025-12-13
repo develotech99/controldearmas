@@ -114,6 +114,26 @@
         </div>
     </div>
 
+    <!-- Alerta Informativa: Servicios y Productos sin Stock -->
+    <div class="mb-6 bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-lightbulb text-indigo-500 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-bold text-indigo-800">¿Vas a vender Servicios o Trámites?</h3>
+                <div class="mt-2 text-sm text-indigo-700">
+                    <p>
+                        Los servicios como <strong>Trámites, Licencias de Importación, Papelería</strong>, etc., deben registrarse como productos normales.
+                        <br>
+                        <strong>IMPORTANTE:</strong> Al crearlos, asegúrate de marcar la opción <strong>"¿Este producto NO requiere STOCK?"</strong>.
+                        Esto permitirá venderlos sin necesidad de realizar ingresos de inventario previos.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtros y Búsqueda -->
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
         <div class="px-4 py-5 sm:p-6">
@@ -394,6 +414,22 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">Información básica del producto</p>
                     </div>
 
+                    <!-- Alerta de Configuración Faltante -->
+                    <div class="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-yellow-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    <strong>¿No encuentras una opción?</strong>
+                                    <br>
+                                    Si la <strong>Marca, Modelo, País, Categoría o Subcategoría</strong> que necesitas no aparece en los listados, debes ir a la sección de <strong>Configuración</strong> para registrarla primero.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Nombre del producto -->
                         <div class="md:col-span-2">
@@ -531,9 +567,15 @@
                                 <input type="checkbox" id="producto_requiere_stock" name="producto_requiere_stock"
                                     value="1" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="producto_requiere_stock"
-                                    class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                    ¿ Este producto NO requiere STOCK ? (Marcar si son productos como trámites, servicios, licencias, que no requiere una cantidad, pero si es para fines de ventas)
+                                    class="ml-2 block text-sm font-bold text-gray-800 dark:text-gray-200">
+                                    ¿Este producto NO requiere STOCK?
                                 </label>
+                            </div>
+                            <p class="mt-1 ml-6 text-xs text-gray-600 dark:text-gray-400 bg-yellow-50 dark:bg-gray-700 p-2 rounded border border-yellow-200 dark:border-gray-600">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>
+                                <strong>¡ATENCIÓN!</strong> Marca esta casilla <strong>ÚNICAMENTE</strong> si estás registrando un <strong>SERVICIO</strong> (ej: Trámites, Licencias, Papelería) que no necesita conteo físico.
+                                <br>Si es un producto físico real, <strong>NO</strong> marques esta opción.
+                            </p>
                             </div>
                         </div>
 

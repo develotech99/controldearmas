@@ -79,6 +79,23 @@
                 </div>
 
                 <form id="formUsuario" class="px-5 py-4 space-y-4">
+                    <!-- Alerta de Validación de Duplicados -->
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    <strong>¡Atención!</strong> Antes de crear un usuario, asegúrate de que no esté registrado.
+                                    <br>
+                                    El <strong>Correo Electrónico</strong> y el <strong>DPI/DNI</strong> son únicos en el sistema.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                     <input type="hidden" id="user_id" name="user_id">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>

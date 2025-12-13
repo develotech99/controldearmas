@@ -28,6 +28,25 @@
                 Nueva Factura Cambiaria
             </button>
         </div>
+
+        <!-- Alerta Informativa: Certificación FEL -->
+        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded shadow-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-file-invoice text-indigo-500"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-indigo-800">Información sobre Certificación FEL</h3>
+                    <div class="mt-2 text-sm text-indigo-700">
+                        <p>
+                            Al hacer clic en <strong>"Certificar"</strong>, la factura se envía inmediatamente a la <strong>SAT</strong>.
+                            <br>
+                            Esta acción es definitiva. Si cometes un error después de certificar, deberás emitir una <strong>Nota de Crédito</strong> para anularla fiscalmente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
 
         <!-- Sección de Consulta Rápida DTE -->
@@ -173,7 +192,36 @@
                     </button>
                 </div>
             </div>
-
+            <!-- Alerta Informativa: Producto no encontrado -->
+            <div class="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+                <div class="flex flex-col gap-2">
+                    <!-- Producto no encontrado -->
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>¿No encuentras un producto?</strong>
+                                Si el producto no aparece en la búsqueda, por favor verifica que esté registrado y activo en el <a href="{{ route('inventario.index') }}" class="font-bold underline hover:text-blue-800" target="_blank">Inventario</a>.
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Precio no aparece -->
+                    <div class="flex mt-2 pt-2 border-t border-blue-200">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-tag text-blue-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>¿El precio aparece en 0.00?</strong>
+                                Si ves un producto pero su precio es 0, significa que no se le ha asignado un precio de venta.
+                                Ve al <a href="{{ route('inventario.index') }}" class="font-bold underline hover:text-blue-800" target="_blank">Inventario</a>, edita el producto y asegúrate de llenar los campos de "Precio Venta".
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
                 <div>
                     <span class="text-gray-600">UUID:</span>

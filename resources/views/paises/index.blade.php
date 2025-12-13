@@ -33,6 +33,20 @@
     </div>
 
     <!-- Alerts -->
+    <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-info-circle text-blue-500"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-blue-700">
+                    <strong>¡Importante!</strong> Los <strong>Países</strong> que registres aquí aparecerán automáticamente en las opciones de selección de los módulos de <strong>Inventario, Ventas y Compras</strong>.
+                    <br>Asegúrate de mantener este catálogo actualizado para facilitar el registro de productos.
+                </p>
+            </div>
+        </div>
+    </div>
+
     @if (session('success'))
         <div class="rounded-md bg-green-50 p-4 mb-6">
             <div class="flex">

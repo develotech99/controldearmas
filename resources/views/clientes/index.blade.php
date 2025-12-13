@@ -241,6 +241,21 @@
                                 Nuevo Cliente
                             </h3>
                             <div class="mt-4">
+                                <!-- Alerta de Validación de Duplicados -->
+                                <div class="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-info-circle text-blue-500"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-blue-700">
+                                                <strong>¡Importante!</strong> Antes de registrar un nuevo cliente, verifica si ya existe en el sistema.
+                                                <br>
+                                                Recuerda que el <strong>DPI</strong> y el <strong>NIT</strong> son datos únicos y no pueden duplicarse.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
 
                             
                                 <!-- Tipo y Asociación -->
