@@ -424,7 +424,8 @@
                 <div class="datos-empresa">
                     <h1>{{ $emisor['comercial'] ?? $emisor['nombre'] }}</h1>
                     <p><strong>NIT:</strong> {{ $emisor['nit'] }}</p>
-                    <p>{{ $emisor['direccion'] }}, Guatemala, Guatemala</p>
+                    <p>Propietario: PAULO CESAR GARRIDO GOMEZ</p>
+                    <p>12 avenida 28-44, APTO. B, ZONA 5 {{ $emisor['direccion'] }}, Guatemala, Guatemala</p>
                 </div>
             </div>
 
