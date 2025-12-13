@@ -790,6 +790,9 @@ class ReportesManager {
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         ${this.formatearFechaDisplay(venta.ven_fecha)}
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-bold">
+                        #${venta.ven_id}
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                         ${clienteNombre}
                         <div class="text-xs text-gray-500">${venta.cliente?.cliente_dpi || ''}</div>
@@ -880,10 +883,15 @@ class ReportesManager {
             const resumenProductos = venta.productos_resumen || 'Sin productos';
 
             return `
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <!-- Fecha -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <div class="text-gray-500">${this.formatearFechaDisplay(venta.ven_fecha)}</div>
+                </td>
+
+                <!-- Venta # -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-bold">
+                    #${venta.ven_id}
                 </td>
                 
                 <!-- Cliente -->
@@ -940,7 +948,7 @@ class ReportesManager {
                             <i class="fas fa-edit text-lg"></i>
                         </button>
                     ` : ''}
-                    
+
                     ${(venta.ven_situacion === 'PENDIENTE' || venta.ven_situacion === 'EDITABLE') ? `
                     <button onclick='reportesManager.autorizarVentaClick(${JSON.stringify(venta)})'
                             class="text-green-600 hover:text-green-900 mr-2" 
@@ -950,13 +958,13 @@ class ReportesManager {
                     ` : ''}
 
                     <button onclick='reportesManager.cancelarVentaClick(${JSON.stringify(venta)})'
-                            class="text-red-600 hover:text-red-900" 
-                            title="Rechazar / Anular">
+                        class="text-red-600 hover:text-red-900"
+                        title="Rechazar / Anular">
                         <i class="fas fa-times-circle text-lg"></i>
                     </button>
                 </td>
             </tr>
-        `;
+                `;
         }).join('');
     }
 
@@ -965,14 +973,14 @@ class ReportesManager {
 
         const detallesHtml = venta.detalles.map(det => {
             const seriesHtml = det.series && det.series.length > 0
-                ? `<div class="text-xs text-gray-500">SN: ${det.series.join(', ')}</div>`
+                ? `< div class="text-xs text-gray-500" > SN: ${det.series.join(', ')}</div > `
                 : '';
             const lotesHtml = det.lotes && det.lotes.length > 0
-                ? `<div class="text-xs text-gray-500">Lotes: ${det.lotes.join(', ')}</div>`
+                ? `< div class="text-xs text-gray-500" > Lotes: ${det.lotes.join(', ')}</div > `
                 : '';
 
             return `
-                <tr class="border-b">
+                < tr class="border-b" >
                     <td class="px-4 py-2 text-left">
                         <div class="font-medium">${det.producto_nombre}</div>
                         ${seriesHtml}
@@ -981,14 +989,14 @@ class ReportesManager {
                     <td class="px-4 py-2 text-center">${det.cantidad}</td>
                     <td class="px-4 py-2 text-right">${this.formatCurrency(det.precio_venta)}</td>
                     <td class="px-4 py-2 text-right font-bold">${this.formatCurrency(det.subtotal)}</td>
-                </tr>
-            `;
+                </tr >
+                `;
         }).join('');
 
         Swal.fire({
-            title: `Detalle de Venta #${venta.ven_id}`,
+            title: `Detalle de Venta #${venta.ven_id} `,
             html: `
-                <div class="overflow-x-auto">
+                < div class="overflow-x-auto" >
                     <table class="min-w-full text-sm">
                         <thead class="bg-gray-50">
                             <tr>
@@ -1008,8 +1016,8 @@ class ReportesManager {
                             </tr>
                         </tfoot>
                     </table>
-                </div>
-            `,
+                </div >
+                `,
             width: '600px',
             confirmButtonText: 'Cerrar'
         });
@@ -1021,7 +1029,7 @@ class ReportesManager {
             const { isConfirmed, isDenied } = await Swal.fire({
                 title: 'Autorizar Venta',
                 html: `
-                    <div class="text-left">
+                < div class="text-left" >
                         <p class="mb-4 text-gray-700">¿Cómo deseas procesar esta venta?</p>
                         
                         <div class="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
@@ -1053,7 +1061,7 @@ class ReportesManager {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div >
                 `,
                 icon: 'question',
                 showCancelButton: true,
@@ -1116,7 +1124,7 @@ class ReportesManager {
                 throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
 
             if (!response.ok)
-                throw new Error(`Error ${response.status}: ${await response.text()}`);
+                throw new Error(`Error ${response.status}: ${await response.text()} `);
 
             const result = await response.json();
 
@@ -1143,12 +1151,12 @@ class ReportesManager {
             if (seriesArray.length > 0) {
                 // ... (Lógica de licencias existente) ...
                 let htmlLicencias = `
-        <div style="max-height: 280px; overflow-y: auto; text-align: left;">
-          <p class="text-sm text-gray-600 mb-3">Ingresa las licencias para cada serie:</p>
-      `;
+                < div style = "max-height: 280px; overflow-y: auto; text-align: left;" >
+                    <p class="text-sm text-gray-600 mb-3">Ingresa las licencias para cada serie:</p>
+            `;
                 seriesArray.forEach(serieId => {
                     htmlLicencias += `
-          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; background-color: #f9fafb;">
+                < div style = "border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; background-color: #f9fafb;" >
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #374151;">🔫 Serie ID: ${serieId}</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
               <input id="lic-ant-${serieId}" class="swal2-input" style="margin:0;padding:6px;font-size:13px;" placeholder="Licencia anterior">
@@ -1172,10 +1180,10 @@ class ReportesManager {
                         const licencias = [];
                         let errorMsg = '';
                         seriesArray.forEach(serieId => {
-                            const anterior = document.getElementById(`lic-ant-${serieId}`)?.value.trim();
-                            const nueva = document.getElementById(`lic-nueva-${serieId}`)?.value.trim();
+                            const anterior = document.getElementById(`lic - ant - ${serieId} `)?.value.trim();
+                            const nueva = document.getElementById(`lic - nueva - ${serieId} `)?.value.trim();
                             if (!anterior || !nueva) {
-                                errorMsg = `⚠️ Debes llenar ambas licencias para la serie ${serieId}`;
+                                errorMsg = `⚠️ Debes llenar ambas licencias para la serie ${serieId} `;
                             }
                             licencias.push({ serie_id: serieId, licencia_anterior: anterior, licencia_nueva: nueva });
                         });
@@ -1211,7 +1219,7 @@ class ReportesManager {
                         throw new Error(updateResult.detalle || updateResult.mensaje || 'Error al actualizar licencias');
                     }
 
-                    mensajeExito += `<br><small class="text-green-600">✅ Licencias actualizadas: ${formValues.length} serie(s)</small>`;
+                    mensajeExito += `< br > <small class="text-green-600">✅ Licencias actualizadas: ${formValues.length} serie(s)</small>`;
                 }
             }
 
@@ -1234,11 +1242,11 @@ class ReportesManager {
                 icon: 'error',
                 title: 'Error',
                 html: `
-        <div class="text-left">
+                < div class="text-left" >
           <p class="font-semibold mb-2">No se pudo autorizar la venta:</p>
           <p class="text-sm">${error.message}</p>
-        </div>
-      `,
+        </div >
+                `,
                 confirmButtonColor: '#ef4444'
             });
         }
@@ -1259,12 +1267,12 @@ class ReportesManager {
                 icon: 'error',
                 title: 'No se puede anular',
                 html: `
-                    <div class="text-left">
+                < div class="text-left" >
                         <p class="mb-2">Esta venta ya ha sido <strong>FACTURADA</strong>.</p>
                         <p class="text-sm text-gray-600">
                             Para anularla, primero debes anular la factura correspondiente en el módulo de Facturación.
                         </p>
-                    </div>
+                    </div >
                 `,
                 confirmButtonColor: '#3b82f6'
             });
@@ -1277,7 +1285,7 @@ class ReportesManager {
 
         if (situacion === 'AUTORIZADA' || situacion === 'ACTIVA') {
             advertenciaHtml = `
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left">
+                < div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left" >
                     <div class="flex">
                         <div class="flex-shrink-0">
                             <i class="fas fa-exclamation-triangle text-yellow-400"></i>
@@ -1296,8 +1304,8 @@ class ReportesManager {
                             </p>
                         </div>
                     </div>
-                </div>
-            `;
+                </div >
+                `;
             confirmBtnText = '<i class="fas fa-exclamation-triangle mr-2"></i>Sí, revertir y anular';
         }
 
@@ -1355,7 +1363,7 @@ class ReportesManager {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Error ${response.status}: ${errorText}`);
+                throw new Error(`Error ${response.status}: ${errorText} `);
             }
 
             const result = await response.json();
@@ -1385,11 +1393,11 @@ class ReportesManager {
                 icon: 'error',
                 title: 'Error',
                 html: `
-                <div class="text-left">
+                < div class="text-left" >
                     <p class="font-semibold mb-2">No se pudo cancelar la venta:</p>
                     <p class="text-sm">${error.message}</p>
-                </div>
-            `,
+                </div >
+                `,
                 confirmButtonColor: '#ef4444'
             });
         }
@@ -1406,7 +1414,7 @@ class ReportesManager {
             if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
             if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
 
-            const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
+            const url = `/ ventas / pendientes${params.toString() ? '?' + params.toString() : ''} `;
             ('📡 URL:', url);
 
             const response = await fetch(url, {
@@ -1419,7 +1427,7 @@ class ReportesManager {
             ('📡 Pendientes response status:', response.status);
 
             if (!response.ok) {
-                throw new Error(`Error ${response.status}`);
+                throw new Error(`Error ${response.status} `);
             }
 
             const data = await response.json();
@@ -1534,7 +1542,7 @@ class ReportesManager {
             if (anioSelect && !filtros.anio) anioSelect.value = anio;
 
             const params = new URLSearchParams({ mes, anio });
-            const response = await fetch(`/reportes/digecam/armas?${params}`);
+            const response = await fetch(`/ reportes / digecam / armas ? ${params} `);
 
             if (response.ok) {
                 const result = await response.json();
@@ -1563,7 +1571,7 @@ class ReportesManager {
                 fecha_fin: filtros.fecha_fin || this.filtros.fecha_fin
             });
 
-            const response = await fetch(`/reportes/digecam/municiones?${params}`);
+            const response = await fetch(`/ reportes / digecam / municiones ? ${params} `);
 
             if (response.ok) {
                 const result = await response.json();

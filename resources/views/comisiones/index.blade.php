@@ -36,7 +36,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Filtros de Búsqueda</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-                <div>
+                <div class="@if($usuarioLogueado->rol && strtolower($usuarioLogueado->rol->nombre) === 'vendedor') hidden @endif">
                     <label for="filtroVendedor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendedor:</label>
                     <select id="filtroVendedor" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors">
                         <option value="">Todos los vendedores</option>

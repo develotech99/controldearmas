@@ -381,6 +381,11 @@ public function buscarClientes(Request $request): JsonResponse
                 $query->where('porc_vend_user_id', $request->vendedor_id);
             }
 
+            // Enforce filter for sellers
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                $query->where('porc_vend_user_id', auth()->id());
+            }
+
             if ($request->filled('estado')) {
                 $query->where('porc_vend_estado', $request->estado);
             }
@@ -807,6 +812,11 @@ public function buscarClientes(Request $request): JsonResponse
 
         if ($request->filled('vendedor_id')) {
             $query->where('porc_vend_user_id', $request->vendedor_id);
+        }
+
+        // Enforce filter for sellers
+        if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+            $query->where('porc_vend_user_id', auth()->id());
         }
 
         return [

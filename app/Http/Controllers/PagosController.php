@@ -94,6 +94,9 @@ class PagosController extends Controller
                 ->when($userId, function ($query, $userId) {
                     return $query->where('v.ven_cliente', $userId);
                 })
+                ->when(auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor', function ($query) {
+                    return $query->where('v.ven_user', auth()->id());
+                })
                 ->select([
                     'v.ven_id',
                     'v.ven_cliente',
@@ -482,6 +485,13 @@ class PagosController extends Controller
             ->where('ps_estado', 'PENDIENTE_VALIDACION')
             ->exists();
 
+        // Validar que el vendedor sea el dueño de la venta
+        if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+            if ($venta->ven_user != auth()->id()) {
+                return response()->json(['success' => false, 'message' => 'No tiene permiso para registrar pagos en esta venta.'], 403);
+            }
+        }
+
         if ($yaPendiente) {
             return response()->json([
                 'codigo' => 0,
@@ -599,6 +609,14 @@ class PagosController extends Controller
                 return response()->json(['success' => false, 'message' => 'Pago no encontrado'], 404);
             }
 
+            // Validar que el vendedor sea el dueño de la venta
+            $venta = DB::table('pro_ventas')->where('ven_id', $pago->ps_venta_id)->first();
+            if ($venta && auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                if ($venta->ven_user != auth()->id()) {
+                    return response()->json(['success' => false, 'message' => 'No tiene permiso para editar este pago.'], 403);
+                }
+            }
+
             if ($pago->ps_estado !== 'PENDIENTE_VALIDACION' && $pago->ps_estado !== 'PENDIENTE_CARGA') {
                 return response()->json(['success' => false, 'message' => 'Solo se pueden editar pagos pendientes'], 400);
             }
@@ -634,6 +652,14 @@ class PagosController extends Controller
             $pago = DB::table('pro_pagos')->where('pago_venta_id', $ventaId)->first();
             if (!$pago) {
                 return response()->json(['success' => false, 'message' => 'No se encontró registro de pago para esta venta.'], 404);
+            }
+
+            // Validar que el vendedor sea el dueño de la venta
+            $venta = DB::table('pro_ventas')->where('ven_id', $ventaId)->first();
+            if ($venta && auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                if ($venta->ven_user != auth()->id()) {
+                    return response()->json(['success' => false, 'message' => 'No tiene permiso para anular este pago.'], 403);
+                }
             }
 
             // 2. Verificar si existen pagos VALIDADOS
@@ -785,6 +811,14 @@ class PagosController extends Controller
             $pago = DB::table('pro_pagos')->where('pago_venta_id', $ventaId)->first();
             if (!$pago) {
                 return response()->json(['success' => false, 'message' => 'Pago no encontrado'], 404);
+            }
+
+            // Validar que el vendedor sea el dueño de la venta
+            $venta = DB::table('pro_ventas')->where('ven_id', $ventaId)->first();
+            if ($venta && auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                if ($venta->ven_user != auth()->id()) {
+                    return response()->json(['success' => false, 'message' => 'No tiene permiso para generar cuotas para esta venta.'], 403);
+                }
             }
 
             // Validar que esté pendiente

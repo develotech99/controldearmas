@@ -27,8 +27,14 @@ class ComisionesController extends Controller
             ->where('user_situacion', 1)
             ->select('user_id', 'user_primer_nombre', 'user_primer_apellido')
             ->distinct()
-            ->orderBy('user_primer_nombre')
-            ->get();
+            ->orderBy('user_primer_nombre');
+
+        // Si es vendedor, solo mostrarse a sí mismo
+        if ($usuarioLogueado->rol && strtolower($usuarioLogueado->rol->nombre) === 'vendedor') {
+            $vendedores->where('user_id', $usuarioLogueado->id);
+        }
+
+        $vendedores = $vendedores->get();
 
         return view('comisiones.index', compact('vendedores', 'usuarioLogueado'));
     }
@@ -47,6 +53,11 @@ class ComisionesController extends Controller
             // Solo filtrar por vendedor si se especifica uno
             if ($vendedor_id) {
                 $query->where('porc_vend_user_id', $vendedor_id);
+            }
+
+            // Enforce filter for sellers
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                $query->where('porc_vend_user_id', auth()->id());
             }
 
             if ($fecha_inicio) {
@@ -126,6 +137,11 @@ class ComisionesController extends Controller
             // Filtros
             if ($vendedor_id) {
                 $query->where('pv.porc_vend_user_id', $vendedor_id);
+            }
+
+            // Enforce filter for sellers
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                $query->where('pv.porc_vend_user_id', auth()->id());
             }
 
             if ($fecha_inicio) {
