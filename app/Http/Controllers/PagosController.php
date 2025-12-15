@@ -472,7 +472,7 @@ class PagosController extends Controller
         $venta = DB::table('pro_ventas as v')
             ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
             ->where('v.ven_id', $ventaId)
-            ->select('v.ven_id', 'pg.pago_id')
+            ->select('v.ven_id', 'pg.pago_id', 'v.ven_user')
             ->first();
 
         if (!$venta) {
