@@ -735,7 +735,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 flex justify-end space-x-3">
+                    <div class="mt-6 flex justify-end space-x-3 sticky bottom-0 bg-white dark:bg-gray-800 pt-4 pb-2 border-t border-gray-100 dark:border-gray-700 z-10">
                         <button type="button" onclick="inventarioManager.closeModal('registro')"
                             class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
                             Cancelar
