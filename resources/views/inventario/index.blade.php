@@ -732,8 +732,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
                     <div class="mt-6 flex justify-end space-x-3">
                         <button type="button" onclick="inventarioManager.closeModal('registro')"
