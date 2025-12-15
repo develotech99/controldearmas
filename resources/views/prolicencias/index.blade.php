@@ -354,11 +354,14 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
 
                       <!--<div class="font-medium">{{ $licencia->lipaimp_id }}</div>-->
-                      @if($licencia->lipaimp_id)
+                      @if($licencia->lipaimp_numero)
                         <div class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {{ $licencia->lipaimp_id }}
+                          {{ $licencia->lipaimp_numero }}
                         </div>
-
+                      @else
+                         <div class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {{ $licencia->lipaimp_id }} (ID)
+                        </div>
                       @endif
                     </td>
 
@@ -571,18 +574,18 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- ID -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Número de Licencia (ID)
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Número de Licencia
                   *</label>
-                <input type="number" x-model="formData.lipaimp_id" :disabled="isEditing" required @input="validateForm()"
-                  placeholder="Ej: 20250001"
+                <input type="text" x-model="formData.lipaimp_numero" required @input="validateForm()"
+                  placeholder="Ej: 2025/34"
                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm">
-                <p class="text-xs text-gray-500 mt-1" x-show="isEditing">El ID no se puede modificar.</p>
+                <!-- <p class="text-xs text-gray-500 mt-1" x-show="isEditing">El ID no se puede modificar.</p> -->
               </div>
 
               <!-- Póliza -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Póliza</label>
-                <input type="number" x-model="formData.lipaimp_poliza" @input="validateForm()" placeholder="Ej: 123456"
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Póliza <small>(Opcional)</small></label>
+                <input type="text" x-model="formData.lipaimp_poliza" @input="validateForm()" placeholder="Ej: 123456"
                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm">
               </div>
 

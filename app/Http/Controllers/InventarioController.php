@@ -1826,12 +1826,14 @@ public function buscarLicencias(Request $request): JsonResponse
         $licencias = DB::table('pro_licencias_para_importacion')
             // ->where('lipaimp_situacion', 2) // Solo autorizadas
             ->where(function($q) use ($query) {
-                $q->where('lipaimp_poliza', 'LIKE', "%{$query}%")
+                $q->where('lipaimp_numero', 'LIKE', "%{$query}%")
+                  ->orWhere('lipaimp_poliza', 'LIKE', "%{$query}%")
                   ->orWhere('lipaimp_descripcion', 'LIKE', "%{$query}%");
             })
             ->whereDate('lipaimp_fecha_vencimiento', '>=', now()) // No vencidas
             ->select([
                 'lipaimp_id',
+                'lipaimp_numero',
                 'lipaimp_poliza', 
                 'lipaimp_descripcion',
                 'lipaimp_fecha_vencimiento'

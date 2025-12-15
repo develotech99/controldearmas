@@ -2192,10 +2192,10 @@ class InventarioManager {
         <div onclick="inventarioManager.seleccionarLicencia(${licencia.lipaimp_id})" 
              class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0">
             <div class="font-medium text-gray-900 dark:text-gray-100">
-                Póliza: ${licencia.lipaimp_poliza}
+                Licencia: ${licencia.lipaimp_numero}
             </div>
             <div class="text-sm text-gray-500 dark:text-gray-400">
-                ${licencia.lipaimp_descripcion}
+                Póliza: ${licencia.lipaimp_poliza || 'N/A'} • ${licencia.lipaimp_descripcion}
             </div>
             <div class="text-xs text-gray-400 dark:text-gray-500">
                 Vence: ${new Date(licencia.lipaimp_fecha_vencimiento).toLocaleDateString()}
@@ -2226,10 +2226,10 @@ class InventarioManager {
                     <div class="flex items-center justify-between">
                         <div>
                             <div class="font-medium text-gray-900 dark:text-gray-100">
-                                Póliza: ${this.licenciaSeleccionada.lipaimp_poliza}
+                                Licencia: ${this.licenciaSeleccionada.lipaimp_numero}
                             </div>
                             <div class="text-sm text-gray-500 dark:text-gray-400">
-                                ${this.licenciaSeleccionada.lipaimp_descripcion}
+                                Póliza: ${this.licenciaSeleccionada.lipaimp_poliza || 'N/A'} • ${this.licenciaSeleccionada.lipaimp_descripcion}
                             </div>
                         </div>
                         <button onclick="inventarioManager.limpiarLicenciaSeleccionada()" 
@@ -2245,7 +2245,7 @@ class InventarioManager {
                 }
 
                 if (searchInput) {
-                    searchInput.value = this.licenciaSeleccionada.lipaimp_poliza;
+                    searchInput.value = this.licenciaSeleccionada.lipaimp_numero;
                 }
 
                 // Ocultar resultados
@@ -2265,6 +2265,143 @@ class InventarioManager {
         const container = document.getElementById('licencia_seleccionada');
         const inputHidden = document.getElementById('licencia_id');
         const searchInput = document.getElementById('buscar_licencia');
+
+        if (container) {
+            container.innerHTML = `
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                Ninguna licencia seleccionada
+            </div>
+        `;
+        }
+
+        if (inputHidden) {
+            inputHidden.value = '';
+        }
+
+        if (searchInput) {
+            searchInput.value = '';
+        }
+    }
+
+    /**
+     * Buscar licencias para registro (Ingreso)
+     */
+    async buscarLicenciasRegistro(query) {
+        const container = document.getElementById('licencias_encontradas_registro');
+
+        if (!query || query.length < 2) {
+            if (container) {
+                container.classList.add('hidden');
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch(`/licencias/buscar?q=${encodeURIComponent(query)}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.renderResultadosLicenciasRegistro(data.data || []);
+            }
+        } catch (error) {
+            console.error('Error buscando licencias:', error);
+        }
+    }
+
+    /**
+     * Renderizar resultados de búsqueda de licencias para registro
+     */
+    renderResultadosLicenciasRegistro(licencias) {
+        const container = document.getElementById('licencias_encontradas_registro');
+        if (!container) return;
+
+        if (licencias.length === 0) {
+            container.innerHTML = `
+            <div class="p-3 text-center text-gray-500 dark:text-gray-400">
+                No se encontraron licencias
+            </div>
+        `;
+            container.classList.remove('hidden');
+            return;
+        }
+
+        container.innerHTML = licencias.map(licencia => `
+        <div onclick="inventarioManager.seleccionarLicenciaRegistro(${licencia.lipaimp_id})" 
+             class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0">
+            <div class="font-medium text-gray-900 dark:text-gray-100">
+                Licencia: ${licencia.lipaimp_numero}
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                Póliza: ${licencia.lipaimp_poliza || 'N/A'} • ${licencia.lipaimp_descripcion}
+            </div>
+            <div class="text-xs text-gray-400 dark:text-gray-500">
+                Vence: ${new Date(licencia.lipaimp_fecha_vencimiento).toLocaleDateString()}
+            </div>
+        </div>
+    `).join('');
+
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Seleccionar licencia para registro
+     */
+    async seleccionarLicenciaRegistro(licenciaId) {
+        try {
+            const response = await fetch(`/licencias/${licenciaId}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.licenciaSeleccionadaRegistro = data.data;
+
+                // Actualizar interfaz
+                const container = document.getElementById('licencia_seleccionada_registro');
+                const inputHidden = document.getElementById('licencia_id_registro');
+                const searchInput = document.getElementById('buscar_licencia_registro');
+
+                if (container) {
+                    container.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">
+                                Licencia: ${this.licenciaSeleccionadaRegistro.lipaimp_numero}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                Póliza: ${this.licenciaSeleccionadaRegistro.lipaimp_poliza || 'N/A'}
+                            </div>
+                        </div>
+                        <button onclick="inventarioManager.limpiarLicenciaSeleccionadaRegistro()" 
+                                type="button"
+                                class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                }
+
+                if (inputHidden) {
+                    inputHidden.value = licenciaId;
+                }
+
+                if (searchInput) {
+                    searchInput.value = this.licenciaSeleccionadaRegistro.lipaimp_numero;
+                }
+
+                // Ocultar resultados
+                document.getElementById('licencias_encontradas_registro').classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error obteniendo licencia:', error);
+        }
+    }
+
+    /**
+     * Limpiar licencia seleccionada para registro
+     */
+    limpiarLicenciaSeleccionadaRegistro() {
+        this.licenciaSeleccionadaRegistro = null;
+
+        const container = document.getElementById('licencia_seleccionada_registro');
+        const inputHidden = document.getElementById('licencia_id_registro');
+        const searchInput = document.getElementById('buscar_licencia_registro');
 
         if (container) {
             container.innerHTML = `

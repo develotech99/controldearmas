@@ -1486,7 +1486,7 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar
                                             licencia</label>
                                         <input type="text" id="buscar_licencia_registro"
-                                            placeholder="Número de póliza o descripción..."
+                                            placeholder="Número de licencia, póliza o descripción..."
                                             class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                         <div id="licencias_encontradas_registro"
                                             class="mt-2 max-h-32 overflow-y-auto hidden border border-gray-300 dark:border-gray-600 rounded-md">

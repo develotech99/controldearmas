@@ -12,7 +12,7 @@ class ProLicenciaParaImportacion extends Model
 
     protected $table = 'pro_licencias_para_importacion';
     protected $primaryKey = 'lipaimp_id';
-    public $incrementing = false;     // PK manual (según tu migrate)
+    public $incrementing = true;     // ✅ Ahora es Auto Increment
     protected $keyType = 'int';
     public $timestamps = true;
 
@@ -37,7 +37,8 @@ class ProLicenciaParaImportacion extends Model
     ];
 
     protected $fillable = [
-        'lipaimp_id',
+        // 'lipaimp_id', // Ya no es fillable porque es auto-increment
+        'lipaimp_numero', // ✅ Nuevo campo
         'lipaimp_poliza',
         'lipaimp_descripcion',
         'lipaimp_fecha_emision',
@@ -48,7 +49,8 @@ class ProLicenciaParaImportacion extends Model
 
     protected $casts = [
         'lipaimp_id'                => 'integer',
-        'lipaimp_poliza'            => 'integer',
+        'lipaimp_numero'            => 'string',
+        'lipaimp_poliza'            => 'string',
         'lipaimp_descripcion'       => 'string',
         'lipaimp_fecha_emision'     => 'date',
         'lipaimp_fecha_vencimiento' => 'date',
@@ -124,7 +126,8 @@ class ProLicenciaParaImportacion extends Model
         return $query->where(function ($sub) use ($q) {
             $sub->where('lipaimp_descripcion', 'like', "%{$q}%")
                 ->orWhere('lipaimp_observaciones', 'like', "%{$q}%")
-                ->orWhere('lipaimp_id', $q); // búsqueda por ID exacto
+                ->orWhere('lipaimp_numero', 'like', "%{$q}%") // ✅ Buscar por número oficial
+                ->orWhere('lipaimp_id', $q); // búsqueda por ID exacto (opcional)
         });
     }
     // app/Models/ProLicenciaParaImportacion.php

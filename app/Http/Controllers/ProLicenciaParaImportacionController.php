@@ -69,7 +69,7 @@ class ProLicenciaParaImportacionController extends Controller
                 \Log::info('Licencia created', ['lipaimp_id' => $lic->lipaimp_id]);
 
                 // Insertar armas
-                $prepared = $this->prepareArmas($armasData, (int)$lic->lipaimp_id);
+                $prepared = $this->prepareArmas($armasData, $lic->lipaimp_id);
                 if (!empty($prepared)) {
                     Arma::insert($prepared);
                     \Log::info('Armas inserted', ['count' => count($prepared)]);
@@ -296,14 +296,14 @@ class ProLicenciaParaImportacionController extends Controller
 
 
     /** SHOW: una licencia con sus armas (útil para modal de edición) */
-    public function show(Request $request, int $id)
+    public function show(Request $request, $id)
     {
         $licencia = Licencia::with('armas')->findOrFail($id);
         return response()->json(['licencia' => $licencia]);
     }
 
     /** UPDATE: actualiza licencia + sincroniza armas (upsert + delete) */
-    public function update(Request $request, int $id)
+    public function update(Request $request, $id)
     {
         try {
             $licencia = Licencia::findOrFail($id);
@@ -326,7 +326,7 @@ class ProLicenciaParaImportacionController extends Controller
                 }
 
                 foreach ($incoming as $row) {
-                    $row = $this->prepareUnaArma($row, (int)$licencia->lipaimp_id);
+                    $row = $this->prepareUnaArma($row, $licencia->lipaimp_id);
 
                     if (!empty($row['arma_lic_id'])) {
                         $armaId = (int)$row['arma_lic_id'];
@@ -415,7 +415,7 @@ class ProLicenciaParaImportacionController extends Controller
      * Normaliza aliases de armas -> nombres canónicos y valida
      * En update, puedes pasar $ignoreId si tuvieras reglas unique sobre lipaimp_id (no parece el caso).
      */
- private function validateCompound(Request $request, ?int $ignoreId = null): array
+ private function validateCompound(Request $request, $ignoreId = null): array
 {
     // Detecta si es CREATE (no hay $ignoreId / o ruta Store) o UPDATE
     $isUpdate = $ignoreId !== null;
@@ -424,7 +424,9 @@ class ProLicenciaParaImportacionController extends Controller
     $armas = collect($request->input('armas', []))->map(function ($a) use ($request) {
         $a = is_array($a) ? $a : [];
 
-        $numLic   = $a['arma_num_licencia'] ?? $a['arma_licencia_id'] ?? $request->input('lipaimp_id');
+        // En create, el ID no existe aún, así que usamos null o placeholder.
+        // En update, usamos el ID de la licencia.
+        $numLic = $a['arma_num_licencia'] ?? $a['arma_licencia_id'] ?? ($isUpdate ? $request->input('lipaimp_id') : null);
 
         return [
             'arma_lic_id'       => $a['arma_lic_id'] ?? null,
@@ -442,7 +444,9 @@ class ProLicenciaParaImportacionController extends Controller
 
     // 2) Reglas base
     $rules = [
-        'lipaimp_id'                => ['required','integer'],
+        // 'lipaimp_id' => ['required','integer'], // YA NO SE PIDE ID MANUALMENTE
+        'lipaimp_numero'            => ['required','string','max:50'], // ✅ Nuevo campo obligatorio
+        'lipaimp_poliza'            => ['nullable','string','max:50'], // ✅ Opcional
         'armas'                     => ['required','array','min:1'],
         'lipaimp_observaciones'     => 'nullable|string|max:255',
         'armas.*.arma_sub_cat'      => ['required','integer','exists:pro_subcategorias,subcategoria_id'],
@@ -457,9 +461,15 @@ class ProLicenciaParaImportacionController extends Controller
     if ($isUpdate) {
         // En UPDATE, se permite actualizar sin validar duplicado, pero aseguramos que exista
         $rules['armas.*.arma_num_licencia'] = ['required','integer','exists:pro_licencias_para_importacion,lipaimp_id'];
+        
+        // Validar unicidad del número de licencia (excepto la actual)
+        $rules['lipaimp_numero'] = ['required','string','max:50','unique:pro_licencias_para_importacion,lipaimp_numero,'.$ignoreId.',lipaimp_id'];
     } else {
-        // En CREATE, valida que el 'arma_num_licencia' no esté duplicado
-        $rules['armas.*.arma_num_licencia'] = ['required','integer','unique:pro_licencias_para_importacion,lipaimp_id'];
+        // En CREATE, el arma_num_licencia se asignará después de crear la licencia
+        // $rules['armas.*.arma_num_licencia'] = ['required','integer','unique:pro_licencias_para_importacion,lipaimp_id']; // YA NO APLICA
+        
+        // Validar unicidad del número de licencia
+        $rules['lipaimp_numero'] = ['required','string','max:50','unique:pro_licencias_para_importacion,lipaimp_numero'];
     }
 
     // Realiza la validación
@@ -467,7 +477,8 @@ class ProLicenciaParaImportacionController extends Controller
 
     // 4) Separa los datos de la licencia y las armas
     $licData = $request->only([
-        'lipaimp_id',
+        // 'lipaimp_id', // Auto-increment
+        'lipaimp_numero',
         'lipaimp_poliza',
         'lipaimp_descripcion',
         'lipaimp_fecha_emision',
@@ -477,8 +488,7 @@ class ProLicenciaParaImportacionController extends Controller
     ]);
 
     // Asegurarse de que las variables sean del tipo correcto
-    if (isset($licData['lipaimp_id'])) $licData['lipaimp_id'] = (int)$licData['lipaimp_id'];
-    if (isset($licData['lipaimp_poliza']) && $licData['lipaimp_poliza'] !== '') $licData['lipaimp_poliza'] = (int)$licData['lipaimp_poliza'];
+    // if (isset($licData['lipaimp_id'])) $licData['lipaimp_id'] = (int)$licData['lipaimp_id'];
     if (isset($licData['lipaimp_situacion']) && $licData['lipaimp_situacion'] !== '') $licData['lipaimp_situacion'] = (int)$licData['lipaimp_situacion'];
 
     $armasData = $validated['armas'];
@@ -501,7 +511,7 @@ class ProLicenciaParaImportacionController extends Controller
 protected function prepareUnaArma(array $row, int $licenciaId, bool $forBulk = false): array
 {
     $payload = [
-        'arma_num_licencia' => $row['arma_num_licencia'] ?? $licenciaId,
+        'arma_num_licencia' => $licenciaId, // Siempre usar el ID de la licencia creada/actualizada
         'arma_sub_cat'      => (int)$row['arma_sub_cat'],
         'arma_modelo'       => (int)$row['arma_modelo'],
         'arma_calibre'      => (int)$row['arma_calibre'], // 👈 NUEVO
