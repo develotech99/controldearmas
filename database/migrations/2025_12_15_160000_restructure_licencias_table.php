@@ -24,14 +24,23 @@ return new class extends Migration
 
         foreach ($fks as $table => $column) {
             if (Schema::hasTable($table)) {
-                Schema::table($table, function (Blueprint $table) use ($column) {
-                    // Intentar eliminar la FK si existe
-                    try {
+                // Nombre de la FK que Laravel genera por defecto
+                $fkName = "{$table}_{$column}_foreign";
+                
+                // Verificar si existe en information_schema
+                $exists = DB::select("
+                    SELECT CONSTRAINT_NAME 
+                    FROM information_schema.KEY_COLUMN_USAGE 
+                    WHERE TABLE_NAME = ? 
+                    AND CONSTRAINT_NAME = ? 
+                    AND TABLE_SCHEMA = DATABASE()
+                ", [$table, $fkName]);
+
+                if (!empty($exists)) {
+                    Schema::table($table, function (Blueprint $table) use ($column) {
                         $table->dropForeign([$column]);
-                    } catch (\Exception $e) {
-                        // Si falla (probablemente no existe), continuamos
-                    }
-                });
+                    });
+                }
             }
         }
 
