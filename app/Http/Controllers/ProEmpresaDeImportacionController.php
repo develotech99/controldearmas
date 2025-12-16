@@ -97,15 +97,24 @@ class ProEmpresaDeImportacionController extends Controller
         } catch (Exception $e) {
             \Log::error('Error en store: ' . $e->getMessage());
             
+            $msg = 'Error al crear la empresa.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una empresa con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error interno del servidor: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Error al crear la empresa: ' . $e->getMessage())
+                ->with('error', $msg)
                 ->withInput();
         }
     }
@@ -182,15 +191,24 @@ class ProEmpresaDeImportacionController extends Controller
         } catch (Exception $e) {
             \Log::error('Error en update: ' . $e->getMessage());
             
+            $msg = 'Error al actualizar la empresa.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una empresa con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error interno del servidor: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Error al actualizar la empresa: ' . $e->getMessage())
+                ->with('error', $msg)
                 ->withInput();
         }
     }

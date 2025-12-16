@@ -85,9 +85,18 @@ class CategoriasController extends Controller
                 'data' => $categoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al crear la categoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una categoría con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear la categoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -124,9 +133,18 @@ class CategoriasController extends Controller
                 'data' => $categoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar la categoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una categoría con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar la categoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -209,9 +227,18 @@ class CategoriasController extends Controller
                 'data' => $subcategoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al crear la subcategoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una subcategoría con ese nombre en esta categoría.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear la subcategoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -267,9 +294,18 @@ class CategoriasController extends Controller
                 'data' => $subcategoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar la subcategoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una subcategoría con ese nombre en esta categoría.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar la subcategoría'
+                'message' => $msg
             ], 500);
         }
     }

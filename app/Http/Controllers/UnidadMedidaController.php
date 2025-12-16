@@ -61,15 +61,24 @@ class UnidadMedidaController extends Controller
                            ->with('success', 'Unidad de medida creada exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al crear la unidad de medida.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una unidad de medida con ese nombre o abreviación.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al crear la unidad de medida: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al crear la unidad de medida.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }
@@ -128,15 +137,24 @@ class UnidadMedidaController extends Controller
                            ->with('success', 'Unidad de medida actualizada exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar la unidad de medida.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una unidad de medida con ese nombre o abreviación.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al actualizar la unidad de medida: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al actualizar la unidad de medida.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }

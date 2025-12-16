@@ -140,21 +140,46 @@ class ClientesController extends Controller
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_correo' => ['nullable', 'email', 'max:150'],
             'cliente_tipo' => ['required', 'integer', 'in:1,2,3'],
-            'cliente_user_id' => ['nullable', 'integer'],
-            // Validación de empresas si el tipo es 3
+            'cliente_user_id' => ['nullable', 'integer', 'unique:pro_clientes,cliente_user_id'],
+            'cliente_nom_empresa' => ['nullable', 'string', 'max:250'],
+            'cliente_nom_vendedor' => ['nullable', 'string', 'max:250'],
+            'cliente_cel_vendedor' => ['nullable', 'string', 'max:250'],
+            'cliente_ubicacion' => ['nullable', 'string', 'max:250'],
+            'cliente_pdf_licencia' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            // Validación para empresas múltiples
             'empresas' => ['nullable', 'array'],
-            'empresas.*.nombre' => ['required_if:cliente_tipo,3', 'string', 'max:250'],
-            'empresas.*.nit' => ['nullable', 'string', 'max:20'],
+            'empresas.*.nombre' => ['required_with:empresas', 'string', 'max:255'],
             'empresas.*.direccion' => ['nullable', 'string', 'max:255'],
             'empresas.*.vendedor' => ['nullable', 'string', 'max:255'],
             'empresas.*.cel_vendedor' => ['nullable', 'string', 'max:30'],
             'empresas.*.licencia' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ], [
+            'cliente_nombre1.required' => 'El primer nombre es obligatorio',
+            'cliente_nombre1.max' => 'El primer nombre no puede exceder 50 caracteres',
+            'cliente_nombre2.max' => 'El segundo nombre no puede exceder 50 caracteres',
+            'cliente_apellido1.required' => 'El primer apellido es obligatorio',
+            'cliente_apellido1.max' => 'El primer apellido no puede exceder 50 caracteres',
+            'cliente_apellido2.max' => 'El segundo apellido no puede exceder 50 caracteres',
+            'cliente_tipo.required' => 'El tipo de cliente es obligatorio',
+            'cliente_correo.email' => 'El correo electrónico no es válido',
+            'cliente_correo.max' => 'El correo no puede exceder 150 caracteres',
+            'cliente_pdf_licencia.mimes' => 'El archivo debe ser un PDF',
+            'cliente_pdf_licencia.max' => 'El archivo no debe superar los 10MB',
             'cliente_dpi.unique' => 'Ya existe un cliente registrado con este DPI',
+            'cliente_dpi.max' => 'El DPI no puede exceder 20 caracteres',
             'cliente_nit.unique' => 'Ya existe un cliente registrado con este NIT',
-            'empresas.*.nombre.required_if' => 'El nombre de la empresa es obligatorio',
-            'empresas.*.cel_vendedor.max' => 'El teléfono/celular del vendedor no puede exceder 30 caracteres',
+            'cliente_nit.max' => 'El NIT no puede exceder 20 caracteres',
+            'cliente_telefono.max' => 'El teléfono no puede exceder 30 caracteres',
+            'cliente_direccion.max' => 'La dirección no puede exceder 255 caracteres',
+            'cliente_nom_empresa.max' => 'El nombre de la empresa no puede exceder 250 caracteres',
+            'cliente_nom_vendedor.max' => 'El nombre del vendedor no puede exceder 250 caracteres',
+            'cliente_cel_vendedor.max' => 'El celular del vendedor no puede exceder 250 caracteres',
+            'cliente_ubicacion.max' => 'La ubicación no puede exceder 250 caracteres',
+            'empresas.*.nombre.required_with' => 'El nombre de la empresa es obligatorio',
+            'empresas.*.nombre.max' => 'El nombre de la empresa no puede exceder 255 caracteres',
             'empresas.*.direccion.max' => 'La dirección de la empresa no puede exceder 255 caracteres',
+            'empresas.*.vendedor.max' => 'El nombre del vendedor no puede exceder 255 caracteres',
+            'empresas.*.cel_vendedor.max' => 'El teléfono del vendedor no puede exceder 30 caracteres',
         ]);
 
         if ($validator->fails()) {
@@ -218,11 +243,13 @@ class ClientesController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al crear cliente:', ['error' => $e->getMessage()]);
+            Log::error('Error al crear cliente:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             
             $msg = 'Ocurrió un error al procesar su solicitud.';
             if (str_contains($e->getMessage(), 'Data too long')) {
                 $msg = 'Uno de los campos excede la longitud permitida (ej. teléfono muy largo). Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'El registro ya existe (posible duplicado de DPI o NIT).';
             } elseif (config('app.debug')) {
                 $msg .= ' ' . $e->getMessage();
             }
@@ -248,21 +275,34 @@ class ClientesController extends Controller
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_correo' => ['nullable', 'email', 'max:150'],
             'cliente_tipo' => ['required', 'integer', 'in:1,2,3'],
-            'cliente_user_id' => ['nullable', 'integer'],
-            'cliente_nom_empresa' => ['nullable', 'string', 'max:255'],
-            'cliente_nom_vendedor' => ['nullable', 'string', 'max:255'],
-            'cliente_cel_vendedor' => ['nullable', 'string', 'max:30'],
-            'cliente_ubicacion' => ['nullable', 'string', 'max:255'],
+            'cliente_user_id' => ['nullable', 'integer', 'unique:pro_clientes,cliente_user_id,' . $cliente->cliente_id . ',cliente_id'],
+            'cliente_nom_empresa' => ['nullable', 'string', 'max:250'],
+            'cliente_nom_vendedor' => ['nullable', 'string', 'max:250'],
+            'cliente_cel_vendedor' => ['nullable', 'string', 'max:250'],
+            'cliente_ubicacion' => ['nullable', 'string', 'max:250'],
             'cliente_pdf_licencia' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ], [
             'cliente_nombre1.required' => 'El primer nombre es obligatorio',
+            'cliente_nombre1.max' => 'El primer nombre no puede exceder 50 caracteres',
+            'cliente_nombre2.max' => 'El segundo nombre no puede exceder 50 caracteres',
             'cliente_apellido1.required' => 'El primer apellido es obligatorio',
+            'cliente_apellido1.max' => 'El primer apellido no puede exceder 50 caracteres',
+            'cliente_apellido2.max' => 'El segundo apellido no puede exceder 50 caracteres',
             'cliente_tipo.required' => 'El tipo de cliente es obligatorio',
             'cliente_correo.email' => 'El correo electrónico no es válido',
+            'cliente_correo.max' => 'El correo no puede exceder 150 caracteres',
             'cliente_pdf_licencia.mimes' => 'El archivo debe ser un PDF',
             'cliente_pdf_licencia.max' => 'El archivo no debe superar los 10MB',
             'cliente_dpi.unique' => 'Ya existe un cliente registrado con este DPI',
+            'cliente_dpi.max' => 'El DPI no puede exceder 20 caracteres',
             'cliente_nit.unique' => 'Ya existe un cliente registrado con este NIT',
+            'cliente_nit.max' => 'El NIT no puede exceder 20 caracteres',
+            'cliente_telefono.max' => 'El teléfono no puede exceder 30 caracteres',
+            'cliente_direccion.max' => 'La dirección no puede exceder 255 caracteres',
+            'cliente_nom_empresa.max' => 'El nombre de la empresa no puede exceder 250 caracteres',
+            'cliente_nom_vendedor.max' => 'El nombre del vendedor no puede exceder 250 caracteres',
+            'cliente_cel_vendedor.max' => 'El celular del vendedor no puede exceder 250 caracteres',
+            'cliente_ubicacion.max' => 'La ubicación no puede exceder 250 caracteres',
         ]);
 
         if ($validator->fails()) {
@@ -347,9 +387,20 @@ class ClientesController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
+            $msg = 'Error al actualizar: ' . $e->getMessage();
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'El registro ya existe (posible duplicado de DPI o NIT).';
+            } elseif (config('app.debug')) {
+                // Keep original message if debug
+            } else {
+                $msg = 'Error al actualizar el cliente.';
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar: ' . $e->getMessage()
+                'message' => $msg
             ], 500);
         }
     }

@@ -64,15 +64,24 @@ class ProModeloController extends Controller
                 ->with('success', 'Modelo creado exitosamente');
                 
         } catch (\Exception $e) {
+            $msg = 'Error al crear el modelo.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un modelo con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'mensaje' => 'Error al crear el modelo: ' . $e->getMessage()
+                    'mensaje' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Error al crear el modelo')
+                ->with('error', $msg)
                 ->withInput();
         }
     }
@@ -120,15 +129,24 @@ class ProModeloController extends Controller
                 ->with('success', 'Modelo actualizado correctamente');
                 
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un modelo con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'mensaje' => 'Error al actualizar: ' . $e->getMessage()
+                    'mensaje' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Error al actualizar')
+                ->with('error', $msg)
                 ->withInput();
         }
     }

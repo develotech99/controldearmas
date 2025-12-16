@@ -58,6 +58,16 @@ class DeudasController extends Controller
             'fecha_deuda' => 'required|date',
             'descripcion' => 'nullable|string|max:255',
             'empresa_id' => 'nullable|exists:pro_clientes_empresas,emp_id',
+        ], [
+            'cliente_id.required' => 'El cliente es obligatorio',
+            'cliente_id.exists' => 'El cliente seleccionado no existe',
+            'monto.required' => 'El monto es obligatorio',
+            'monto.numeric' => 'El monto debe ser un número',
+            'monto.min' => 'El monto debe ser mayor a 0',
+            'fecha_deuda.required' => 'La fecha es obligatoria',
+            'fecha_deuda.date' => 'La fecha no es válida',
+            'descripcion.max' => 'La descripción no puede exceder 255 caracteres',
+            'empresa_id.exists' => 'La empresa seleccionada no existe',
         ]);
 
         if ($validator->fails()) {
@@ -87,7 +97,15 @@ class DeudasController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al registrar deuda: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error al guardar la deuda.'], 500);
+
+            $msg = 'Error al guardar la deuda.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
+            return response()->json(['success' => false, 'message' => $msg], 500);
         }
     }
 
@@ -96,11 +114,20 @@ class DeudasController extends Controller
         $request->validate([
             'monto' => 'required|numeric|min:0.01',
             'metodo_pago' => 'required|string',
-            'referencia' => 'nullable|string',
-            'nota' => 'nullable|string',
-            'banco_id' => 'nullable|integer',
+            'referencia' => 'nullable|string|max:64',
+            'nota' => 'nullable|string|max:255',
+            'banco_id' => 'nullable|integer|exists:pro_bancos,banco_id',
             'fecha_pago' => 'nullable|date',
             'comprobante' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ], [
+            'monto.required' => 'El monto es obligatorio',
+            'monto.numeric' => 'El monto debe ser un número',
+            'monto.min' => 'El monto debe ser mayor a 0',
+            'referencia.max' => 'La referencia no puede exceder 64 caracteres',
+            'nota.max' => 'La nota no puede exceder 255 caracteres',
+            'banco_id.exists' => 'El banco seleccionado no existe',
+            'comprobante.mimes' => 'El comprobante debe ser una imagen (jpg, png) o PDF',
+            'comprobante.max' => 'El comprobante no debe pesar más de 5MB',
         ]);
 
         try {
@@ -167,7 +194,15 @@ class DeudasController extends Controller
     } catch (\Exception $e) {
         DB::rollBack();
         Log::error('Error al registrar pago: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => 'Error al procesar el pago.'], 500);
+
+        $msg = 'Error al procesar el pago.';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ' ' . $e->getMessage();
+        }
+
+        return response()->json(['success' => false, 'message' => $msg], 500);
     }
 }
 
