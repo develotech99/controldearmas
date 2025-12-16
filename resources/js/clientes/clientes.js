@@ -218,9 +218,11 @@ class ClientesManager {
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cliente.cliente_situacion == 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    <button onclick="window.clientesManager.toggleStatus(${cliente.cliente_id})"
+                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full cursor-pointer transition-colors ${cliente.cliente_situacion == 1 ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}"
+                            title="Click para cambiar estado">
                         ${cliente.cliente_situacion == 1 ? 'Activo' : 'Inactivo'}
-                    </span>
+                    </button>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex justify-end space-x-2">
@@ -243,6 +245,48 @@ class ClientesManager {
                 </td>
             </tr>
         `;
+    }
+
+    async toggleStatus(clienteId) {
+        try {
+            const response = await fetch(`/clientes/${clienteId}/toggle-status`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Actualizar estado local
+                const cliente = this.clientes.find(c => c.cliente_id === clienteId);
+                if (cliente) {
+                    cliente.cliente_situacion = data.new_status;
+                    this.renderClientes();
+
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message
+                    });
+                }
+            } else {
+                this.showAlert('error', 'Error', data.message);
+            }
+        } catch (error) {
+            console.error(error);
+            this.showAlert('error', 'Error', 'Ocurrió un error al cambiar el estado');
+        }
+
     }
 
     renderEmpresasNombres(cliente) {

@@ -153,6 +153,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes', [ClientesController::class, 'store'])->name('clientes.store');
     Route::put('/clientes/{cliente}', [ClientesController::class, 'update'])->name('clientes.update');
     Route::delete('/clientes/{cliente}', [ClientesController::class, 'destroy'])->name('clientes.destroy');
+    Route::post('/clientes/{id}/toggle-status', [ClientesController::class, 'toggleStatus'])->name('clientes.toggle-status');
     Route::get('/clientes/buscar', [ClientesController::class, 'buscarClientes'])->name('clientes.buscar');
     Route::post('/clientes/{cliente}/empresas', [ClientesController::class, 'storeEmpresa'])->name('clientes.empresas.store');
     Route::put('/clientes/empresas/{empresa}', [ClientesController::class, 'updateEmpresa'])->name('clientes.empresas.update');

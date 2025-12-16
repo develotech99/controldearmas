@@ -473,6 +473,37 @@ class ClientesController extends Controller
     }
 
     /**
+     * Toggle client status (Active/Inactive)
+     */
+    public function toggleStatus($id)
+    {
+        try {
+            $cliente = Clientes::findOrFail($id);
+            $newStatus = $cliente->cliente_situacion == 1 ? 0 : 1;
+            $cliente->update(['cliente_situacion' => $newStatus]);
+
+            $statusText = $newStatus == 1 ? 'activado' : 'desactivado';
+
+            return response()->json([
+                'success' => true,
+                'message' => "Cliente {$statusText} exitosamente",
+                'new_status' => $newStatus
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al cambiar estado del cliente:', [
+                'message' => $e->getMessage(),
+                'cliente_id' => $id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cambiar el estado del cliente'
+            ], 500);
+        }
+    }
+
+
+
+    /**
      * Mostrar el PDF de licencia del cliente
      */
     public function verPdfLicencia(Clientes $cliente)
