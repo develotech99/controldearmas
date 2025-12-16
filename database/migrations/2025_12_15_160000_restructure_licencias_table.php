@@ -25,8 +25,12 @@ return new class extends Migration
         foreach ($fks as $table => $column) {
             if (Schema::hasTable($table)) {
                 Schema::table($table, function (Blueprint $table) use ($column) {
-                    // Drop FK if exists (using array syntax lets Laravel guess the name)
-                    $table->dropForeign([$column]);
+                    // Intentar eliminar la FK si existe
+                    try {
+                        $table->dropForeign([$column]);
+                    } catch (\Exception $e) {
+                        // Si falla (probablemente no existe), continuamos
+                    }
                 });
             }
         }
