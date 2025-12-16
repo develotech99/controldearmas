@@ -96,7 +96,14 @@ class ProLicenciaParaImportacionController extends Controller
                 'line' => $e->getLine(),
             ]);
             
-            return $this->handleException($request, $e, 'Error al crear la licencia');
+            $msg = 'Error al crear la licencia.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
+            return $this->handleException($request, $e, $msg);
         }
     }
 
@@ -346,7 +353,13 @@ class ProLicenciaParaImportacionController extends Controller
             );
 
         } catch (Throwable $e) {
-            return $this->handleException($request, $e, 'Error al actualizar la licencia/armas');
+            $msg = 'Error al actualizar la licencia/armas.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            return $this->handleException($request, $e, $msg);
         }
     }
 

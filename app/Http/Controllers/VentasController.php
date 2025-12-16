@@ -368,10 +368,17 @@ public function guardarCliente(Request $request)
             'data' => $request->except('cliente_pdf_licencia')
         ]);
 
+        $msg = 'Error al guardar el cliente';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ': ' . $e->getMessage();
+        }
+
         return response()->json([
             'codigo' => 0,
-            'mensaje' => 'Error al guardar el cliente',
-            'detalle' => $e->getMessage()
+            'mensaje' => $msg,
+            'detalle' => config('app.debug') ? $e->getMessage() : null
         ], 500);
     }
 }
@@ -1562,9 +1569,16 @@ public function procesarReserva(Request $request): JsonResponse
         DB::rollBack();
         \Log::error('Error procesando reserva: ' . $e->getMessage());
 
+        $msg = 'Error al procesar la reserva.';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ' ' . $e->getMessage();
+        }
+
         return response()->json([
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => $msg
         ], 500);
     }
 }

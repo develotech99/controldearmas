@@ -375,9 +375,17 @@ public function egresar(Request $request): JsonResponse
 
     } catch (\Exception $e) {
         DB::rollBack();
+        
+        $msg = 'Error al procesar egreso.';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ' ' . $e->getMessage();
+        }
+        
         return response()->json([
             'success' => false,
-            'message' => 'Error al procesar egreso: ' . $e->getMessage()
+            'message' => $msg
         ], 500);
     }
 }
@@ -690,12 +698,20 @@ public function getPaisesActivos(): JsonResponse
              ]);
      
          } catch (\Exception $e) {
-             DB::rollback();
-             return response()->json([
-                 'success' => false,
-                 'message' => 'Error al registrar producto: ' . $e->getMessage()
-             ], 500);
-         }
+            DB::rollback();
+            
+            $msg = 'Error al registrar producto.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => $msg
+            ], 500);
+        }
      }
      
     /**
@@ -976,9 +992,17 @@ public function getPaisesActivos(): JsonResponse
     
         } catch (\Exception $e) {
             DB::rollback();
+            
+            $msg = 'Error al procesar ingreso.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar ingreso: ' . $e->getMessage()
+                'message' => $msg
             ], 500);
         }
     }

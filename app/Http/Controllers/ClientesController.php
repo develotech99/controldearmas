@@ -145,11 +145,16 @@ class ClientesController extends Controller
             'empresas' => ['nullable', 'array'],
             'empresas.*.nombre' => ['required_if:cliente_tipo,3', 'string', 'max:250'],
             'empresas.*.nit' => ['nullable', 'string', 'max:20'],
+            'empresas.*.direccion' => ['nullable', 'string', 'max:255'],
+            'empresas.*.vendedor' => ['nullable', 'string', 'max:255'],
+            'empresas.*.cel_vendedor' => ['nullable', 'string', 'max:30'],
             'empresas.*.licencia' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ], [
             'cliente_dpi.unique' => 'Ya existe un cliente registrado con este DPI',
             'cliente_nit.unique' => 'Ya existe un cliente registrado con este NIT',
             'empresas.*.nombre.required_if' => 'El nombre de la empresa es obligatorio',
+            'empresas.*.cel_vendedor.max' => 'El teléfono/celular del vendedor no puede exceder 30 caracteres',
+            'empresas.*.direccion.max' => 'La dirección de la empresa no puede exceder 255 caracteres',
         ]);
 
         if ($validator->fails()) {
@@ -214,7 +219,15 @@ class ClientesController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al crear cliente:', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Error al crear cliente: ' . $e->getMessage()], 500);
+            
+            $msg = 'Ocurrió un error al procesar su solicitud.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida (ej. teléfono muy largo). Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json(['success' => false, 'message' => $msg], 500);
         }
     }
 
@@ -476,7 +489,15 @@ class ClientesController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error al crear empresa:', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Error al crear empresa'], 500);
+            
+            $msg = 'Ocurrió un error al crear la empresa.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida (ej. teléfono muy largo). Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json(['success' => false, 'message' => $msg], 500);
         }
     }
 
@@ -529,7 +550,15 @@ class ClientesController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error al actualizar empresa:', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Error al actualizar empresa'], 500);
+            
+            $msg = 'Ocurrió un error al actualizar la empresa.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida (ej. teléfono muy largo). Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json(['success' => false, 'message' => $msg], 500);
         }
     }
 
