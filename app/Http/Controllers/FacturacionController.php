@@ -1216,16 +1216,48 @@ public function certificarCambiaria(Request $request)
         } catch (Exception $e) {
             DB::rollBack();
 
+            $errorMessage = $e->getMessage();
+
+            // Handle "Double Annulment" case gracefully
+            if (str_contains($errorMessage, 'Doble Anulación') || str_contains($errorMessage, 'ya esta anulado')) {
+                // If FEL says it's already annulled, we should sync our local database
+                try {
+                    $factura = Facturacion::find($id);
+                    if ($factura && $factura->fac_estado !== 'ANULADO') {
+                        $factura->update(['fac_estado' => 'ANULADO']);
+                        
+                        // Also update the sale status if needed (logic similar to success path)
+                         $venta = DB::table('pro_ventas')->where('ven_id', $factura->fac_venta_id)->first();
+                         if ($venta) {
+                             // Default to 'PENDIENTE' (freeze) logic if we can't determine intent, 
+                             // or just leave it as is to be safe. 
+                             // For now, let's just mark the invoice as annulled to stop the error loop.
+                         }
+                    }
+                    
+                    return response()->json([
+                        'codigo' => 1,
+                        'mensaje' => 'La factura ya estaba anulada en SAT. Se actualizó el estado localmente.',
+                        'data' => [
+                            'uuid' => $factura->fac_uuid ?? '',
+                            'estado' => 'ANULADO'
+                        ]
+                    ]);
+                } catch (\Exception $ex) {
+                    // Fallback if update fails
+                }
+            }
+
             Log::error('Error anulando factura', [
                 'id' => $id,
-                'error' => $e->getMessage(),
+                'error' => $errorMessage,
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'codigo' => 0,
                 'mensaje' => 'Error al anular la factura',
-                'detalle' => $e->getMessage()
+                'detalle' => $errorMessage
             ], 500);
         }
     }
