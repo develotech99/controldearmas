@@ -16,11 +16,10 @@ class BancoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'banco_nombre' => 'required|string|max:50|unique:pro_bancos,banco_nombre',
+            'banco_nombre' => 'required|string|max:50',
         ], [
             'banco_nombre.required' => 'El nombre del banco es obligatorio',
             'banco_nombre.max' => 'El nombre no puede exceder 50 caracteres',
-            'banco_nombre.unique' => 'Ya existe un banco con ese nombre',
         ]);
 
         try {
@@ -48,12 +47,11 @@ class BancoController extends Controller
         $banco = Banco::findOrFail($id);
         
         $request->validate([
-            'banco_nombre' => 'required|string|max:50|unique:pro_bancos,banco_nombre,' . $id . ',banco_id',
+            'banco_nombre' => 'required|string|max:50',
             'banco_activo' => 'boolean',
         ], [
             'banco_nombre.required' => 'El nombre del banco es obligatorio',
             'banco_nombre.max' => 'El nombre no puede exceder 50 caracteres',
-            'banco_nombre.unique' => 'Ya existe un banco con ese nombre',
         ]);
 
         try {

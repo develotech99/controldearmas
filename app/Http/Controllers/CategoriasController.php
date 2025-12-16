@@ -59,11 +59,10 @@ class CategoriasController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'categoria_nombre' => 'required|string|max:100|unique:pro_categorias,categoria_nombre',
+            'categoria_nombre' => 'required|string|max:100',
           
         ], [
             'categoria_nombre.required' => 'El nombre de la categoría es obligatorio',
-            'categoria_nombre.unique' => 'Ya existe una categoría con ese nombre',
             'categoria_nombre.max' => 'El nombre no puede exceder 100 caracteres',
           
         ]);
@@ -107,11 +106,10 @@ class CategoriasController extends Controller
     public function update(Request $request, Categoria $categoria)
     {
         $validator = Validator::make($request->all(), [
-            'categoria_nombre' => 'required|string|max:100|unique:pro_categorias,categoria_nombre,' . $categoria->categoria_id . ',categoria_id',
+            'categoria_nombre' => 'required|string|max:100',
 
         ], [
             'categoria_nombre.required' => 'El nombre de la categoría es obligatorio',
-            'categoria_nombre.unique' => 'Ya existe una categoría con ese nombre',
             'categoria_nombre.max' => 'El nombre no puede exceder 100 caracteres',
           
         ]);

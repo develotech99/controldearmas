@@ -36,12 +36,11 @@ class ProModeloController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'modelo_descripcion' => 'required|string|max:50|unique:pro_modelo,modelo_descripcion',
+            'modelo_descripcion' => 'required|string|max:50',
             'modelo_marca_id' => 'required|exists:pro_marcas,marca_id'
         ], [
             'modelo_descripcion.required' => 'La descripción es obligatoria',
             'modelo_descripcion.max' => 'La descripción no puede tener más de 50 caracteres',
-            'modelo_descripcion.unique' => 'Ya existe un modelo con el mismo nombre',
             'modelo_marca_id.required' => 'La marca es obligatoria',
             'modelo_marca_id.exists' => 'La marca seleccionada no existe'
         ]);
@@ -99,15 +98,11 @@ class ProModeloController extends Controller
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('pro_modelo', 'modelo_descripcion')
-                    ->ignore($modelo->modelo_id, 'modelo_id')
-                    ->where(fn($q) => $q->where('modelo_situacion', 1))
             ],
             'modelo_marca_id' => 'required|exists:pro_marcas,marca_id'
         ], [
             'modelo_descripcion.required' => 'La descripción es obligatoria',
             'modelo_descripcion.max' => 'La descripción no puede tener más de 50 caracteres',
-            'modelo_descripcion.unique' => 'Ya existe un modelo con el mismo nombre',
             'modelo_marca_id.required' => 'La marca es obligatoria',
             'modelo_marca_id.exists' => 'La marca seleccionada no existe'
         ]);

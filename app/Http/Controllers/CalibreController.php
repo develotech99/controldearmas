@@ -31,14 +31,13 @@ class CalibreController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'calibre_nombre' => 'required|string|max:20|unique:pro_calibres,calibre_nombre',
+            'calibre_nombre' => 'required|string|max:20',
             'calibre_unidad_id' => 'required|integer|exists:pro_unidades_medida,unidad_id',
             'calibre_equivalente_mm' => 'nullable|numeric|between:0,9999.99',
             'calibre_situacion' => 'required|integer|in:0,1',
         ], [
             'calibre_nombre.required' => 'El nombre del calibre es obligatorio.',
             'calibre_nombre.max' => 'El nombre no puede tener más de 20 caracteres.',
-            'calibre_nombre.unique' => 'Este calibre ya existe.',
             'calibre_unidad_id.required' => 'La unidad de medida es obligatoria.',
             'calibre_unidad_id.exists' => 'La unidad de medida seleccionada no es válida.',
             'calibre_equivalente_mm.numeric' => 'El equivalente en mm debe ser un número.',
@@ -100,7 +99,6 @@ class CalibreController extends Controller
                 'required', 
                 'string', 
                 'max:20',
-                Rule::unique('pro_calibres', 'calibre_nombre')->ignore($calibre->calibre_id, 'calibre_id')
             ],
             'calibre_unidad_id' => 'required|integer|exists:pro_unidades_medida,unidad_id',
             'calibre_equivalente_mm' => 'nullable|numeric|between:0,9999.99',
@@ -108,7 +106,6 @@ class CalibreController extends Controller
         ], [
             'calibre_nombre.required' => 'El nombre del calibre es obligatorio.',
             'calibre_nombre.max' => 'El nombre no puede tener más de 20 caracteres.',
-            'calibre_nombre.unique' => 'Este calibre ya existe.',
             'calibre_unidad_id.required' => 'La unidad de medida es obligatoria.',
             'calibre_unidad_id.exists' => 'La unidad de medida seleccionada no es válida.',
             'calibre_equivalente_mm.numeric' => 'El equivalente en mm debe ser un número.',

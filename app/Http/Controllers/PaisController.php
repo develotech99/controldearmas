@@ -24,12 +24,11 @@ class PaisController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'pais_descripcion' => 'required|string|max:50|unique:pro_paises,pais_descripcion',
+            'pais_descripcion' => 'required|string|max:50',
             'pais_situacion' => 'required|integer|in:0,1',
         ], [
             'pais_descripcion.required' => 'La descripción del país es obligatoria.',
             'pais_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'pais_descripcion.unique' => 'Este país ya existe.',
             'pais_situacion.required' => 'El estado es obligatorio.',
             'pais_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);
@@ -85,13 +84,11 @@ class PaisController extends Controller
                 'required', 
                 'string', 
                 'max:50',
-                Rule::unique('pro_paises', 'pais_descripcion')->ignore($pais->pais_id, 'pais_id')
             ],
             'pais_situacion' => 'required|integer|in:0,1',
         ], [
             'pais_descripcion.required' => 'La descripción del país es obligatoria.',
             'pais_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'pais_descripcion.unique' => 'Este país ya existe.',
             'pais_situacion.required' => 'El estado es obligatorio.',
             'pais_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);

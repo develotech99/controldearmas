@@ -24,12 +24,11 @@ class MetodoPagoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'metpago_descripcion' => 'required|string|max:50|unique:pro_metodos_pago,metpago_descripcion',
+            'metpago_descripcion' => 'required|string|max:50',
             'metpago_situacion' => 'required|integer|in:0,1',
         ], [
             'metpago_descripcion.required' => 'La descripción es obligatoria.',
             'metpago_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'metpago_descripcion.unique' => 'Este método de pago ya existe.',
             'metpago_situacion.required' => 'El estado es obligatorio.',
             'metpago_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);
@@ -85,13 +84,11 @@ class MetodoPagoController extends Controller
                 'required', 
                 'string', 
                 'max:50',
-                Rule::unique('pro_metodos_pago', 'metpago_descripcion')->ignore($metodoPago->metpago_id, 'metpago_id')
             ],
             'metpago_situacion' => 'required|integer|in:0,1',
         ], [
             'metpago_descripcion.required' => 'La descripción es obligatoria.',
             'metpago_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'metpago_descripcion.unique' => 'Este método de pago ya existe.',
             'metpago_situacion.required' => 'El estado es obligatorio.',
             'metpago_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);

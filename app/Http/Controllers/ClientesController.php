@@ -134,13 +134,13 @@ class ClientesController extends Controller
             'cliente_nombre2' => ['nullable', 'string', 'max:50'],
             'cliente_apellido1' => ['required', 'string', 'max:50'],
             'cliente_apellido2' => ['nullable', 'string', 'max:50'],
-            'cliente_dpi' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_dpi'],
-            'cliente_nit' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_nit'],
+            'cliente_dpi' => ['nullable', 'string', 'max:20'],
+            'cliente_nit' => ['nullable', 'string', 'max:20'],
             'cliente_direccion' => ['nullable', 'string', 'max:255'],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_correo' => ['nullable', 'email', 'max:150'],
             'cliente_tipo' => ['required', 'integer', 'in:1,2,3'],
-            'cliente_user_id' => ['nullable', 'integer', 'unique:pro_clientes,cliente_user_id'],
+            'cliente_user_id' => ['nullable', 'integer'],
             'cliente_nom_empresa' => ['nullable', 'string', 'max:250'],
             'cliente_nom_vendedor' => ['nullable', 'string', 'max:250'],
             'cliente_cel_vendedor' => ['nullable', 'string', 'max:250'],
@@ -193,11 +193,46 @@ class ClientesController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $validator->validated();
-            $data['cliente_situacion'] = 1;
+            $validated = $validator->validated();
 
-            // Crear Cliente
-            $cliente = Clientes::create($data);
+            // Limpiar cliente_user_id
+            if (!isset($validated['cliente_user_id']) || $validated['cliente_user_id'] === '' || $validated['cliente_user_id'] === 'null') {
+                $validated['cliente_user_id'] = null;
+            }
+
+            // Manejo de archivo PDF
+            if ($request->hasFile('cliente_pdf_licencia')) {
+                $file = $request->file('cliente_pdf_licencia');
+                $fileName = 'licencia_' . time() . '_' . uniqid() . '.pdf';
+                $path = $file->storeAs('clientes/licencias', $fileName, 'public');
+                $validated['cliente_pdf_licencia'] = $path;
+            }
+
+            // Verificar existencia (DPI o NIT)
+            $existingClient = null;
+            if (!empty($validated['cliente_dpi'])) {
+                $existingClient = Clientes::where('cliente_dpi', $validated['cliente_dpi'])->first();
+            }
+            if (!$existingClient && !empty($validated['cliente_nit'])) {
+                $existingClient = Clientes::where('cliente_nit', $validated['cliente_nit'])->first();
+            }
+
+            if ($existingClient) {
+                if ($existingClient->cliente_situacion == 0) {
+                    // Reactivar
+                    $validated['cliente_situacion'] = 1;
+                    $existingClient->update($validated);
+                    $cliente = $existingClient;
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El cliente ya existe (DPI o NIT duplicado) y está activo.'
+                    ], 422);
+                }
+            } else {
+                $validated['cliente_situacion'] = 1;
+                $cliente = Clientes::create($validated);
+            }
 
             // Si es empresa (tipo 3) y tiene empresas
             if ($request->cliente_tipo == 3 && $request->has('empresas')) {
@@ -269,13 +304,13 @@ class ClientesController extends Controller
             'cliente_nombre2' => ['nullable', 'string', 'max:50'],
             'cliente_apellido1' => ['required', 'string', 'max:50'],
             'cliente_apellido2' => ['nullable', 'string', 'max:50'],
-            'cliente_dpi' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_dpi,' . $cliente->cliente_id . ',cliente_id'],
-            'cliente_nit' => ['nullable', 'string', 'max:20', 'unique:pro_clientes,cliente_nit,' . $cliente->cliente_id . ',cliente_id'],
+            'cliente_dpi' => ['nullable', 'string', 'max:20'],
+            'cliente_nit' => ['nullable', 'string', 'max:20'],
             'cliente_direccion' => ['nullable', 'string', 'max:255'],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_correo' => ['nullable', 'email', 'max:150'],
             'cliente_tipo' => ['required', 'integer', 'in:1,2,3'],
-            'cliente_user_id' => ['nullable', 'integer', 'unique:pro_clientes,cliente_user_id,' . $cliente->cliente_id . ',cliente_id'],
+            'cliente_user_id' => ['nullable', 'integer'],
             'cliente_nom_empresa' => ['nullable', 'string', 'max:250'],
             'cliente_nom_vendedor' => ['nullable', 'string', 'max:250'],
             'cliente_cel_vendedor' => ['nullable', 'string', 'max:250'],

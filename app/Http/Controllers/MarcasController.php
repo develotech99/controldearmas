@@ -36,12 +36,11 @@ class MarcasController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'marca_descripcion' => 'required|string|max:50|unique:pro_marcas,marca_descripcion',
+            'marca_descripcion' => 'required|string|max:50',
             'marca_situacion'   => 'required|in:1,0',  
         ], [
             'marca_descripcion.required' => 'La descripción es obligatoria',
             'marca_descripcion.max' => 'La descripción no puede exceder 50 caracteres',
-            'marca_descripcion.unique' => 'Ya existe una marca con ese nombre',
             'marca_situacion.required' => 'La situación es obligatoria',
         ]);
 
@@ -70,12 +69,11 @@ class MarcasController extends Controller
         $marca = Marcas::findOrFail($id);
         
         $request->validate([
-            'marca_descripcion' => 'required|string|max:50|unique:pro_marcas,marca_descripcion,' . $id . ',marca_id',
+            'marca_descripcion' => 'required|string|max:50',
             'marca_situacion'   => 'required|in:1,0',
         ], [
             'marca_descripcion.required' => 'La descripción es obligatoria',
             'marca_descripcion.max' => 'La descripción no puede exceder 50 caracteres',
-            'marca_descripcion.unique' => 'Ya existe una marca con ese nombre',
             'marca_situacion.required' => 'La situación es obligatoria',
         ]);
 

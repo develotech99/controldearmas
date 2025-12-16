@@ -25,17 +25,15 @@ class UnidadMedidaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'unidad_nombre' => 'required|string|max:50|unique:pro_unidades_medida,unidad_nombre',
-            'unidad_abreviacion' => 'required|string|max:10|unique:pro_unidades_medida,unidad_abreviacion',
+            'unidad_nombre' => 'required|string|max:50',
+            'unidad_abreviacion' => 'required|string|max:10',
             'unidad_tipo' => 'required|string|max:20|in:longitud,peso,volumen,otro',
             'unidad_situacion' => 'required|integer|in:0,1',
         ], [
             'unidad_nombre.required' => 'El nombre de la unidad es obligatorio.',
             'unidad_nombre.max' => 'El nombre no puede tener más de 50 caracteres.',
-            'unidad_nombre.unique' => 'Esta unidad de medida ya existe.',
             'unidad_abreviacion.required' => 'La abreviación es obligatoria.',
             'unidad_abreviacion.max' => 'La abreviación no puede tener más de 10 caracteres.',
-            'unidad_abreviacion.unique' => 'Esta abreviación ya está en uso.',
             'unidad_tipo.required' => 'El tipo de unidad es obligatorio.',
             'unidad_tipo.in' => 'El tipo de unidad debe ser: longitud, peso, volumen u otro.',
             'unidad_situacion.required' => 'El estado es obligatorio.',
@@ -95,23 +93,19 @@ class UnidadMedidaController extends Controller
                 'required', 
                 'string', 
                 'max:50',
-                Rule::unique('pro_unidades_medida', 'unidad_nombre')->ignore($unidadMedida->unidad_id, 'unidad_id')
             ],
             'unidad_abreviacion' => [
                 'required', 
                 'string', 
                 'max:10',
-                Rule::unique('pro_unidades_medida', 'unidad_abreviacion')->ignore($unidadMedida->unidad_id, 'unidad_id')
             ],
             'unidad_tipo' => 'required|string|max:20|in:longitud,peso,volumen,otro',
             'unidad_situacion' => 'required|integer|in:0,1',
         ], [
             'unidad_nombre.required' => 'El nombre de la unidad es obligatorio.',
             'unidad_nombre.max' => 'El nombre no puede tener más de 50 caracteres.',
-            'unidad_nombre.unique' => 'Esta unidad de medida ya existe.',
             'unidad_abreviacion.required' => 'La abreviación es obligatoria.',
             'unidad_abreviacion.max' => 'La abreviación no puede tener más de 10 caracteres.',
-            'unidad_abreviacion.unique' => 'Esta abreviación ya está en uso.',
             'unidad_tipo.required' => 'El tipo de unidad es obligatorio.',
             'unidad_tipo.in' => 'El tipo de unidad debe ser: longitud, peso, volumen u otro.',
             'unidad_situacion.required' => 'El estado es obligatorio.',
