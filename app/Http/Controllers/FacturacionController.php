@@ -1137,13 +1137,13 @@ public function certificarCambiaria(Request $request)
                         DB::table('pro_ventas')
                             ->where('ven_id', $venta->ven_id)
                             ->update([
-                                'ven_situacion' => 'EDITABLE',
+                                'ven_situacion' => 'PENDIENTE',
                                 'ven_observaciones' => $venta->ven_observaciones . " [Factura anulada (Corrección): " . $factura->fac_referencia . "]"
                             ]);
 
                         DB::table('pro_detalle_ventas')
                             ->where('det_ven_id', $venta->ven_id)
-                            ->update(['det_situacion' => 'EDITABLE']);
+                            ->update(['det_situacion' => 'PENDIENTE']);
 
                     } else {
                         // TIPO B: ANULACION COMPLETA
