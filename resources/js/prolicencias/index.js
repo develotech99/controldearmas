@@ -1336,7 +1336,7 @@ window.licenciasManager = function () {
       // 3) Validación defensiva
       for (const [i, a] of armas.entries()) {
         const falta = [];
-        if (!a.arma_num_licencia) falta.push('arma_num_licencia');
+        // if (!a.arma_num_licencia) falta.push('arma_num_licencia'); // REMOVED: Backend handles this
         if (!a.arma_sub_cat) falta.push('arma_sub_cat');
         if (!a.arma_modelo) falta.push('arma_modelo');
         if (!a.arma_calibre) falta.push('arma_calibre');
@@ -1609,7 +1609,7 @@ window.licenciasManager = function () {
       // 3) Validación defensiva
       for (const [i, a] of armas.entries()) {
         const falta = [];
-        if (!a.arma_num_licencia) falta.push('arma_num_licencia');
+        // if (!a.arma_num_licencia) falta.push('arma_num_licencia'); // REMOVED: Backend handles this
         if (!a.arma_sub_cat) falta.push('arma_sub_cat');
         if (!a.arma_modelo) falta.push('arma_modelo');
         if (!a.arma_calibre) falta.push('arma_calibre');
