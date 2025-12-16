@@ -756,7 +756,13 @@ class ClientesManager {
         try {
             const formData = new FormData(e.target);
 
+            // Si estamos editando, el select de tipo está deshabilitado y no se envía.
+            // Debemos agregarlo manualmente.
             if (this.isEditing) {
+                const tipoSelect = document.getElementById('cliente_tipo');
+                if (tipoSelect && !formData.has('cliente_tipo')) {
+                    formData.append('cliente_tipo', tipoSelect.value);
+                }
                 await this.updateCliente(this.editingClienteId, formData);
             } else {
                 await this.createCliente(formData);
