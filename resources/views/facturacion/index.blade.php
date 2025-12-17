@@ -55,13 +55,18 @@
                     <i class="fas fa-exclamation-triangle text-red-500"></i>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-bold text-red-800">¿Cómo anular una factura?</h3>
-                    <div class="mt-2 text-sm text-red-700">
+                    <h3 class="text-sm font-bold text-red-800">Advertencia sobre Anulación de Facturas</h3>
+                    <div class="mt-2 text-sm text-red-700 space-y-2">
                         <p>
-                            Para anular una factura, ve a la columna <strong>Acciones</strong> en la tabla inferior y haz clic en el botón rojo de eliminar <i class="fas fa-trash"></i>.
-                            <br>
-                            <strong>Importante:</strong> Al anular, los productos de esa venta regresarán a estado <strong>PENDIENTE</strong>, por lo que deberás volver a facturarlos si es necesario.
+                            <strong>No es recomendable anular facturas</strong> a menos que sea estrictamente necesario.
                         </p>
+                        <p>
+                            <span class="font-semibold">Consecuencias:</span> Al anular una factura (clic en el botón rojo <i class="fas fa-trash"></i>), la venta asociada regresará a estado <strong>PENDIENTE</strong>.
+                        </p>
+                        <ul class="list-disc list-inside ml-2">
+                            <li>Si la anulación fue por <strong>error en datos</strong> (dirección, NIT, etc.): Podrás buscar la venta nuevamente en "Nueva Factura" (por NIT o ID de venta) y volver a facturarla con los datos correctos.</li>
+                            <li>Si deseas <strong>eliminar la venta completamente</strong>: Solo un <strong>Administrador</strong> puede eliminar una venta que ha quedado en estado pendiente.</li>
+                        </ul>
                     </div>
                 </div>
             </div>
