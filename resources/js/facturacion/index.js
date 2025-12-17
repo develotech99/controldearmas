@@ -1644,7 +1644,7 @@ if (elTabla) {
                 const data = await res.json();
 
                 if (data.codigo === 1) {
-                    Swal.fire('Anulada', 'La factura ha sido anulada correctamente.', 'success');
+                    Swal.fire('Anulada', data.mensaje || 'La factura ha sido anulada correctamente.', 'success');
                     window.tablaFacturas.ajax.reload(null, false);
                 } else {
                     throw new Error(data.mensaje || 'Error al anular');
