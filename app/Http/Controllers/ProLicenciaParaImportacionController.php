@@ -504,6 +504,14 @@ class ProLicenciaParaImportacionController extends Controller
     // if (isset($licData['lipaimp_id'])) $licData['lipaimp_id'] = (int)$licData['lipaimp_id'];
     if (isset($licData['lipaimp_situacion']) && $licData['lipaimp_situacion'] !== '') $licData['lipaimp_situacion'] = (int)$licData['lipaimp_situacion'];
 
+    // Convertir strings vacíos a null para campos opcionales
+    if (array_key_exists('lipaimp_poliza', $licData) && trim($licData['lipaimp_poliza']) === '') {
+        $licData['lipaimp_poliza'] = null;
+    }
+    if (array_key_exists('lipaimp_observaciones', $licData) && trim($licData['lipaimp_observaciones']) === '') {
+        $licData['lipaimp_observaciones'] = null;
+    }
+
     $armasData = $validated['armas'];
     return [$licData, $armasData];
 }

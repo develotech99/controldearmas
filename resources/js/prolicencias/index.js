@@ -1510,7 +1510,7 @@ window.licenciasManager = function () {
           }
 
           if (pdfFile instanceof File) {
-            fd.append('pdfs', pdfFile);  // Sin [] porque el backend espera 'pdfs'
+            fd.append('pdfs[]', pdfFile);  // Usar [] para array de archivos
             validFiles++;
             console.log(`  ✅ Archivo agregado al FormData:`, {
               name: pdfFile.name,
