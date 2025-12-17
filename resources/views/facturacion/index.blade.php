@@ -47,6 +47,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- Alerta Informativa: Anulación de Factura -->
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-red-500"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-red-800">¿Cómo anular una factura?</h3>
+                    <div class="mt-2 text-sm text-red-700">
+                        <p>
+                            Para anular una factura, ve a la columna <strong>Acciones</strong> en la tabla inferior y haz clic en el botón rojo de eliminar <i class="fas fa-trash"></i>.
+                            <br>
+                            <strong>Importante:</strong> Al anular, los productos de esa venta regresarán a estado <strong>PENDIENTE</strong>, por lo que deberás volver a facturarlos si es necesario.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
 
         <!-- Sección de Consulta Rápida DTE -->
