@@ -1145,6 +1145,66 @@ public function certificarCambiaria(Request $request)
                             ->where('det_ven_id', $venta->ven_id)
                             ->update(['det_situacion' => 'PENDIENTE']);
 
+                        // REVERTIR MOVIMIENTOS A "RESERVADO" (3)
+                        // Al facturar se pasaron a 1 (Vendido). Al anular para corregir, deben volver a 3 (Reservado)
+                        // para que el sistema sepa que el stock sigue apartado para esta venta.
+                        $refVenta = 'VENTA-' . $venta->ven_id;
+                        
+                        // 1. Revertir movimientos de series
+                        $movsSeries = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', $refVenta)
+                            ->where('mov_situacion', 1) // Vendido
+                            ->whereNotNull('mov_serie_id')
+                            ->get();
+
+                        foreach ($movsSeries as $mov) {
+                            // Volver movimiento a reservado
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $mov->mov_id)
+                                ->update(['mov_situacion' => 3]);
+
+                            // Volver serie a reservada (o pendiente/vendido? En reserva es 'pendiente' o 'vendido'?)
+                            // En reserva la serie suele estar en 'pendiente' o 'reservado'.
+                            // Al vender se pone 'vendido'.
+                            // Vamos a ponerla en 'vendido' pero con movimiento reservado? No, mejor 'pendiente' o 'reservado'.
+                            // Revisando VentasController: al reservar se pone 'pendiente' (0) o 'reservado'?.
+                            // En VentasController store: 'serie_estado' => 'pendiente', 'serie_situacion' => 0.
+                            // Vamos a regresarlo a 'pendiente' para que coincida con una venta no facturada.
+                            DB::table('pro_series_productos')
+                                ->where('serie_id', $mov->mov_serie_id)
+                                ->update(['serie_estado' => 'pendiente', 'serie_situacion' => 0]);
+                        }
+
+                        // 2. Revertir movimientos generales (sin serie)
+                        DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', $refVenta)
+                            ->where('mov_situacion', 1) // Vendido
+                            ->whereNull('mov_serie_id')
+                            ->update(['mov_situacion' => 3]); // Reservado
+
+                        // 3. Revertir Stock Numérico
+                        // Al facturar se hizo: Reserved -1, Total -1, Available -1 (maybe).
+                        // Al anular (corregir): Debemos devolverlo a estado "Reservado".
+                        // Estado Reservado: Reserved +1, Total +1. (Available se queda igual porque ya estaba reservado).
+                        
+                        // Iteramos sobre los detalles para saber qué productos
+                        foreach ($factura->detalle as $detFac) {
+                            $prodId = $detFac->det_fac_producto_id;
+                            $qty = $detFac->det_fac_cantidad;
+                            
+                            DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $prodId)
+                                ->increment('stock_cantidad_reservada', $qty);
+
+                            DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $prodId)
+                                ->increment('stock_cantidad_total', $qty);
+                                
+                            DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $prodId)
+                                ->increment('stock_cantidad_disponible', $qty);
+                        }
+
                     } else {
                         // TIPO B: ANULACION COMPLETA
                         // Revertimos stock y cancelamos venta
