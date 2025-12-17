@@ -593,9 +593,13 @@ class ClientesManager {
         this.renderEmpresasTable(cliente.empresas || []);
         this.resetEmpresaForm();
 
-        const modal = document.getElementById('empresas-modal');
-        modal.classList.remove('hidden');
-        document.body.classList.add('overflow-hidden');
+        const modal = document.getElementById('empresa-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        } else {
+            console.error('Modal de empresas no encontrado (ID: empresa-modal)');
+        }
 
         // Setup form listener
         const form = document.getElementById('empresa-form');

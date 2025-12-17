@@ -1127,6 +1127,11 @@ public function certificarCambiaria(Request $request)
                                 ->where('det_id', $detFac->det_fac_detalle_venta_id)
                                 ->decrement('det_cantidad_facturada', $detFac->det_fac_cantidad);
                         }
+                        
+                        // Eliminar registros de facturacion_series para liberar la serie de esta factura anulada
+                        DB::table('facturacion_series')
+                            ->where('fac_detalle_id', $detFac->det_fac_id)
+                            ->delete();
                     }
 
                     if ($tipoAnulacion === 'corregir') {
@@ -1344,7 +1349,7 @@ public function certificarCambiaria(Request $request)
                      ->whereRaw("m.mov_documento_referencia = CONCAT('VENTA-', v.ven_id)");
             })
             ->leftJoin('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
-            ->whereIn('v.ven_situacion', ['PENDIENTE', 'AUTORIZADA']) // Solo ventas pendientes de facturar
+            ->whereIn('v.ven_situacion', ['PENDIENTE', 'AUTORIZADA', 'COMPLETADA']) // Include COMPLETADA to allow partial billing or corrections
             ->where(function($q) use ($busqueda) {
                 $q->where('v.ven_id', $busqueda)
                   ->orWhere('c.cliente_nombre1', 'LIKE', "%{$busqueda}%")
