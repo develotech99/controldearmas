@@ -607,9 +607,11 @@ class ClientesManager {
     }
 
     closeEmpresasModal() {
-        const modal = document.getElementById('empresas-modal');
-        modal.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
+        const modal = document.getElementById('empresa-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
     }
 
     renderEmpresasTable(empresas) {
