@@ -569,7 +569,7 @@ class PagosController extends Controller
 
                 foreach ($admins as $admin) {
                     if ($admin->email) {
-                        Mail::to($admin->email)->send(new NotificarpagoMail($payload, $request->file('comprobante')));
+                        Mail::to($admin->email)->send(new \App\Mail\NotificarpagoMail($payload, $path, 'VENTA'));
                     }
                 }
             } catch (\Throwable $me) {

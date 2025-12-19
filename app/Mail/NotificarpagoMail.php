@@ -14,20 +14,31 @@ class NotificarpagoMail extends Mailable
 
     public array $payload;
     protected $comprobante;
+    protected $tipo;
 
-    public function __construct(array $payload, $comprobante = null)
+    public function __construct(array $payload, $comprobante = null, $tipo = 'VENTA')
     {
         $this->payload     = $payload;
         $this->comprobante = $comprobante;
+        $this->tipo        = $tipo;
     }
 
     public function build()
     {
+        $subject = 'Pago enviado - Venta #' . ($this->payload['venta_id'] ?? 'N/A');
 
-        $mail = $this->subject('Pago enviado - Venta #' . $this->payload['venta_id'])
+        if ($this->tipo === 'PREVENTA') {
+            $subject = 'Comprobante de Preventa - #' . ($this->payload['preventa_id'] ?? 'N/A');
+        } elseif ($this->tipo === 'DEUDA') {
+            $cliente = $this->payload['cliente']['nombre'] ?? 'Cliente';
+            $subject = 'Pago de Deuda - ' . $cliente;
+        }
+
+        $mail = $this->subject($subject)
             ->view('emails.NotificarPago')
             ->with(array_merge($this->payload, [
                 'logoCid' => 'cid:logo-proarmas',
+                'tipo'    => $this->tipo,
             ]));
 
         if ($this->comprobante instanceof UploadedFile) {

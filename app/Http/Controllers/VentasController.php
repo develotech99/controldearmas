@@ -3263,7 +3263,7 @@ public function procesarVenta(Request $request): JsonResponse
 
                         foreach ($admins as $admin) {
                             if ($admin->email) {
-                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath));
+                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath, 'VENTA'));
                             }
                         }
                     } catch (\Exception $e) {

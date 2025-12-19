@@ -5,7 +5,15 @@
     <meta charset="utf-8">
     <meta name="x-apple-disable-message-reformatting">
     <meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no">
-    <title>Nuevo comprobante recibido — Venta #{{ $venta_id }}</title>
+    <title>
+        @if(($tipo ?? 'VENTA') === 'PREVENTA')
+            Nuevo comprobante de Preventa
+        @elseif(($tipo ?? 'VENTA') === 'DEUDA')
+            Nuevo pago de Deuda
+        @else
+            Nuevo comprobante recibido — Venta #{{ $venta_id }}
+        @endif
+    </title>
 </head>
 
 <body style="margin:0;padding:0;background:#f4f6f8;">
@@ -37,7 +45,13 @@
                                             <tr>
                                                 <td align="right"
                                                     style="font-family:Arial,Helvetica,sans-serif;color:#9aa1ad;font-size:12px;white-space:nowrap;">
+                                                @if(($tipo ?? 'VENTA') === 'PREVENTA')
+                                                    Comprobante de Preventa
+                                                @elseif(($tipo ?? 'VENTA') === 'DEUDA')
+                                                    Pago de Deuda
+                                                @else
                                                     Venta #{{ $venta_id }}
+                                                @endif
                                                 </td>
                                             </tr>
                                             <tr>
@@ -95,6 +109,11 @@
                                             style="color:#f97316;text-decoration:none;">
                                             ({{ $cliente['email'] }})
                                         </a>
+                                        @endif
+                                        @if(!empty($empresa))
+                                        <div style="font-size:12px;color:#6b7280;margin-top:2px;">
+                                            Empresa: {{ $empresa }}
+                                        </div>
                                         @endif
                                     </td>
                                 </tr>
@@ -156,6 +175,37 @@
                                     </td>
                                 </tr>
                             </table>
+
+                            @if(($tipo ?? 'VENTA') === 'PREVENTA' && !empty($productos))
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="margin-top:10px;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;border-top:1px solid #edf0f2;">
+                                <tr>
+                                    <td colspan="3"
+                                        style="padding:12px 0 10px;color:#f97316;font-weight:700;font-size:12px;letter-spacing:.06em;
+                                     text-transform:uppercase;">
+                                        Detalle de Productos
+                                    </td>
+                                </tr>
+                                <tr style="background:#f9fafb;color:#6b7280;font-size:11px;text-transform:uppercase;">
+                                    <th style="padding:8px;text-align:left;">Producto</th>
+                                    <th style="padding:8px;text-align:center;">Cant.</th>
+                                    <th style="padding:8px;text-align:right;">Precio</th>
+                                </tr>
+                                @foreach($productos as $prod)
+                                <tr>
+                                    <td style="padding:8px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">
+                                        {{ $prod['nombre'] }}
+                                    </td>
+                                    <td style="padding:8px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:center;">
+                                        {{ $prod['cantidad'] }}
+                                    </td>
+                                    <td style="padding:8px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">
+                                        Q {{ number_format($prod['precio'], 2) }}
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </table>
+                            @endif
 
                             <!-- Comparativa (opcional, se mantiene) -->
                             @php
