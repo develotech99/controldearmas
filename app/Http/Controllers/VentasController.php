@@ -3227,7 +3227,7 @@ public function procesarVenta(Request $request): JsonResponse
                     'det_pago_banco_id'         => $pagoData['banco_id'] ?? null,
                     'det_pago_numero_autorizacion' => $pagoData['numero_autorizacion'] ?? null,
                     'det_pago_tipo_pago'        => 'PAGO_UNICO',
-                    'det_pago_estado'           => 'PENDIENTE',
+                    'det_pago_estado'           => 'PENDIENTE_VALIDACION',
                     'det_pago_observaciones'    => 'Pago principal de la venta (Pendiente de autorización)',
                     'det_pago_imagen_boucher'   => $comprobantePath, // Guardar comprobante
                     'det_pago_usuario_registro' => auth()->id(),
