@@ -16,7 +16,7 @@
                             @if(!empty($logoBase64))
                                 <img src="{{ $logoBase64 }}" alt="Logo" style="max-width:150px;height:auto;display:block;margin:0 auto;">
                             @else
-                                <h1 style="margin:0;color:#ffffff;font-size:24px;">Armería Control Pro</h1>
+                                <h1 style="margin:0;color:#ffffff;font-size:24px;">Pro Armas</h1>
                             @endif
                         </td>
                     </tr>

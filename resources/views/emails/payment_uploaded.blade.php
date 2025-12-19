@@ -33,6 +33,10 @@
             <a href="{{ url('/pagos') }}" class="btn">Ir a Administrar Pagos</a>
         </div>
 
+        <div style="text-align: center;">
+            <a href="{{ url('/reportes') }}" class="btn">Sí no ha sido autorizada,  Ir a Autorizar venta</a>
+        </div>
+
         <div class="footer">
             <p>Este es un correo automático, por favor no responder.</p>
         </div>
