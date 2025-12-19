@@ -3078,38 +3078,45 @@ class InventarioManager {
                     // Check for specific duplicate series error
                     if (data.message && data.message.includes('Una o más series ya existen')) {
 
-                        // Play warning sound
+                        // Play warning sound loop
+                        let soundInterval;
                         const playWarningSound = () => {
                             try {
                                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                const osc = ctx.createOscillator();
-                                const gain = ctx.createGain();
+                                const playBeep = () => {
+                                    const osc = ctx.createOscillator();
+                                    const gain = ctx.createGain();
 
-                                osc.connect(gain);
-                                gain.connect(ctx.destination);
+                                    osc.connect(gain);
+                                    gain.connect(ctx.destination);
 
-                                osc.type = 'sawtooth';
-                                osc.frequency.value = 200; // Low frequency for "Error"
+                                    osc.type = 'sawtooth';
+                                    osc.frequency.value = 200; // Low frequency for "Error"
 
-                                gain.gain.setValueAtTime(0.5, ctx.currentTime);
-                                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                                    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
 
-                                osc.start();
-                                osc.stop(ctx.currentTime + 0.5);
+                                    osc.start();
+                                    osc.stop(ctx.currentTime + 0.5);
 
-                                // Second beep
-                                setTimeout(() => {
-                                    const osc2 = ctx.createOscillator();
-                                    const gain2 = ctx.createGain();
-                                    osc2.connect(gain2);
-                                    gain2.connect(ctx.destination);
-                                    osc2.type = 'sawtooth';
-                                    osc2.frequency.value = 150;
-                                    gain2.gain.setValueAtTime(0.5, ctx.currentTime);
-                                    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-                                    osc2.start();
-                                    osc2.stop(ctx.currentTime + 0.5);
-                                }, 200);
+                                    // Second beep
+                                    setTimeout(() => {
+                                        const osc2 = ctx.createOscillator();
+                                        const gain2 = ctx.createGain();
+                                        osc2.connect(gain2);
+                                        gain2.connect(ctx.destination);
+                                        osc2.type = 'sawtooth';
+                                        osc2.frequency.value = 150;
+                                        gain2.gain.setValueAtTime(0.5, ctx.currentTime);
+                                        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                                        osc2.start();
+                                        osc2.stop(ctx.currentTime + 0.5);
+                                    }, 200);
+
+                                };
+
+                                playBeep(); // Play immediately
+                                soundInterval = setInterval(playBeep, 1500); // Loop every 1.5 seconds
 
                             } catch (e) {
                                 console.error('Audio play failed', e);
@@ -3242,7 +3249,12 @@ class InventarioManager {
                                 rgba(120,0,0,0.7)
                                 left top
                                 no-repeat
-                            `
+                            `,
+                            willClose: () => {
+                                if (soundInterval) {
+                                    clearInterval(soundInterval);
+                                }
+                            }
                         });
                     } else {
                         this.showAlert('error', 'Error', data.message || 'Error al procesar la solicitud');
