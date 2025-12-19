@@ -990,6 +990,39 @@ public function getPaisesActivos(): JsonResponse
                 ]
             ]);
     
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollback();
+            
+            if ($e->getCode() == 23000) {
+                // Duplicate entry error
+                if (str_contains($e->getMessage(), 'unique_serie_per_product')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error: Una o más series ya existen para este producto. Verifique los números de serie.'
+                    ], 422);
+                }
+                if (str_contains($e->getMessage(), 'pro_lotes_lote_codigo_unique')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error: El código de lote ya existe. Intente con otro código.'
+                    ], 422);
+                }
+                 if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                     // Generic duplicate entry fallback
+                      preg_match("/Duplicate entry '(.*)' for key/", $e->getMessage(), $matches);
+                      $value = $matches[1] ?? 'valor duplicado';
+                      return response()->json([
+                        'success' => false,
+                        'message' => "Error: Registro duplicado detectado ($value). Verifique que no esté ingresando datos ya existentes."
+                    ], 422);
+                 }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de base de datos: ' . $e->getMessage()
+            ], 500);
+
         } catch (\Exception $e) {
             DB::rollback();
             

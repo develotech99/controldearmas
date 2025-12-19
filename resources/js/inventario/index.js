@@ -3075,7 +3075,37 @@ class InventarioManager {
                 if (data.errors) {
                     this.showValidationErrors('ingreso', data.errors);
                 } else {
-                    this.showAlert('error', 'Error', data.message || 'Error al procesar la solicitud');
+                    // Check for specific duplicate series error
+                    if (data.message && data.message.includes('Una o más series ya existen')) {
+                        Swal.fire({
+                            title: '¡ALERTA DE SEGURIDAD! 🚫🔫',
+                            html: `
+                                <div class="text-left">
+                                    <p class="mb-4 font-bold text-lg text-red-600">¡DETENTE! ESTA SERIE YA EXISTE EN EL SISTEMA</p>
+                                    <p class="mb-2">⚠️ <strong>La serie que intentas ingresar ya fue registrada anteriormente.</strong></p>
+                                    <p class="mb-2">Esto puede significar que:</p>
+                                    <ul class="list-disc pl-5 mb-4 text-sm">
+                                        <li>El arma ya fue vendida anteriormente.</li>
+                                        <li>El arma tuvo un egreso manual.</li>
+                                        <li>Se está intentando duplicar un registro único.</li>
+                                    </ul>
+                                    <p class="font-bold text-red-500">VERIFICA EL NÚMERO DE SERIE FÍSICO Y EL HISTORIAL DEL ARMA.</p>
+                                </div>
+                            `,
+                            icon: 'error',
+                            confirmButtonText: 'ENTENDIDO, VERIFICARÉ',
+                            confirmButtonColor: '#d33',
+                            width: '600px',
+                            padding: '2em',
+                            backdrop: `
+                                rgba(0,0,123,0.4)
+                                left top
+                                no-repeat
+                            `
+                        });
+                    } else {
+                        this.showAlert('error', 'Error', data.message || 'Error al procesar la solicitud');
+                    }
                 }
             }
         } catch (error) {
