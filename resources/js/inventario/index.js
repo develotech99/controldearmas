@@ -55,149 +55,155 @@ class InventarioManager {
      * Configurar event listeners
      */
     setupEventListeners() {
-        // Filtros
-        document.getElementById('search-productos').addEventListener('input', (e) => {
-            this.filtros.search = e.target.value;
-            this.aplicarFiltros();
-        });
+        console.log('Setting up event listeners...');
+        try {
+            console.log('Setting up event listeners...');
+            // Filtros
+            document.getElementById('search-productos').addEventListener('input', (e) => {
+                this.filtros.search = e.target.value;
+                this.aplicarFiltros();
+            });
 
-        document.getElementById('filter-categoria').addEventListener('change', (e) => {
-            this.filtros.categoria = e.target.value;
-            this.aplicarFiltros();
-        });
+            document.getElementById('filter-categoria').addEventListener('change', (e) => {
+                this.filtros.categoria = e.target.value;
+                this.aplicarFiltros();
+            });
 
-        document.getElementById('filter-stock').addEventListener('change', (e) => {
-            this.filtros.stock = e.target.value;
-            this.aplicarFiltros();
-        });
+            document.getElementById('filter-stock').addEventListener('change', (e) => {
+                this.filtros.stock = e.target.value;
+                this.aplicarFiltros();
+            });
 
-        // Formularios
-        document.getElementById('registro-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleRegistroSubmit();
-        });
+            // Formularios
+            document.getElementById('registro-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegistroSubmit();
+            });
 
-        document.getElementById('ingreso-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleIngresoSubmit();
-        });
+            document.getElementById('ingreso-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleIngresoSubmit();
+            });
 
-        // Búsqueda de productos para ingreso
-        document.getElementById('buscar_producto').addEventListener('input', (e) => {
-            this.buscarProductos(e.target.value);
-        });
+            // Búsqueda de productos para ingreso
+            document.getElementById('buscar_producto').addEventListener('input', (e) => {
+                this.buscarProductos(e.target.value);
+            });
 
-        // Cambios en categoría para cargar subcategorías
-        document.getElementById('producto_categoria').addEventListener('change', (e) => {
-            this.loadSubcategorias(e.target.value);
-        });
+            // Cambios en categoría para cargar subcategorías
+            document.getElementById('producto_categoria').addEventListener('change', (e) => {
+                this.loadSubcategorias(e.target.value);
+            });
 
-        // Cambios en marca para cargar modelos
-        document.getElementById('producto_marca').addEventListener('change', (e) => {
-            this.loadModelos(e.target.value);
-        });
+            // Cambios en marca para cargar modelos
+            document.getElementById('producto_marca').addEventListener('change', (e) => {
+                this.loadModelos(e.target.value);
+            });
 
-        // Cerrar modales con ESC
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeModal('registro');
-                this.closeModal('ingreso');
+            // Cerrar modales con ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.closeModal('registro');
+                    this.closeModal('ingreso');
+                }
+            });
+
+
+            // Búsqueda de licencias
+            const buscarLicenciaInput = document.getElementById('buscar_licencia');
+            if (buscarLicenciaInput) {
+                buscarLicenciaInput.addEventListener('input', (e) => {
+                    this.buscarLicencias(e.target.value);
+                });
             }
-        });
 
-
-        // Búsqueda de licencias
-        const buscarLicenciaInput = document.getElementById('buscar_licencia');
-        if (buscarLicenciaInput) {
-            buscarLicenciaInput.addEventListener('input', (e) => {
-                this.buscarLicencias(e.target.value);
+            // Radio buttons para generar lote  
+            document.querySelectorAll('input[name="generar_lote"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.toggleLoteInput(e.target.value);
+                });
             });
-        }
 
-        // Radio buttons para generar lote  
-        document.querySelectorAll('input[name="generar_lote"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.toggleLoteInput(e.target.value);
-            });
-        });
+            // Contador de series
+            const numerosSeriesInput = document.getElementById('numeros_series');
+            if (numerosSeriesInput) {
+                numerosSeriesInput.addEventListener('input', (e) => {
+                    this.contarSeries(e.target.value);
+                });
+            }
 
-        // Contador de series
-        const numerosSeriesInput = document.getElementById('numeros_series');
-        if (numerosSeriesInput) {
-            numerosSeriesInput.addEventListener('input', (e) => {
-                this.contarSeries(e.target.value);
-            });
-        }
-
-        // Checkbox para agregar precios
-        const checkboxPrecios = document.getElementById('agregar_precios');
-        if (checkboxPrecios) {
-            checkboxPrecios.addEventListener('change', (e) => {
-                const seccionPrecios = document.getElementById('seccion_precios');
-                if (seccionPrecios) {
-                    if (e.target.checked) {
-                        seccionPrecios.classList.remove('hidden');
-                    } else {
-                        seccionPrecios.classList.add('hidden');
+            // Checkbox para agregar precios
+            const checkboxPrecios = document.getElementById('agregar_precios');
+            if (checkboxPrecios) {
+                checkboxPrecios.addEventListener('change', (e) => {
+                    const seccionPrecios = document.getElementById('seccion_precios');
+                    if (seccionPrecios) {
+                        if (e.target.checked) {
+                            seccionPrecios.classList.remove('hidden');
+                        } else {
+                            seccionPrecios.classList.add('hidden');
+                        }
                     }
-                }
-            });
-        }
+                });
+            }
 
-        // Checkbox para producto importado
-        const checkboxImportado = document.getElementById('producto_es_importado');
-        if (checkboxImportado) {
-            checkboxImportado.addEventListener('change', (e) => {
-                const seccionLicencia = document.getElementById('seccion_licencia_registro');
-                if (seccionLicencia) {
-                    if (e.target.checked) {
-                        seccionLicencia.classList.remove('hidden');
-                    } else {
-                        seccionLicencia.classList.add('hidden');
-                        this.limpiarLicenciaSeleccionadaRegistro();
+            // Checkbox para producto importado
+            const checkboxImportado = document.getElementById('producto_es_importado');
+            if (checkboxImportado) {
+                checkboxImportado.addEventListener('change', (e) => {
+                    const seccionLicencia = document.getElementById('seccion_licencia_registro');
+                    if (seccionLicencia) {
+                        if (e.target.checked) {
+                            seccionLicencia.classList.remove('hidden');
+                        } else {
+                            seccionLicencia.classList.add('hidden');
+                            this.limpiarLicenciaSeleccionadaRegistro();
+                        }
                     }
-                }
+                });
+            }
+
+            // Búsqueda de licencias en registro
+            const buscarLicenciaRegistro = document.getElementById('buscar_licencia_registro');
+            if (buscarLicenciaRegistro) {
+                buscarLicenciaRegistro.addEventListener('input', (e) => {
+                    this.buscarLicenciasRegistro(e.target.value);
+                });
+            }
+
+
+            const checkboxUsarLotes = document.getElementById('usar_lotes');
+            if (checkboxUsarLotes) {
+                checkboxUsarLotes.addEventListener('change', (e) => {
+                    const opcionesLote = document.getElementById('opciones_lote');
+                    if (e.target.checked) {
+                        opcionesLote.classList.remove('hidden');
+                        this.configurarTipoLote('automatico'); // Por defecto automático
+                    } else {
+                        opcionesLote.classList.add('hidden');
+                        this.limpiarConfiguracionLotes();
+                    }
+                });
+            }
+
+            // NUEVO: Radio buttons para tipo de lote
+            document.querySelectorAll('input[name="tipo_lote"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.configurarTipoLote(e.target.value);
+                });
             });
+
+            document.getElementById('egreso-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEgresoSubmit();
+            });
+
+            document.getElementById('buscar_producto_egreso').addEventListener('input', (e) => {
+                this.buscarProductosEgreso(e.target.value);
+            });
+        } catch (error) {
+            console.error('Error in setupEventListeners:', error);
         }
-
-        // Búsqueda de licencias en registro
-        const buscarLicenciaRegistro = document.getElementById('buscar_licencia_registro');
-        if (buscarLicenciaRegistro) {
-            buscarLicenciaRegistro.addEventListener('input', (e) => {
-                this.buscarLicenciasRegistro(e.target.value);
-            });
-        }
-
-
-        const checkboxUsarLotes = document.getElementById('usar_lotes');
-        if (checkboxUsarLotes) {
-            checkboxUsarLotes.addEventListener('change', (e) => {
-                const opcionesLote = document.getElementById('opciones_lote');
-                if (e.target.checked) {
-                    opcionesLote.classList.remove('hidden');
-                    this.configurarTipoLote('automatico'); // Por defecto automático
-                } else {
-                    opcionesLote.classList.add('hidden');
-                    this.limpiarConfiguracionLotes();
-                }
-            });
-        }
-
-        // NUEVO: Radio buttons para tipo de lote
-        document.querySelectorAll('input[name="tipo_lote"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.configurarTipoLote(e.target.value);
-            });
-        });
-
-        document.getElementById('egreso-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleEgresoSubmit();
-        });
-
-        document.getElementById('buscar_producto_egreso').addEventListener('input', (e) => {
-            this.buscarProductosEgreso(e.target.value);
-        });
 
         const buscarLoteInput = document.getElementById('buscar_lote');
         if (buscarLoteInput) {
@@ -322,8 +328,13 @@ class InventarioManager {
     }
 
     openEgresoModal() {
-        this.resetEgresoForm();
-        this.showModal('egreso');
+        console.log('Opening Egreso Modal');
+        try {
+            this.resetEgresoForm();
+            this.showModal('egreso');
+        } catch (error) {
+            console.error('Error opening Egreso Modal:', error);
+        }
     }
 
     egresoRapido(productoId) {
@@ -2857,15 +2868,25 @@ class InventarioManager {
      * Abrir modal de registro de producto
      */
     openRegistroModal() {
-        this.resetRegistroForm();
-        this.showModal('registro');
+        console.log('Opening Registro Modal');
+        try {
+            this.resetRegistroForm();
+            this.showModal('registro');
+        } catch (error) {
+            console.error('Error opening Registro Modal:', error);
+        }
     }
 
     /**
      * Abrir modal de ingreso a inventario
      */
     openIngresoModal() {
-        this.showModal('ingreso');
+        console.log('Opening Ingreso Modal');
+        try {
+            this.showModal('ingreso');
+        } catch (error) {
+            console.error('Error opening Ingreso Modal:', error);
+        }
     }
 
 
@@ -3381,9 +3402,18 @@ class InventarioManager {
      * Mostrar modal
      */
     showModal(type) {
-        const modal = document.getElementById(`${type}-modal`);
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        console.log(`Showing modal: ${type}`);
+        try {
+            const modal = document.getElementById(`${type}-modal`);
+            if (!modal) {
+                console.error(`Modal ${type}-modal not found!`);
+                return;
+            }
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        } catch (error) {
+            console.error(`Error showing modal ${type}:`, error);
+        }
     }
 
     /**
@@ -5859,7 +5889,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Inicializar el gestor de inventario
-    window.inventarioManager = new InventarioManager();
-
-    console.log('Sistema de inventario inicializado correctamente');
+    try {
+        window.inventarioManager = new InventarioManager();
+        console.log('Sistema de inventario inicializado correctamente');
+    } catch (error) {
+        console.error('Error initializing InventarioManager:', error);
+    }
 });
