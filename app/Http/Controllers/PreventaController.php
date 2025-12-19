@@ -10,6 +10,8 @@ use App\Models\ClienteSaldoHistorial;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NotificarpagoMail;
 
 class PreventaController extends Controller
 {
@@ -103,6 +105,64 @@ class PreventaController extends Controller
                     'created_at'                => now(),
                     'updated_at'                => now(),
                 ]);
+
+                // Notificar al administrador si hay comprobante (aunque actualmente sea null, se deja preparado)
+                if (isset($request->comprobante) || (isset($path) && $path)) { // Check if file exists (logic to be added if file upload is implemented)
+                     // For now, since ps_imagen_path is null, this won't trigger unless logic changes. 
+                     // But adhering to "whenever a proof is uploaded".
+                     // If we want to support it now, we need to add file handling.
+                     // Assuming the user wants the LOGIC in place.
+                }
+                
+                // Let's implement the file handling if it's in the request, similar to DeudasController
+                $comprobantePath = null;
+                if ($request->hasFile('comprobante')) {
+                     $file = $request->file('comprobante');
+                     $filename = 'pagos_subidos/' . uniqid() . '.' . $file->getClientOriginalExtension();
+                     $comprobantePath = $file->storeAs('pagos_subidos', basename($filename), 'public');
+                     
+                     // Update the inserted record with the path
+                     DB::table('pro_pagos_subidos')
+                        ->where('ps_preventa_id', $preventa->prev_id)
+                        ->where('ps_monto_comprobante', $request->monto_pagado)
+                        ->update(['ps_imagen_path' => $comprobantePath, 'ps_estado' => 'PENDIENTE_VALIDACION']);
+                }
+
+                if ($comprobantePath) {
+                    try {
+                        $admins = \App\Models\User::whereHas('rol', function($q){
+                            $q->where('nombre', 'administrador');
+                        })->get();
+
+                        $cliente = Cliente::find($request->cliente_id);
+
+                        $payload = [
+                            'venta_id' => 'PRE-' . $preventa->prev_id,
+                            'vendedor' => auth()->user()->name,
+                            'cliente' => [
+                                'nombre' => $cliente ? ($cliente->cliente_nombre1 . ' ' . $cliente->cliente_apellido1) : 'Cliente',
+                                'email' => $cliente->cliente_email ?? 'No registrado'
+                            ],
+                            'fecha' => now()->format('d/m/Y H:i'),
+                            'monto' => $request->monto_pagado,
+                            'banco_nombre' => $request->banco_id ? DB::table('pro_bancos')->where('banco_id', $request->banco_id)->value('banco_nombre') : 'No especificado',
+                            'banco_id' => $request->banco_id,
+                            'referencia' => $request->referencia ?? 'No especificada',
+                            'concepto' => $concepto,
+                            'cuotas' => 1,
+                            'monto_total' => $total
+                        ];
+
+                        foreach ($admins as $admin) {
+                            if ($admin->email) {
+                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Log error but don't fail transaction
+                        \Illuminate\Support\Facades\Log::error('Error enviando notificación de preventa: ' . $e->getMessage());
+                    }
+                }
             }
 
             DB::commit();

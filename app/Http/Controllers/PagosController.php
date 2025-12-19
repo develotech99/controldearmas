@@ -947,17 +947,33 @@ class PagosController extends Controller
                             $q->where('nombre', 'administrador');
                         })->get();
 
-                        $pagoData = [
+                        // Obtener datos del cliente para el correo
+                        $venta = DB::table('pro_ventas')->where('ven_id', $ventaId)->first();
+                        $cliente = null;
+                        if ($venta) {
+                             $cliente = DB::table('pro_clientes')->where('cliente_id', $venta->ven_cliente_id)->first();
+                        }
+
+                        $payload = [
                             'venta_id' => $ventaId,
+                            'vendedor' => auth()->user()->name,
+                            'cliente' => [
+                                'nombre' => $cliente ? ($cliente->cliente_nombre1 . ' ' . $cliente->cliente_apellido1) : 'Cliente',
+                                'email' => $cliente->cliente_email ?? 'No registrado'
+                            ],
+                            'fecha' => now()->format('d/m/Y H:i'),
                             'monto' => $montoBase,
-                            'banco' => DB::table('pro_bancos')->where('banco_id', $request->banco_id)->value('banco_nombre'),
-                            'no_autorizacion' => $request->numero_autorizacion,
-                            'fecha_pago' => $request->fecha_pago ?? now(),
+                            'banco_nombre' => DB::table('pro_bancos')->where('banco_id', $request->banco_id)->value('banco_nombre'),
+                            'banco_id' => $request->banco_id,
+                            'referencia' => $request->numero_autorizacion,
+                            'concepto' => 'Pago Único (Actualización) - Venta #' . $ventaId,
+                            'cuotas' => 1,
+                            'monto_total' => $montoBase
                         ];
 
                         foreach ($admins as $admin) {
                             if ($admin->email) {
-                                \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\PaymentUploadedNotification($pagoData, $path));
+                                \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\NotificarpagoMail($payload, $path));
                             }
                         }
                     } catch (\Exception $e) {

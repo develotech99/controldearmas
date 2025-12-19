@@ -5,14 +5,13 @@
     <meta charset="utf-8">
     <meta name="x-apple-disable-message-reformatting">
     <meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no">
-    <title>Nuevo comprobante recibido — Venta #{{ $venta_id }}</title>
+    <title>Nueva Venta Realizada — Folio #{{ $venta_id }}</title>
 </head>
 
 <body style="margin:0;padding:0;background:#f4f6f8;">
     <!-- preheader (oculto) -->
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-        Se recibió un comprobante del cliente {{ $cliente['nombre'] }} para la venta #{{ $venta_id }}. Acción
-        requerida: validar.
+        Nueva venta registrada por {{ $vendedor }}. Cliente: {{ $cliente['nombre'] }}. Total: Q {{ number_format((float) $total, 2) }}.
     </div>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;">
@@ -23,7 +22,7 @@
                     style="max-width:640px;background:#ffffff;border:1px solid #eaecee;border-radius:14px;overflow:hidden;">
 
                     <tr>
-                        <td style="padding:18px 22px;border-bottom:4px solid #f97316;">
+                        <td style="padding:18px 22px;border-bottom:4px solid #3b82f6;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td valign="top" style="width:88px;">
@@ -37,24 +36,27 @@
                                             <tr>
                                                 <td align="right"
                                                     style="font-family:Arial,Helvetica,sans-serif;color:#9aa1ad;font-size:12px;white-space:nowrap;">
-                                                    Venta #{{ $venta_id }}
+                                                    Folio #{{ $venta_id }}
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;">
                                                     <span
-                                                        style="display:inline-block;background:#fff7ed;border:1px solid #f97316;color:#f97316;
+                                                        style="display:inline-block;background:#eff6ff;border:1px solid #3b82f6;color:#3b82f6;
                          padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;">
-                                                        ✓ Comprobante recibido
+                                                        ✓ Nueva Venta Registrada
                                                     </span>
                                                     <div
                                                         style="color:#111827;font-size:20px;font-weight:800;margin:8px 0 2px;">
-                                                        Revisión y validación requerida
+                                                        Pendiente de Autorización
                                                     </div>
 
                                                     <div style="color:#6b7280;font-size:12px;">
-                                                        Verifica el monto, referencia y aplica la validación
-                                                        correspondiente.
+                                                        @if($metodo_pago_id == 1)
+                                                            Venta en Efectivo. El dinero se encuentra en tienda física.
+                                                        @else
+                                                            Venta registrada. Se requiere validar el comprobante de pago.
+                                                        @endif
                                                     </div>
                                                 </td>
                                             </tr>
@@ -73,9 +75,9 @@
                                 style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;">
                                 <tr>
                                     <td colspan="2"
-                                        style="padding:12px 0 10px;color:#f97316;font-weight:700;font-size:12px;letter-spacing:.06em;
+                                        style="padding:12px 0 10px;color:#3b82f6;font-weight:700;font-size:12px;letter-spacing:.06em;
                              text-transform:uppercase;border-bottom:1px solid #edf0f2;">
-                                        Resumen del envío
+                                        Detalles de la Venta
                                     </td>
                                 </tr>
 
@@ -91,128 +93,67 @@
                                     <td style="padding:12px 0;color:#111827;font-size:14px;text-align:right;">
                                         {{ $cliente['nombre'] }}
                                         @if(!empty($cliente['email']) && $cliente['email'] !== 'No registrado')
-                                        <a href="mailto:{{ $cliente['email'] }}"
-                                            style="color:#f97316;text-decoration:none;">
-                                            ({{ $cliente['email'] }})
-                                        </a>
+                                        <br>
+                                        <span style="color:#9aa1ad;font-size:12px;">{{ $cliente['email'] }}</span>
                                         @endif
                                     </td>
                                 </tr>
 
+                                @if(!empty($empresa_nombre))
                                 <tr>
-                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Fecha del comprobante</td>
+                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Empresa / Sucursal</td>
                                     <td style="padding:12px 0;color:#111827;font-size:14px;text-align:right;">
-                                        {{ $fecha ?? '—' }}
+                                        {{ $empresa_nombre }}
+                                    </td>
+                                </tr>
+                                @endif
+
+                                <tr>
+                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Fecha</td>
+                                    <td style="padding:12px 0;color:#111827;font-size:14px;text-align:right;">
+                                        {{ $fecha ?? date('d/m/Y H:i') }}
                                     </td>
                                 </tr>
 
                                 <tr>
-                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Monto del comprobante</td>
+                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Monto Total</td>
                                     <td style="padding:10px 0;text-align:right;">
                                         <span
-                                            style="display:inline-block;background:#fff1e6;color:#111827;border:1px solid #ffd7ba;
+                                            style="display:inline-block;background:#eff6ff;color:#111827;border:1px solid #dbeafe;
                                  padding:8px 12px;border-radius:8px;font-size:18px;font-weight:800;">
-                                            Q {{ number_format((float) $monto, 2) }}
+                                            Q {{ number_format((float) $total, 2) }}
                                         </span>
                                     </td>
                                 </tr>
 
                                 <tr>
-                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Banco</td>
+                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Método de Pago</td>
                                     <td style="padding:12px 0;text-align:right;">
                                         <span
                                             style="display:inline-block;background:#f3f4f6;color:#111827;border-radius:999px;
                                  padding:6px 10px;font-size:12px;border:1px solid #e5e7eb;">
-                                            {{ $banco_nombre ?? '—' }} <span style="color:#9aa1ad;">(ID:
-                                                {{ $banco_id ?? '—' }})</span>
+                                            {{ $metodo_pago_nombre ?? '—' }}
                                         </span>
                                     </td>
                                 </tr>
 
-                                <tr>
-                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Referencia</td>
-                                    <td style="padding:12px 0;color:#111827;font-size:14px;text-align:right;">
-                                        {{ $referencia }}</td>
-                                </tr>
-
-                                <tr>
-                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Concepto</td>
-                                    <td style="padding:12px 0;color:#111827;font-size:14px;text-align:right;">
-                                        {{ $concepto ?? '—' }}</td>
-                                </tr>
-
-                                <tr>
-                                    <td style="padding:12px 0;color:#6b7280;font-size:13px;">Cuotas pagadas (este envío)
-                                    </td>
-                                    <td style="padding:12px 0;color:#111827;font-size:14px;text-align:right;">
-                                        @php
-                                            $cuotasCount = is_array($cuotas ?? null)
-                                                ? count($cuotas)
-                                                : (is_numeric($cuotas ?? null)
-                                                    ? (int) $cuotas
-                                                    : 0);
-                                        @endphp
-                                        {{ $cuotasCount }}
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <!-- Comparativa (opcional, se mantiene) -->
-                            @php
-                                $montoFront = (float) ($monto_total ?? 0);
-                                $montoComp = (float) ($monto ?? 0);
-                                $diff = $montoComp - $montoFront;
-                            @endphp
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-                                style="margin-top:10px;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;">
-                                <tr>
-                                    <td colspan="2"
-                                        style="padding:12px 0 10px;color:#9aa1ad;font-weight:700;font-size:12px;letter-spacing:.06em;
-                             text-transform:uppercase;border-bottom:1px solid #edf0f2;">
-                                        Comparativa rápida
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px 0;color:#6b7280;font-size:13px;">Total cuotas (front)</td>
-                                    <td style="padding:10px 0;color:#111827;font-size:14px;text-align:right;">
-                                        Q {{ number_format($montoFront, 2) }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px 0;color:#6b7280;font-size:13px;">Monto comprobante</td>
-                                    <td style="padding:10px 0;color:#111827;font-size:14px;text-align:right;">
-                                        Q {{ number_format($montoComp, 2) }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px 0;color:#6b7280;font-size:13px;">Diferencia</td>
-                                    <td style="padding:10px 0;text-align:right;">
-                                        <span
-                                            style="display:inline-block;
-                                 background:{{ $diff == 0 ? '#ecfdf5' : ($diff > 0 ? '#fff1e6' : '#fee2e2') }};
-                                 color:#111827;border:1px solid {{ $diff == 0 ? '#a7f3d0' : ($diff > 0 ? '#ffd7ba' : '#fecaca') }};
-                                 padding:6px 10px;border-radius:8px;font-size:13px;font-weight:700;">
-                                            {{ $diff == 0 ? '0.00' : ($diff > 0 ? '+' : '') }}{{ number_format($diff, 2) }}
-                                        </span>
-                                    </td>
-                                </tr>
                             </table>
 
                             <div
                                 style="margin-top:14px;font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;">
-                                Se adjunta la imagen del comprobante si fue proporcionada.
+                                La venta se encuentra en estado <strong>PENDIENTE</strong>. Debe ser autorizada por un administrador.
                             </div>
 
                             <!-- CTA ADMIN -->
                             @php
-                                $adminCta = $cta_admin ?? url('/pagos/admin');
+                                $adminCta = url('/reportes'); // O la URL correcta para autorizar ventas
                             @endphp
                             <div style="text-align:center;margin:22px 0 8px;">
                                 <a href="{{ $adminCta }}"
-                                    style="background:#f97316;border-radius:10px;color:#ffffff;display:inline-block;
+                                    style="background:#3b82f6;border-radius:10px;color:#ffffff;display:inline-block;
                           font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;
                           line-height:44px;text-align:center;text-decoration:none;width:260px;">
-                                    Revisar y validar pago
+                                    Ir a Autorizar Venta
                                 </a>
                             </div>
                         </td>
@@ -226,12 +167,11 @@
                                 style="font-family:Arial,Helvetica,sans-serif;color:#9aa1ad;font-size:12px;line-height:18px;">
                                 © {{ date('Y') }} PRO ARMAS Y MUNICIONES · Notificación automática.<br>
                                 Soporte: <a href="mailto:{{ config('mail.from.address') }}"
-                                    style="color:#f97316;text-decoration:none;">{{ config('mail.from.address') }}</a>
+                                    style="color:#3b82f6;text-decoration:none;">{{ config('mail.from.address') }}</a>
                             </div>
                         </td>
                     </tr>
                 </table>
-                <!-- /Card -->
             </td>
         </tr>
     </table>

@@ -13,9 +13,9 @@ class NotificarpagoMail extends Mailable
     use Queueable, SerializesModels;
 
     public array $payload;
-    protected ?UploadedFile $comprobante;
+    protected $comprobante;
 
-    public function __construct(array $payload, ?UploadedFile $comprobante = null)
+    public function __construct(array $payload, $comprobante = null)
     {
         $this->payload     = $payload;
         $this->comprobante = $comprobante;
@@ -38,6 +38,19 @@ class NotificarpagoMail extends Mailable
                     'mime' => $this->comprobante->getClientMimeType(),
                 ]
             );
+        } elseif (is_string($this->comprobante)) {
+             // Check if it's a relative path in storage/app/public or absolute
+             $path = $this->comprobante;
+             if (!file_exists($path) && file_exists(storage_path('app/public/' . $path))) {
+                 $path = storage_path('app/public/' . $path);
+             }
+             
+             if (file_exists($path)) {
+                $mail->attach($path, [
+                    'as'   => 'comprobante_venta_' . $this->payload['venta_id'] . '.jpg',
+                    'mime' => 'image/jpeg',
+                ]);
+             }
         }
 
         $logoPath = public_path('images/pro_armas.png'); 

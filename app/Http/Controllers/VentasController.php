@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use App\Models\Ventas;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NotificarpagoMail;
 
 
 
@@ -1546,6 +1548,8 @@ public function procesarReserva(Request $request): JsonResponse
                 ]);
             }
         }
+
+
 
         DB::commit();
 
@@ -3112,6 +3116,40 @@ public function procesarVenta(Request $request): JsonResponse
                     'created_at'                => now(),
                     'updated_at'                => now(),
                 ]);
+
+                // Notificar al administrador si hay comprobante (Abono Inicial Cuotas)
+                if ($comprobantePath) {
+                    try {
+                        $admins = \App\Models\User::whereHas('rol', function($q){
+                            $q->where('nombre', 'administrador');
+                        })->get();
+
+                        $payload = [
+                            'venta_id' => $ventaId,
+                            'vendedor' => auth()->user()->name,
+                            'cliente' => [
+                                'nombre' => $request->cliente_nombre ?? 'Cliente',
+                                'email' => $request->cliente_email ?? 'No registrado'
+                            ],
+                            'fecha' => now()->format('d/m/Y H:i'),
+                            'monto' => $abonoInicial,
+                            'banco_nombre' => isset($pagoData['banco_abono']) ? DB::table('pro_bancos')->where('banco_id', $pagoData['banco_abono'])->value('banco_nombre') : 'No especificado',
+                            'banco_id' => $pagoData['banco_abono'] ?? null,
+                            'referencia' => $pagoData['autorizacion_abono'] ?? 'No especificada',
+                            'concepto' => 'Abono Inicial (Cuotas) - Venta #' . $ventaId,
+                            'cuotas' => 1, // Se considera 1 pago
+                            'monto_total' => $totalVenta
+                        ];
+
+                        foreach ($admins as $admin) {
+                            if ($admin->email) {
+                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error enviando notificación de abono inicial en venta: ' . $e->getMessage());
+                    }
+                }
             }
 
             // Detalle del Saldo a Favor (si hubo)
@@ -3163,9 +3201,9 @@ public function procesarVenta(Request $request): JsonResponse
                 'pago_tipo_pago'       => 'UNICO',
                 'pago_cantidad_cuotas' => 1,
                 'pago_abono_inicial'   => $totalVenta,
-                'pago_estado'          => 'COMPLETADO', // Completado directo
+                'pago_estado'          => 'PENDIENTE', // Pendiente de autorización
                 'pago_fecha_inicio'    => now(),
-                'pago_fecha_completado'=> now(),
+                'pago_fecha_completado'=> null,
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
@@ -3189,13 +3227,47 @@ public function procesarVenta(Request $request): JsonResponse
                     'det_pago_banco_id'         => $pagoData['banco_id'] ?? null,
                     'det_pago_numero_autorizacion' => $pagoData['numero_autorizacion'] ?? null,
                     'det_pago_tipo_pago'        => 'PAGO_UNICO',
-                    'det_pago_estado'           => 'VALIDO',
-                    'det_pago_observaciones'    => 'Pago principal de la venta',
+                    'det_pago_estado'           => 'PENDIENTE',
+                    'det_pago_observaciones'    => 'Pago principal de la venta (Pendiente de autorización)',
                     'det_pago_imagen_boucher'   => $comprobantePath, // Guardar comprobante
                     'det_pago_usuario_registro' => auth()->id(),
                     'created_at'                => now(),
                     'updated_at'                => now(),
                 ]);
+
+                // Notificar al administrador si hay comprobante
+                if ($comprobantePath) {
+                    try {
+                        $admins = \App\Models\User::whereHas('rol', function($q){
+                            $q->where('nombre', 'administrador');
+                        })->get();
+
+                        $payload = [
+                            'venta_id' => $ventaId,
+                            'vendedor' => auth()->user()->name,
+                            'cliente' => [
+                                'nombre' => $request->cliente_nombre ?? 'Cliente',
+                                'email' => $request->cliente_email ?? 'No registrado'
+                            ],
+                            'fecha' => now()->format('d/m/Y H:i'),
+                            'monto' => $montoPrincipal,
+                            'banco_nombre' => $pagoData['banco_id'] ? DB::table('pro_bancos')->where('banco_id', $pagoData['banco_id'])->value('banco_nombre') : 'No especificado',
+                            'banco_id' => $pagoData['banco_id'] ?? null,
+                            'referencia' => $pagoData['numero_autorizacion'] ?? 'No especificada',
+                            'concepto' => 'Pago Inicial - Venta #' . $ventaId,
+                            'cuotas' => 1,
+                            'monto_total' => $totalVenta
+                        ];
+
+                        foreach ($admins as $admin) {
+                            if ($admin->email) {
+                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error enviando notificación de pago en venta: ' . $e->getMessage());
+                    }
+                }
             }
 
             // 2. Registrar pago con saldo a favor (si hubo)
@@ -3264,41 +3336,60 @@ public function procesarVenta(Request $request): JsonResponse
 
         DB::commit();
 
-        // Enviar correo a administradores
+        // ✅ Notificar Nueva Venta (siempre)
         try {
             $admins = \App\Models\User::whereHas('rol', function($q){
                 $q->where('nombre', 'administrador');
             })->get();
 
-            $clienteNombre = DB::table('pro_clientes')->where('cliente_id', $request->cliente_id)->value(DB::raw("CONCAT(cliente_nombre1, ' ', cliente_apellido1)"));
-            $vendedorNombre = auth()->user()->name;
-
-            $productosDetalle = [];
-            foreach ($request->productos as $prod) {
-                $nombreProd = DB::table('pro_productos')->where('producto_id', $prod['producto_id'])->value('producto_nombre');
-                $productosDetalle[] = [
-                    'nombre' => $nombreProd,
-                    'cantidad' => $prod['cantidad'],
-                    'subtotal' => $prod['subtotal_producto']
-                ];
+            $empresaNombre = null;
+            if ($request->empresa_id) {
+                $empresaNombre = DB::table('pro_empresas')->where('empresa_id', $request->empresa_id)->value('empresa_nombre');
             }
 
-            $ventaData = [
-                'ven_id' => $ventaId,
-                'cliente' => $clienteNombre,
-                'total' => $request->total,
-                'vendedor' => $vendedorNombre,
+            // Determinar método de pago principal para el correo
+            $metodoPagoNombre = 'Desconocido';
+            $metodoPagoId = 1; // Default Efectivo
+
+            if (isset($metodoPagoPrincipal)) {
+                 $metodoPagoId = $metodoPagoPrincipal;
+                 // Mapeo rápido o consulta
+                 $metodoPagoNombre = match($metodoPagoId) {
+                     1 => 'Efectivo',
+                     2 => 'Tarjeta de Crédito',
+                     3 => 'Tarjeta de Débito',
+                     4 => 'Transferencia',
+                     5 => 'Cheque',
+                     6 => 'Cuotas',
+                     7 => 'Saldo a Favor',
+                     default => 'Otro'
+                 };
+            } elseif ($request->metodoPago == '6') {
+                 $metodoPagoId = 6;
+                 $metodoPagoNombre = 'Cuotas';
+            }
+
+            $payloadVenta = [
+                'venta_id' => $ventaId,
+                'vendedor' => auth()->user()->name,
+                'cliente' => [
+                    'nombre' => $request->cliente_nombre ?? 'Cliente',
+                    'email' => $request->cliente_email ?? 'No registrado'
+                ],
+                'empresa_nombre' => $empresaNombre,
                 'fecha' => now()->format('d/m/Y H:i'),
-                'productos' => $productosDetalle
+                'total' => $totalVenta,
+                'metodo_pago_id' => $metodoPagoId,
+                'metodo_pago_nombre' => $metodoPagoNombre,
             ];
 
             foreach ($admins as $admin) {
                 if ($admin->email) {
-                    \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\NewSaleNotification($ventaData));
+                    Mail::to($admin->email)->send(new \App\Mail\NotificarVentaMail($payloadVenta));
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Error enviando correo de venta: ' . $e->getMessage());
+            Log::error('Error enviando notificación de nueva venta: ' . $e->getMessage());
         }
 
         return response()->json([

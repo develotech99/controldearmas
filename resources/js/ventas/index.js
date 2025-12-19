@@ -3779,9 +3779,15 @@ document.querySelectorAll('input[name="metodoPago"]').forEach((radio) => {
         const numeroAut = document.getElementById("numeroAutorizacion");
 
         if (["2", "3", "4", "5"].includes(val)) {
-            // Mostrar autorización
+            // Mostrar autorización completa
             cuotasContainer.classList.add("hidden");
             autorizacionContainer.classList.remove("hidden");
+
+            // Mostrar campos de banco/referencia
+            document.getElementById("div-select-banco")?.classList.remove("hidden");
+            document.getElementById("div-numero-auth")?.classList.remove("hidden");
+            document.getElementById("div-fecha-pago")?.classList.remove("hidden");
+
             // Validación rápida: no permitir procesar si falta autorización
             numeroAut.removeEventListener("input", checkAuth);
             numeroAut.addEventListener("input", checkAuth);
@@ -3797,12 +3803,28 @@ document.querySelectorAll('input[name="metodoPago"]').forEach((radio) => {
             });
             // Inicializar cuotas según total
             updateCuotasFromTotal();
+        } else if (val === "1") {
+            // Efectivo: Mostrar solo comprobante (y ocultar banco/referencia si es posible, o dejarlos opcionales)
+            // Para simplificar, mostramos el contenedor pero ocultamos los inputs innecesarios visualmente o los deshabilitamos
+            // Pero como están en el mismo contenedor, vamos a mostrarlo y manejar la visibilidad de los hijos
+
+            cuotasContainer.classList.add("hidden");
+            autorizacionContainer.classList.remove("hidden");
+
+            // Ocultar Banco y Referencia para Efectivo
+            document.getElementById("div-select-banco").classList.add("hidden");
+            document.getElementById("div-numero-auth").classList.add("hidden");
+            document.getElementById("div-fecha-pago").classList.add("hidden"); // Opcional, si la fecha es la actual
+
+            // Asegurar que el input de archivo esté visible (es hijo directo del grid)
+            // Nota: Necesito agregar IDs a los divs padres en el blade para poder ocultarlos selectivamente.
+            // Por ahora, asumiré que voy a editar el blade también.
+
         } else {
-            // Otro método
+            // Otro método (si hubiera)
             autorizacionContainer.classList.add("hidden");
             numeroAut.value = "";
             document.getElementById("cuotasContainer").classList.add("hidden");
-            // deja el estado del botón a cargo de calcularTotales()
         }
 
         calcularTotales?.(); // sigue tu flujo
@@ -4145,7 +4167,11 @@ function validarMetodoPago() {
     // Validaciones específicas por método de pago
     switch (metodoPago) {
         case "1": // Efectivo
-            // No requiere validaciones adicionales
+            // Validar que se suba comprobante (requerido para notificación y flujo de caja)
+            const fileInputEfectivo = document.getElementById('comprobante_pago');
+            if (!fileInputEfectivo || fileInputEfectivo.files.length === 0) {
+                errores.push("Debe subir el comprobante de pago para Efectivo");
+            }
             break;
 
         case "2": // Tarjeta de crédito
@@ -4168,6 +4194,12 @@ function validarMetodoPago() {
                 errores.push(
                     `Debe ingresar la fecha de pago para ${tipoMetodo[metodoPago]}`
                 );
+            }
+
+            // Validar comprobante también para estos métodos
+            const fileInputOtros = document.getElementById('comprobante_pago');
+            if (!fileInputOtros || fileInputOtros.files.length === 0) {
+                errores.push(`Debe subir el comprobante de pago para ${tipoMetodo[metodoPago]}`);
             }
             break;
 

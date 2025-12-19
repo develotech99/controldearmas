@@ -7,6 +7,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NotificarpagoMail;
 
 class DeudasController extends Controller
 {
@@ -183,6 +185,42 @@ class DeudasController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Notificar al administrador si hay comprobante
+        if ($comprobantePath) {
+            try {
+                $admins = \App\Models\User::whereHas('rol', function($q){
+                    $q->where('nombre', 'administrador');
+                })->get();
+
+                $cliente = DB::table('pro_clientes')->where('cliente_id', $deuda->cliente_id)->first();
+
+                $payload = [
+                    'venta_id' => 'DEUDA-' . $id, // Identificador especial para deudas
+                    'vendedor' => auth()->user()->name,
+                    'cliente' => [
+                        'nombre' => $cliente ? ($cliente->cliente_nombre1 . ' ' . $cliente->cliente_apellido1) : 'Cliente',
+                        'email' => $cliente->cliente_email ?? 'No registrado'
+                    ],
+                    'fecha' => now()->format('d/m/Y H:i'),
+                    'monto' => $request->monto,
+                    'banco_nombre' => $request->banco_id ? DB::table('pro_bancos')->where('banco_id', $request->banco_id)->value('banco_nombre') : 'No especificado',
+                    'banco_id' => $request->banco_id,
+                    'referencia' => $request->referencia ?? 'No especificada',
+                    'concepto' => 'Pago de Deuda #' . $id . ($request->nota ? ' - ' . $request->nota : ''),
+                    'cuotas' => 1,
+                    'monto_total' => $deuda->monto
+                ];
+
+                foreach ($admins as $admin) {
+                    if ($admin->email) {
+                        Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath));
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Error enviando notificación de pago de deuda: ' . $e->getMessage());
+            }
+        }
 
         DB::commit();
 
