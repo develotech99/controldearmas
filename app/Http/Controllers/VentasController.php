@@ -3240,7 +3240,9 @@ public function procesarVenta(Request $request): JsonResponse
                     try {
                         $admins = \App\Models\User::whereHas('rol', function($q){
                             $q->where('nombre', 'administrador');
-                        })->get();
+                        })
+                        ->where('user_situacion', 1)
+                        ->get();
 
                         $payload = [
                             'venta_id' => $ventaId,
@@ -3340,7 +3342,9 @@ public function procesarVenta(Request $request): JsonResponse
         try {
             $admins = \App\Models\User::whereHas('rol', function($q){
                 $q->where('nombre', 'administrador');
-            })->get();
+            })
+            ->where('user_situacion', 1)
+            ->get();
 
             $empresaNombre = null;
             if ($request->empresa_id) {

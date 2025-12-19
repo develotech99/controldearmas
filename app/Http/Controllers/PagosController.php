@@ -945,7 +945,9 @@ class PagosController extends Controller
                     try {
                         $admins = \App\Models\User::whereHas('rol', function($q){
                             $q->where('nombre', 'administrador');
-                        })->get();
+                        })
+                        ->where('user_situacion', 1)
+                        ->get();
 
                         // Obtener datos del cliente para el correo
                         $venta = DB::table('pro_ventas')->where('ven_id', $ventaId)->first();

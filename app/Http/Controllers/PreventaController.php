@@ -132,7 +132,9 @@ class PreventaController extends Controller
                     try {
                         $admins = \App\Models\User::whereHas('rol', function($q){
                             $q->where('nombre', 'administrador');
-                        })->get();
+                        })
+                        ->where('user_situacion', 1)
+                        ->get();
 
                         $cliente = Cliente::find($request->cliente_id);
 

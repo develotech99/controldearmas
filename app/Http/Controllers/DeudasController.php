@@ -191,7 +191,9 @@ class DeudasController extends Controller
             try {
                 $admins = \App\Models\User::whereHas('rol', function($q){
                     $q->where('nombre', 'administrador');
-                })->get();
+                })
+                ->where('user_situacion', 1)
+                ->get();
 
                 $cliente = DB::table('pro_clientes')->where('cliente_id', $deuda->cliente_id)->first();
 
