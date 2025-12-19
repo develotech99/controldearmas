@@ -43,7 +43,7 @@ class InventarioManager {
      * Inicializar el gestor
      */
     init() {
-        ('🚀 InventarioManager inicializado');
+        console.log('🚀 InventarioManager inicializado');
         this.setupEventListeners();
         this.setupExcelFilters();
         this.setupFotosHandling();
@@ -3112,16 +3112,7 @@ class InventarioManager {
         this.showModal('ingreso');
     }
 
-    /**
-     * Abrir modal de egreso
-     */
-    /**
-  * Abrir modal de egreso
-  */
-    openEgresoModal() {
-        this.resetEgresoForm();
-        this.showModal('egreso');
-    }
+
 
     /**
      * Ver historial de movimientos
@@ -3146,19 +3137,9 @@ class InventarioManager {
         }, 100);
     }
 
-    /**
-     * Ver detalle de producto
-     */
-    verDetalleProducto(productoId) {
-        this.showAlert('info', 'Próximamente', 'Vista de detalle en desarrollo');
-    }
 
-    /**
-     * Editar producto
-     */
-    editarProducto(productoId) {
-        this.showAlert('info', 'Próximamente', 'Edición de productos en desarrollo');
-    }
+
+
 
     /**
      * Toggle panel de alertas
@@ -3838,7 +3819,7 @@ class InventarioManager {
         this.licenciaSeleccionadaRegistro = null;
         this.lotePreview = '';
 
-        ('Formulario de ingreso reseteado correctamente');
+        console.log('Formulario de ingreso reseteado correctamente');
     }
 
 

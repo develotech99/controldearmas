@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Mail\NotificarpagoMail;
 
 class PreventaController extends Controller
@@ -173,6 +174,7 @@ class PreventaController extends Controller
                         Log::error('Error al enviar correo de preventa: ' . $e->getMessage());
                     }
                 }
+            }
 
             DB::commit();
 
