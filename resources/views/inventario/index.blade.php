@@ -614,6 +614,7 @@
                                     </div>
                                 </div>
                             </div>
+                            </div>
                             <!-- AGREGAR ESTA SECCIÓN en el modal de registro, después de seccion_fotos -->
                             <div class="md:col-span-2 border-t border-gray-200 dark:border-gray-700 pt-4">
                                 <div class="flex items-center mb-3">

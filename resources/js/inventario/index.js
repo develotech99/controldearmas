@@ -55,9 +55,7 @@ class InventarioManager {
      * Configurar event listeners
      */
     setupEventListeners() {
-        console.log('Setting up event listeners...');
         try {
-            console.log('Setting up event listeners...');
             // Filtros
             document.getElementById('search-productos').addEventListener('input', (e) => {
                 this.filtros.search = e.target.value;
@@ -328,7 +326,6 @@ class InventarioManager {
     }
 
     openEgresoModal() {
-        console.log('Opening Egreso Modal');
         try {
             this.resetEgresoForm();
             this.showModal('egreso');
@@ -2868,7 +2865,6 @@ class InventarioManager {
      * Abrir modal de registro de producto
      */
     openRegistroModal() {
-        console.log('Opening Registro Modal');
         try {
             this.resetRegistroForm();
             this.showModal('registro');
@@ -2881,7 +2877,6 @@ class InventarioManager {
      * Abrir modal de ingreso a inventario
      */
     openIngresoModal() {
-        console.log('Opening Ingreso Modal');
         try {
             this.showModal('ingreso');
         } catch (error) {
@@ -3402,7 +3397,7 @@ class InventarioManager {
      * Mostrar modal
      */
     showModal(type) {
-        console.log(`Showing modal: ${type}`);
+
         try {
             const modal = document.getElementById(`${type}-modal`);
             if (!modal) {
@@ -3410,9 +3405,6 @@ class InventarioManager {
                 return;
             }
             modal.classList.remove('hidden');
-            // Force styles to ensure visibility
-            modal.style.display = 'block';
-            modal.style.zIndex = '9999';
 
             document.body.style.overflow = 'hidden';
         } catch (error) {
@@ -3427,7 +3419,6 @@ class InventarioManager {
         const modal = document.getElementById(`${type}-modal`);
         if (modal) {
             modal.classList.add('hidden');
-            modal.style.display = 'none'; // Reset manual style
         }
         document.body.style.overflow = 'auto';
 
