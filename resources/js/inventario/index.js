@@ -3078,6 +3078,46 @@ class InventarioManager {
                     // Check for specific duplicate series error
                     if (data.message && data.message.includes('Una o más series ya existen')) {
 
+                        // Play warning sound
+                        const playWarningSound = () => {
+                            try {
+                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                const osc = ctx.createOscillator();
+                                const gain = ctx.createGain();
+
+                                osc.connect(gain);
+                                gain.connect(ctx.destination);
+
+                                osc.type = 'sawtooth';
+                                osc.frequency.value = 200; // Low frequency for "Error"
+
+                                gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+                                osc.start();
+                                osc.stop(ctx.currentTime + 0.5);
+
+                                // Second beep
+                                setTimeout(() => {
+                                    const osc2 = ctx.createOscillator();
+                                    const gain2 = ctx.createGain();
+                                    osc2.connect(gain2);
+                                    gain2.connect(ctx.destination);
+                                    osc2.type = 'sawtooth';
+                                    osc2.frequency.value = 150;
+                                    gain2.gain.setValueAtTime(0.5, ctx.currentTime);
+                                    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                                    osc2.start();
+                                    osc2.stop(ctx.currentTime + 0.5);
+                                }, 200);
+
+                            } catch (e) {
+                                console.error('Audio play failed', e);
+                            }
+                        };
+
+                        playWarningSound();
+
                         let detallesHtml = '';
                         if (data.detalles_duplicados && data.detalles_duplicados.length > 0) {
                             const rows = data.detalles_duplicados.map(d => `
