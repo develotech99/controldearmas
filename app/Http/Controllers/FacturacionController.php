@@ -386,7 +386,7 @@ public function verFacturaCambiaria($id)
                 'fac_receptor_direccion' => $validated['fac_receptor_direccion'] ?? null,
                 'fac_receptor_email' => $validated['fac_receptor_email'] ?? null,
 
-                'fac_fecha_emision' => now()->toDateString(),
+                'fac_fecha_emision' => now(),
                 'fac_fecha_certificacion' => $fechaCert,
 
                 'fac_subtotal' => $subtotalNeto,
@@ -633,11 +633,11 @@ public function verFacturaCambiaria($id)
         $query = Facturacion::with('detalle');
 
         if ($request->filled('fecha_inicio')) {
-            $query->where('fac_fecha_emision', '>=', $request->fecha_inicio);
+            $query->whereDate('fac_fecha_emision', '>=', $request->fecha_inicio);
         }
 
         if ($request->filled('fecha_fin')) {
-            $query->where('fac_fecha_emision', '<=', $request->fecha_fin);
+            $query->whereDate('fac_fecha_emision', '<=', $request->fecha_fin);
         }
         $facturas = $query->orderBy('fac_fecha_emision', 'desc')
             ->orderBy('fac_id', 'desc')
@@ -806,17 +806,57 @@ public function certificarCambiaria(Request $request)
         $disk->put($xmlEnviadoPath, $xml);
         $disk->put($xmlCertificadoPath, base64_decode($xmlCertKey));
 
-        // 4. Actualizar factura con datos FEL y paths de XML
-        $factura->update([
+        // 4. Guardar factura en BD
+        $factura = Facturacion::create([
             'fac_uuid'                => $uuidResp,
+            'fac_referencia'          => $referencia,
             'fac_serie'               => $serieResp,
             'fac_numero'              => $numeroResp,
-            'fac_fecha_certificacion' => $fechaCert,
             'fac_estado'              => 'CERTIFICADO',
+            'fac_tipo_documento'      => 'FCAM',
+            
+            'fac_nit_receptor'        => $validated['fac_cam_nit_receptor'],
+            'fac_cui_receptor'        => $validated['fac_cam_cui_receptor'] ?? null,
+            'fac_receptor_nombre'     => $validated['fac_cam_receptor_nombre'],
+            'fac_receptor_direccion'  => $validated['fac_cam_receptor_direccion'] ?? null,
+            
+            'fac_fecha_emision'       => now(),
+            'fac_fecha_certificacion' => $fechaCert,
+            
+            'fac_subtotal'            => $subtotalNeto,
+            'fac_descuento'           => $descuentoTotal,
+            'fac_impuestos'           => $ivaTotal,
+            'fac_total'               => $totalFactura,
+            'fac_moneda'              => 'GTQ',
+            
             'fac_xml_enviado_path'    => $xmlEnviadoPath,
             'fac_xml_certificado_path'=> $xmlCertificadoPath,
+            
             'fac_alertas'             => $respuesta['Alertas'] ?? $respuesta['alertas'] ?? [],
+            'fac_operacion'           => 'WEB',
+            'fac_vendedor'            => auth()->user()->user_primer_nombre ?? 'Sistema',
+            'fac_usuario_id'          => auth()->id(),
+            'fac_fecha_operacion'     => now(),
+            'fac_venta_id'            => $validated['fac_venta_id'] ?? null,
         ]);
+
+        // Guardar detalle
+        foreach ($items as $item) {
+             \App\Models\FacturacionDetalle::create([
+                'det_fac_factura_id' => $factura->fac_id,
+                'det_fac_tipo' => 'B',
+                'det_fac_producto_id' => $item['producto_id'] ?? null,
+                'det_fac_producto_desc' => $item['descripcion'],
+                'det_fac_cantidad' => $item['cantidad'],
+                'det_fac_unidad_medida' => 'UNI',
+                'det_fac_precio_unitario' => $item['precio_unitario'],
+                'det_fac_descuento' => $item['descuento'],
+                'det_fac_monto_gravable' => $item['monto_gravable'],
+                'det_fac_tipo_impuesto' => 'IVA',
+                'det_fac_impuesto' => $item['iva'],
+                'det_fac_total' => $item['total'],
+            ]);
+        }
 
         // LOGICA DE INVENTARIO: Si hay venta asociada y es PENDIENTE
         if (!empty($validated['fac_venta_id'])) {
