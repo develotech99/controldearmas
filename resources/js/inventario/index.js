@@ -872,18 +872,7 @@ class InventarioManager {
 
 
 
-    resetEgresoForm() {
-        document.getElementById('egreso-form').reset();
-        this.clearErrors('egreso');
 
-        document.getElementById('egreso-step-1').classList.remove('hidden');
-        document.getElementById('egreso-step-2').classList.add('hidden');
-        document.getElementById('productos_encontrados_egreso').classList.add('hidden');
-
-        this.productoSeleccionadoEgreso = null;
-        this.seriesSeleccionadasEgreso = [];
-        this.origenEgresoSeleccionado = null; // AGREGAR ESTA LÍNEA
-    }
 
 
     /**
@@ -1124,144 +1113,7 @@ class InventarioManager {
     }
 
 
-    /**
-     * Buscar licencias para el formulario de ingreso (no registro)
-     */
-    async buscarLicenciasRegistro(query) {
-        const container = document.getElementById('licencias_encontradas_registro');
 
-        if (!query || query.length < 2) {
-            if (container) {
-                container.classList.add('hidden');
-            }
-            return;
-        }
-
-        try {
-            const response = await fetch(`/licencias/buscar?q=${encodeURIComponent(query)}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.renderResultadosLicenciasRegistro(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error buscando licencias en ingreso:', error);
-        }
-    }
-
-    /**
-     * Renderizar resultados de búsqueda de licencias en ingreso
-     */
-    renderResultadosLicenciasRegistro(licencias) {
-        const container = document.getElementById('licencias_encontradas_registro');
-        if (!container) return;
-
-        if (licencias.length === 0) {
-            container.innerHTML = `
-            <div class="p-3 text-center text-gray-500 dark:text-gray-400">
-                No se encontraron licencias
-            </div>
-        `;
-            container.classList.remove('hidden');
-            return;
-        }
-
-        container.innerHTML = licencias.map(licencia => `
-        <div onclick="inventarioManager.seleccionarLicenciaRegistro(${licencia.lipaimp_id})" 
-             class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0">
-            <div class="font-medium text-gray-900 dark:text-gray-100">
-                Póliza: ${licencia.lipaimp_poliza}
-            </div>
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-                ${licencia.lipaimp_descripcion}
-            </div>
-            <div class="text-xs text-gray-400 dark:text-gray-500">
-                Vence: ${new Date(licencia.lipaimp_fecha_vencimiento).toLocaleDateString()}
-            </div>
-        </div>
-    `).join('');
-
-        container.classList.remove('hidden');
-    }
-
-    /**
-     * Seleccionar licencia en el formulario de ingreso
-     */
-    async seleccionarLicenciaRegistro(licenciaId) {
-        try {
-            const response = await fetch(`/licencias/${licenciaId}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.licenciaSeleccionadaRegistro = data.data;
-
-                // Actualizar interfaz
-                const container = document.getElementById('licencia_seleccionada_registro');
-                const inputHidden = document.getElementById('licencia_id_registro');
-                const searchInput = document.getElementById('buscar_licencia_registro');
-
-                if (container) {
-                    container.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="font-medium text-gray-900 dark:text-gray-100">
-                                Póliza: ${this.licenciaSeleccionadaRegistro.lipaimp_poliza}
-                            </div>
-                            <div class="text-sm text-gray-500 dark:text-gray-400">
-                                ${this.licenciaSeleccionadaRegistro.lipaimp_descripcion}
-                            </div>
-                        </div>
-                        <button onclick="inventarioManager.limpiarLicenciaSeleccionadaRegistro()" 
-                                class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-                }
-
-                if (inputHidden) {
-                    inputHidden.value = licenciaId;
-                }
-
-                if (searchInput) {
-                    searchInput.value = this.licenciaSeleccionadaRegistro.lipaimp_poliza;
-                }
-
-                // Ocultar resultados
-                document.getElementById('licencias_encontradas_registro').classList.add('hidden');
-            }
-        } catch (error) {
-            console.error('Error obteniendo licencia en ingreso:', error);
-        }
-    }
-
-
-
-
-    /**
-     * Limpiar licencia seleccionada en ingreso
-     */
-    limpiarLicenciaSeleccionadaRegistro() {
-        this.licenciaSeleccionadaRegistro = null;
-
-        const container = document.getElementById('licencia_seleccionada_registro');
-        const inputHidden = document.getElementById('licencia_id_registro');
-        const searchInput = document.getElementById('buscar_licencia_registro');
-
-        if (container) {
-            container.innerHTML = `
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-                Ninguna licencia seleccionada
-            </div>
-        `;
-        }
-
-        if (inputHidden) {
-            inputHidden.value = '';
-        }
-
-        if (searchInput) {
-            searchInput.value = '';
-        }
-    }
 
     /**
      * Cargar categorías
@@ -2568,102 +2420,7 @@ class InventarioManager {
     //seleccionarProducto() 
     // ================================
 
-    async seleccionarProducto(productoId) {
-        try {
-            const response = await fetch(`/inventario/productos/${productoId}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.productoSeleccionado = data.data;
 
-                // Ocultar step 1 y mostrar step 2
-                document.getElementById('ingreso-step-1').classList.add('hidden');
-                document.getElementById('ingreso-step-2').classList.remove('hidden');
-
-                // Actualizar información del producto
-                document.getElementById('producto_seleccionado_nombre').textContent = this.productoSeleccionado.producto_nombre;
-                document.getElementById('producto_seleccionado_info').textContent =
-                    `Stock actual: ${this.productoSeleccionado.stock_cantidad_disponible || 0} • SKU: ${this.productoSeleccionado.pro_codigo_sku}`;
-
-                // Obtener elementos del DOM
-                const cantidadSection = document.getElementById('cantidad_section');
-                const seriesSection = document.getElementById('series_section');
-                const loteSection = document.getElementById('lote_section');
-                const importadoSection = document.getElementById('contenedor_importacion');
-                const movCantidadInput = document.getElementById('mov_cantidad');
-                const numerosSeriesTextarea = document.getElementById('numeros_series');
-
-                // Configurar campos según tipo de producto
-                if (this.productoSeleccionado.producto_requiere_serie) {
-                    // PRODUCTO CON SERIE
-                    ('Producto requiere serie - configurando campos');
-
-                    // Mostrar sección de series, ocultar cantidad
-                    if (seriesSection) seriesSection.classList.remove('hidden');
-                    if (cantidadSection) cantidadSection.classList.add('hidden');
-
-                    // Configurar atributos required
-                    if (movCantidadInput) {
-                        movCantidadInput.removeAttribute('required');
-                        movCantidadInput.value = '';
-                    }
-                    if (numerosSeriesTextarea) {
-                        numerosSeriesTextarea.setAttribute('required', 'required');
-                    }
-
-                } else {
-                    // PRODUCTO SIN SERIE
-                    ('Producto NO requiere serie - configurando campos');
-
-                    // Mostrar sección de cantidad, ocultar series
-                    if (cantidadSection) cantidadSection.classList.remove('hidden');
-                    if (seriesSection) seriesSection.classList.add('hidden');
-
-                    // Configurar atributos required
-                    if (movCantidadInput) {
-                        movCantidadInput.setAttribute('required', 'required');
-                        movCantidadInput.value = '1';
-                    }
-                    if (numerosSeriesTextarea) {
-                        numerosSeriesTextarea.removeAttribute('required');
-                        numerosSeriesTextarea.value = '';
-                    }
-                }
-
-                // GESTIÓN DE SECCIÓN DE IMPORTACIÓN
-                // Solo mostrar si el producto ES importado
-                if (importadoSection) {
-                    if (this.productoSeleccionado.producto_es_importado) {
-                        importadoSection.classList.remove('hidden');
-                        ('Producto importado - mostrando sección de importación');
-                    } else {
-                        importadoSection.classList.add('hidden');
-                        ('Producto NO importado - ocultando sección de importación');
-                    }
-                }
-
-                // SIEMPRE MOSTRAR SECCIÓN DE LOTES (para ambos tipos de productos)
-                if (loteSection) {
-                    loteSection.classList.remove('hidden');
-                    // Generar preview del lote automático por defecto
-                    this.generarPreviewLote();
-                }
-
-                // Gestión de licencias (si aplica)
-                const licenciaSection = document.getElementById('licencia_section');
-                if (this.productoSeleccionado.requiere_licencia && licenciaSection) {
-                    licenciaSection.classList.remove('hidden');
-                } else if (licenciaSection) {
-                    licenciaSection.classList.add('hidden');
-                }
-
-                // Ocultar resultados de búsqueda
-                document.getElementById('productos_encontrados').classList.add('hidden');
-            }
-        } catch (error) {
-            console.error('Error obteniendo detalle del producto:', error);
-            this.showAlert('error', 'Error', 'Error al cargar el producto');
-        }
-    }
     /**
      * Eliminar producto (con validaciones completas)
      */
@@ -3034,10 +2791,9 @@ class InventarioManager {
                 const movCantidadInput = document.getElementById('mov_cantidad');
                 const numerosSeriesTextarea = document.getElementById('numeros_series');
 
-                // **CRÍTICO: Gestión correcta de atributos required y visibilidad**
                 if (this.productoSeleccionado.producto_requiere_serie) {
                     // PRODUCTO CON SERIE
-                    ('Producto requiere serie - configurando campos');
+                    console.log('Producto requiere serie - configurando campos');
 
                     // Mostrar sección de series, ocultar cantidad y lotes
                     if (seriesSection) seriesSection.classList.remove('hidden');
@@ -3048,16 +2804,16 @@ class InventarioManager {
                     if (movCantidadInput) {
                         movCantidadInput.removeAttribute('required');
                         movCantidadInput.value = '';
-                        ('Removed required from mov_cantidad');
+                        console.log('Removed required from mov_cantidad');
                     }
                     if (numerosSeriesTextarea) {
                         numerosSeriesTextarea.setAttribute('required', 'required');
-                        ('Added required to numeros_series');
+                        console.log('Added required to numeros_series');
                     }
 
                 } else {
                     // PRODUCTO SIN SERIE
-                    ('Producto NO requiere serie - configurando campos');
+                    console.log('Producto NO requiere serie - configurando campos');
 
                     // Mostrar sección de cantidad y lotes, ocultar series
                     if (cantidadSection) cantidadSection.classList.remove('hidden');
@@ -3068,12 +2824,12 @@ class InventarioManager {
                     if (movCantidadInput) {
                         movCantidadInput.setAttribute('required', 'required');
                         movCantidadInput.value = '1';
-                        ('Added required to mov_cantidad');
+                        console.log('Added required to mov_cantidad');
                     }
                     if (numerosSeriesTextarea) {
                         numerosSeriesTextarea.removeAttribute('required');
                         numerosSeriesTextarea.value = '';
-                        ('Removed required from numeros_series');
+                        console.log('Removed required from numeros_series');
                     }
 
                     // Generar preview del lote
@@ -3141,13 +2897,7 @@ class InventarioManager {
 
 
 
-    /**
-     * Toggle panel de alertas
-     */
-    toggleAlertas() {
-        const container = document.getElementById('alerts-container');
-        container.classList.toggle('hidden');
-    }
+
 
     /**
      * Manejar envío del formulario de registro
@@ -3623,37 +3373,7 @@ class InventarioManager {
     /**
      * MANTENER: calcularMargen() para formulario de registro
      */
-    calcularMargen() {
-        const costInput = document.getElementById('precio_costo');
-        const ventaInput = document.getElementById('precio_venta');
-        const margenElement = document.getElementById('margen_calculado');
-        const gananciaElement = document.getElementById('ganancia_calculada');
 
-        if (!costInput || !ventaInput || !margenElement || !gananciaElement) return;
-
-        const costo = parseFloat(costInput.value) || 0;
-        const venta = parseFloat(ventaInput.value) || 0;
-
-        if (costo > 0 && venta > 0) {
-            const ganancia = venta - costo;
-            const margen = ((ganancia / costo) * 100);
-
-            margenElement.textContent = `${margen.toFixed(1)}%`;
-            gananciaElement.textContent = `Q${ganancia.toFixed(2)}`;
-
-            if (margen < 10) {
-                margenElement.className = 'text-red-600 font-bold';
-            } else if (margen < 25) {
-                margenElement.className = 'text-yellow-600 font-bold';
-            } else {
-                margenElement.className = 'text-green-600 font-bold';
-            }
-        } else {
-            margenElement.textContent = '0%';
-            gananciaElement.textContent = 'Q0.00';
-            margenElement.className = 'text-gray-400 font-bold';
-        }
-    }
 
 
 
@@ -4723,49 +4443,49 @@ class InventarioManager {
      * Método poblarSelectsEdicion con debug - TEMPORAL
      */
     async poblarSelectsEdicion() {
-        ('=== DEBUG POBLAR SELECTS EDICIÓN ===');
-        ('this.categorias:', this.categorias?.length);
-        ('this.marcas:', this.marcas?.length);
-        ('this.calibres:', this.calibres?.length);
-        ('this.paises antes:', this.paises?.length);
+        console.log('=== DEBUG POBLAR SELECTS EDICIÓN ===');
+        console.log('this.categorias:', this.categorias?.length);
+        console.log('this.marcas:', this.marcas?.length);
+        console.log('this.calibres:', this.calibres?.length);
+        console.log('this.paises antes:', this.paises?.length);
 
         // Usar los datos ya cargados
         if (this.categorias && this.categorias.length > 0) {
             this.populateSelect('editar_producto_categoria', this.categorias, 'categoria_id', 'categoria_nombre');
-            ('✅ Categorías pobladas');
+            console.log('✅ Categorías pobladas');
         } else {
-            ('❌ No hay categorías');
+            console.log('❌ No hay categorías');
         }
 
         if (this.marcas && this.marcas.length > 0) {
             this.populateSelect('editar_producto_marca', this.marcas, 'marca_id', 'marca_descripcion');
-            ('✅ Marcas pobladas');
+            console.log('✅ Marcas pobladas');
         } else {
-            ('❌ No hay marcas');
+            console.log('❌ No hay marcas');
         }
 
         if (this.calibres && this.calibres.length > 0) {
             this.populateSelect('editar_producto_calibre', this.calibres, 'calibre_id', 'calibre_nombre');
-            ('✅ Calibres poblados');
+            console.log('✅ Calibres poblados');
         } else {
-            ('❌ No hay calibres');
+            console.log('❌ No hay calibres');
         }
 
         // Cargar países si no están cargados
         if (!this.paises || this.paises.length === 0) {
-            ('Cargando países...');
+            console.log('Cargando países...');
             await this.loadPaises();
-            ('this.paises después:', this.paises?.length);
+            console.log('this.paises después:', this.paises?.length);
         }
 
         if (this.paises && this.paises.length > 0) {
             this.populateSelect('editar_producto_madein', this.paises, 'pais_id', 'pais_descripcion');
-            ('✅ Países poblados');
+            console.log('✅ Países poblados');
         } else {
-            ('❌ No hay países');
+            console.log('❌ No hay países');
         }
 
-        ('=== FIN DEBUG ===');
+        console.log('=== FIN DEBUG ===');
     }
 
     /**
