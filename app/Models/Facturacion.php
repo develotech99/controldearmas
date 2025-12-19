@@ -55,7 +55,7 @@ class Facturacion extends Model
     ];
 
     protected $casts = [
-        'fac_fecha_emision' => 'date',
+        'fac_fecha_emision' => 'datetime',
         'fac_fecha_certificacion' => 'datetime',
         'fac_fecha_anulacion' => 'datetime',
         'fac_fecha_operacion' => 'datetime',
