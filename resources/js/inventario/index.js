@@ -3410,6 +3410,10 @@ class InventarioManager {
                 return;
             }
             modal.classList.remove('hidden');
+            // Force styles to ensure visibility
+            modal.style.display = 'block';
+            modal.style.zIndex = '9999';
+
             document.body.style.overflow = 'hidden';
         } catch (error) {
             console.error(`Error showing modal ${type}:`, error);
@@ -3421,7 +3425,10 @@ class InventarioManager {
      */
     closeModal(type) {
         const modal = document.getElementById(`${type}-modal`);
-        modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none'; // Reset manual style
+        }
         document.body.style.overflow = 'auto';
 
         this.setLoading(type, false);

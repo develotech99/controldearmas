@@ -1259,7 +1259,7 @@
     </div>
 </div>
     <!-- Modal Ingreso a Inventario -->
-    <div id="ingreso-modal" class="fixed inset-0 z-[60] overflow-y-auto hidden">
+    <div id="ingreso-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
                 onclick="inventarioManager.closeModal('ingreso')"></div>
@@ -1885,7 +1885,7 @@
 
 
     <!-- Modal Egreso de Inventario -->
-    <div id="egreso-modal" class="fixed inset-0 z-[60] overflow-y-auto hidden">
+    <div id="egreso-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
                 onclick="inventarioManager.closeModal('egreso')"></div>
