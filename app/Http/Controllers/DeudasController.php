@@ -190,7 +190,7 @@ class DeudasController extends Controller
         if ($comprobantePath) {
             try {
                 $admins = \App\Models\User::whereHas('rol', function($q){
-                    $q->where('nombre', 'administrador');
+                    $q->whereIn('nombre', ['administrador', 'contador']);
                 })
                 ->where('user_situacion', 1)
                 ->get();

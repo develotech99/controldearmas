@@ -220,7 +220,7 @@
                     <span>Subir Pagos / Ver Ventas y Editar</span>
                 </a>
 
-                @if(Auth::user()->user_rol == 1)
+                @if(Auth::user()->user_rol == 1 || (Auth::user()->rol && strtolower(Auth::user()->rol->nombre) === 'contador'))
                 <a href="{{ route('admin.pagos') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
