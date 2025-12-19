@@ -4167,74 +4167,26 @@ function validarMetodoPago() {
     // Validaciones específicas por método de pago
     switch (metodoPago) {
         case "1": // Efectivo
-            // Validar que se suba comprobante (requerido para notificación y flujo de caja)
-            const fileInputEfectivo = document.getElementById('comprobante_pago');
-            if (!fileInputEfectivo || fileInputEfectivo.files.length === 0) {
-                errores.push("Debe subir el comprobante de pago para Efectivo");
-            }
+            // El comprobante ahora es opcional
             break;
 
         case "2": // Tarjeta de crédito
         case "3": // Tarjeta de débito
         case "4": // Transferencia
         case "5": // Cheque
-            if (!selecBanco || selecBanco === "") {
-                errores.push(
-                    `Debe seleccionar el tipo de banco para ${tipoMetodo[metodoPago]}`
-                );
-            }
-
-            if (!numeroAutorizacion) {
-                errores.push(
-                    `Debe ingresar el número de autorización para ${tipoMetodo[metodoPago]}`
-                );
-            }
-
+            // Banco, autorización y comprobante ahora son opcionales
             if (!fechaPago) {
                 errores.push(
                     `Debe ingresar la fecha de pago para ${tipoMetodo[metodoPago]}`
                 );
             }
-
-            // Validar comprobante también para estos métodos
-            const fileInputOtros = document.getElementById('comprobante_pago');
-            if (!fileInputOtros || fileInputOtros.files.length === 0) {
-                errores.push(`Debe subir el comprobante de pago para ${tipoMetodo[metodoPago]}`);
-            }
             break;
 
         case "6": // Pagos/Cuotas
-            // Verificar si el abono es por transferencia o cheque
-            const metodoAbono = document.querySelector(
-                'input[name="metodoAbono"]:checked'
-            )?.value;
-
-            if (metodoAbono === "transferencia" || metodoAbono === "cheque") {
-                if (!selecBanco || selecBanco === "") {
-                    errores.push(
-                        `Debe seleccionar el tipo de banco para el abono`
-                    );
-                }
-
-                if (!numeroAutorizacion) {
-                    errores.push(
-                        `Debe ingresar el número de autorización/cheque`
-                    );
-                }
-
-                if (!fechaPago) {
-                    errores.push(
-                        `Debe ingresar la fecha del abono`
-                    );
-                }
-            }
-
             const erroresCuotas = validarCuotas();
-
             if (erroresCuotas.length > 0) {
                 errores.push(...erroresCuotas);
             }
-
             break;
 
         default:
