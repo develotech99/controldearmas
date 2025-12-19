@@ -219,3 +219,45 @@ class DeudasController extends Controller
                         Mail::to($admin->email)->send(new \App\Mail\NotificarpagoMail($payload, $comprobantePath, 'DEUDA'));
                     }
                 }
+
+                DB::commit();
+
+                $msg = $comprobantePath 
+                    ? 'Pago enviado a validación correctamente.' 
+                    : 'Pago registrado. Por favor sube el comprobante en "Mis Pagos" para validarlo.';
+
+                return response()->json(['success' => true, 'message' => $msg]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error al registrar pago: ' . $e->getMessage());
+
+                $msg = 'Error al procesar el pago.';
+                if (str_contains($e->getMessage(), 'Data too long')) {
+                    $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+                } elseif (config('app.debug')) {
+                    $msg .= ' ' . $e->getMessage();
+                }
+
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+        }
+
+    public function historial($id)
+    {
+        $abonos = DB::table('pro_deudas_abonos as a')
+            ->join('users as u', 'a.user_id', '=', 'u.user_id')
+            ->where('a.deuda_id', $id)
+            ->select(
+                'a.created_at',
+                'a.metodo_pago',
+                'a.referencia',
+                'a.monto',
+                DB::raw("CONCAT(u.user_primer_nombre, ' ', u.user_primer_apellido) as usuario")
+            )
+            ->orderBy('a.created_at', 'desc')
+            ->get();
+
+        return response()->json($abonos);
+    }
+}

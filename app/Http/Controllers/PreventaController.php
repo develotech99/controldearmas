@@ -169,3 +169,162 @@ class PreventaController extends Controller
                                 Mail::to($admin->email)->send(new \App\Mail\NotificarpagoMail($payload, $comprobantePath, 'PREVENTA'));
                             }
                         }
+                    } catch (\Exception $e) {
+                        Log::error('Error al enviar correo de preventa: ' . $e->getMessage());
+                    }
+                }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Preventa registrada correctamente',
+                'preventa_id' => $preventa->prev_id, // Return ID for printing
+                'data' => $preventa
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al registrar preventa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPendientes(Request $request)
+    {
+        $query = Preventa::with(['cliente', 'detalles.producto'])
+            ->where('prev_estado', 'PENDIENTE');
+
+        if ($request->cliente_id) {
+            $query->where('prev_cliente_id', $request->cliente_id);
+        }
+
+        $preventas = $query->orderBy('prev_fecha', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $preventas
+        ]);
+    }
+
+    public function listado()
+    {
+        return view('preventas.listado');
+    }
+
+    public function apiListado(Request $request)
+    {
+        $preventas = Preventa::with(['cliente', 'empresa'])
+            ->select('pro_preventas.*')
+            ->orderBy('prev_fecha', 'desc')
+            ->get();
+
+        // Transform data for DataTable
+        $data = $preventas->map(function ($p) {
+            $nombreCliente = $p->cliente ? "{$p->cliente->cliente_nombre1} {$p->cliente->cliente_apellido1}" : 'N/A';
+            if ($p->empresa) {
+                $nombreCliente .= " - {$p->empresa->emp_nombre}";
+            } elseif ($p->cliente && $p->cliente->cliente_nom_empresa) {
+                $nombreCliente .= " - {$p->cliente->cliente_nom_empresa}";
+            }
+
+            return [
+                'prev_id' => $p->prev_id,
+                'fecha' => $p->prev_fecha->format('d/m/Y'),
+                'cliente' => $nombreCliente,
+                'total' => $p->prev_total,
+                'monto_pagado' => $p->prev_monto_pagado, // Add this field
+                'estado' => $p->prev_estado,
+                'observaciones' => $p->prev_observaciones,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function show($id)
+    {
+        $preventa = Preventa::with(['cliente', 'empresa', 'detalles.producto'])
+            ->findOrFail($id);
+            
+        return response()->json($preventa);
+    }
+
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $preventa = Preventa::findOrFail($id);
+            $motivo = request()->input('motivo', 'Cancelación de preventa');
+
+            // 1. Buscar pagos asociados
+            $pagos = DB::table('pro_pagos_subidos')->where('ps_preventa_id', $id)->get();
+
+            foreach ($pagos as $pago) {
+                // Si fue aprobado, revertir saldo y caja
+                if ($pago->ps_estado === 'APROBADO') {
+                    $monto = $pago->ps_monto_comprobante;
+                    $clienteId = $preventa->prev_cliente_id;
+
+                    // Revertir Saldo Cliente
+                    DB::table('pro_clientes_saldo')
+                        ->where('saldo_cliente_id', $clienteId)
+                        ->decrement('saldo_monto', $monto);
+
+                    $nuevoSaldo = DB::table('pro_clientes_saldo')->where('saldo_cliente_id', $clienteId)->value('saldo_monto');
+
+                    // Historial de Reversión
+                    DB::table('pro_clientes_saldo_historial')->insert([
+                        'hist_cliente_id' => $clienteId,
+                        'hist_tipo' => 'CARGO', // Cargo para reducir el saldo
+                        'hist_monto' => $monto,
+                        'hist_saldo_anterior' => $nuevoSaldo + $monto,
+                        'hist_saldo_nuevo' => $nuevoSaldo,
+                        'hist_referencia' => 'REV-PRE-' . $id,
+                        'hist_observaciones' => 'Reversión por cancelación de Preventa #' . $id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    // Actualizar en Caja (NO ELIMINAR)
+                    DB::table('cja_historial')
+                        ->where('cja_no_referencia', $pago->ps_referencia)
+                        ->orWhere('cja_observaciones', 'like', "%Preventa #{$id}%")
+                        ->update([
+                            'cja_situacion' => 'CANCELADA',
+                            'cja_observaciones' => "Cancelación Preventa #{$id}"
+                        ]);
+                }
+                
+                // Actualizar el registro de pago subido (NO ELIMINAR)
+                DB::table('pro_pagos_subidos')
+                    ->where('ps_id', $pago->ps_id)
+                    ->update(['ps_estado' => 'CANCELADO']);
+            }
+            
+            // Actualizar estado de la preventa (NO ELIMINAR)
+            $preventa->update([
+                'prev_estado' => 'CANCELADA',
+                'prev_observaciones' => $preventa->prev_observaciones . " | Cancelado: " . $motivo
+            ]);
+            
+            DB::commit();
+            
+            return response()->json(['success' => true, 'message' => 'Preventa cancelada correctamente']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Error al cancelar: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function imprimir($id)
+    {
+        $preventa = Preventa::with(['cliente', 'empresa', 'detalles.producto'])
+            ->findOrFail($id);
+
+        return view('preventas.print', compact('preventa'));
+    }
+}

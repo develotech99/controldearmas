@@ -237,6 +237,17 @@ public function verFacturaCambiaria($id)
                 'det_fac_series.*' => 'nullable|array',
             ]);
 
+            // 🔒 SECURITY: Prevent invoicing unauthorized sales
+            if (!empty($validated['fac_venta_id'])) {
+                $ventaStatus = DB::table('pro_ventas')
+                    ->where('ven_id', $validated['fac_venta_id'])
+                    ->value('ven_situacion');
+
+                if (!in_array($ventaStatus, ['AUTORIZADA', 'ACTIVA'])) {
+                    throw new Exception("La venta #{$validated['fac_venta_id']} no está autorizada para facturación. Estado actual: {$ventaStatus}. Por favor autorice la venta primero.");
+                }
+            }
+
             DB::beginTransaction();
 
             // Preparar items
@@ -666,7 +677,19 @@ public function certificarCambiaria(Request $request)
             'det_fac_precio_unitario.*'  => 'required|numeric|min:0',
             'det_fac_descuento'          => 'nullable|array',
             'det_fac_descuento.*'        => 'nullable|numeric|min:0',
+            'fac_venta_id'               => 'nullable|integer|exists:pro_ventas,ven_id',
         ]);
+
+        // 🔒 SECURITY: Prevent invoicing unauthorized sales
+        if (!empty($validated['fac_venta_id'])) {
+            $ventaStatus = DB::table('pro_ventas')
+                ->where('ven_id', $validated['fac_venta_id'])
+                ->value('ven_situacion');
+
+            if (!in_array($ventaStatus, ['AUTORIZADA', 'ACTIVA'])) {
+                throw new Exception("La venta #{$validated['fac_venta_id']} no está autorizada para facturación. Estado actual: {$ventaStatus}. Por favor autorice la venta primero.");
+            }
+        }
 
         DB::beginTransaction();
 
@@ -1264,6 +1287,33 @@ public function certificarCambiaria(Request $request)
             }
 
             DB::commit();
+
+            // 📧 Notificar Anulación
+            try {
+                $admins = \App\Models\User::whereHas('rol', function($q){
+                    $q->whereIn('nombre', ['administrador', 'contador']);
+                })
+                ->where('user_situacion', 1)
+                ->get();
+
+                $payload = [
+                    'venta_id' => $factura->fac_venta_id ?? 'N/A',
+                    'factura_serie' => $factura->fac_serie,
+                    'factura_numero' => $factura->fac_numero,
+                    'cliente_nombre' => $factura->fac_receptor_nombre,
+                    'usuario_anulo' => auth()->user()->name,
+                    'fecha_anulacion' => now()->format('d/m/Y H:i:s'),
+                    'motivo' => $motivo
+                ];
+
+                foreach ($admins as $admin) {
+                    if ($admin->email) {
+                        \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\NotificarAnulacionMail($payload));
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Error al enviar correo de anulación: ' . $e->getMessage());
+            }
 
             Log::info('FEL: Factura anulada exitosamente', [
                 'uuid' => $factura->fac_uuid,
