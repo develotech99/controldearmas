@@ -3077,28 +3077,129 @@ class InventarioManager {
                 } else {
                     // Check for specific duplicate series error
                     if (data.message && data.message.includes('Una o más series ya existen')) {
+
+                        let detallesHtml = '';
+                        if (data.detalles_duplicados && data.detalles_duplicados.length > 0) {
+                            const rows = data.detalles_duplicados.map(d => `
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-4 py-2 font-bold text-gray-900 border-r">${d.serie}</td>
+                                    <td class="px-4 py-2 text-gray-600 border-r">${d.fecha_ingreso}</td>
+                                    <td class="px-4 py-2 text-gray-600 border-r">${d.usuario}</td>
+                                    <td class="px-4 py-2">
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold ${d.estado === 'vendido' ? 'bg-blue-100 text-blue-800' :
+                                    d.estado === 'disponible' ? 'bg-green-100 text-green-800' :
+                                        d.estado === 'reservado' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'
+                                }">
+                                            ${d.estado ? d.estado.toUpperCase() : 'DESCONOCIDO'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('');
+
+                            detallesHtml = `
+                                <div class="mt-6 mb-4 text-left">
+                                    <p class="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">🔍 RASTREO DE SERIES CONFLICTIVAS:</p>
+                                    <div class="overflow-hidden rounded-lg border border-gray-300 shadow-sm">
+                                        <table class="min-w-full text-sm text-left">
+                                            <thead class="bg-gray-100 text-gray-700 font-bold uppercase text-xs">
+                                                <tr>
+                                                    <th class="px-4 py-2 border-r">Serie</th>
+                                                    <th class="px-4 py-2 border-r">Fecha Ingreso</th>
+                                                    <th class="px-4 py-2 border-r">Ingresado Por</th>
+                                                    <th class="px-4 py-2">Estado Actual</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-200">
+                                                ${rows}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
                         Swal.fire({
-                            title: '¡ALERTA DE SEGURIDAD! 🚫🔫',
+                            title: '🚨 ¡ALERTA CRÍTICA DE SEGURIDAD! 🚨',
                             html: `
+                                <style>
+                                    @keyframes blink-critical {
+                                        0% { opacity: 1; color: #ff0000; transform: scale(1); }
+                                        50% { opacity: 0.5; color: #990000; transform: scale(1.1); }
+                                        100% { opacity: 1; color: #ff0000; transform: scale(1); }
+                                    }
+                                    .critical-blink {
+                                        animation: blink-critical 0.8s infinite;
+                                        font-weight: 900;
+                                        font-size: 1.8rem;
+                                        text-transform: uppercase;
+                                        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+                                        margin-bottom: 20px;
+                                    }
+                                    .weapon-check {
+                                        background-color: #fee2e2;
+                                        border: 4px solid #ef4444;
+                                        padding: 15px;
+                                        border-radius: 12px;
+                                        margin: 20px 0;
+                                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                                    }
+                                    .physical-check {
+                                        background-color: #fef3c7;
+                                        border: 3px dashed #d97706;
+                                        padding: 15px;
+                                        border-radius: 8px;
+                                        margin-top: 20px;
+                                    }
+                                </style>
                                 <div class="text-left">
-                                    <p class="mb-4 font-bold text-lg text-red-600">¡DETENTE! ESTA SERIE YA EXISTE EN EL SISTEMA</p>
-                                    <p class="mb-2">⚠️ <strong>La serie que intentas ingresar ya fue registrada anteriormente.</strong></p>
-                                    <p class="mb-2">Esto puede significar que:</p>
-                                    <ul class="list-disc pl-5 mb-4 text-sm">
-                                        <li>El arma ya fue vendida anteriormente.</li>
-                                        <li>El arma tuvo un egreso manual.</li>
-                                        <li>Se está intentando duplicar un registro único.</li>
-                                    </ul>
-                                    <p class="font-bold text-red-500">VERIFICA EL NÚMERO DE SERIE FÍSICO Y EL HISTORIAL DEL ARMA.</p>
+                                    <div class="critical-blink text-center">
+                                        🛑 ¡DETENTE AHORA! 🛑
+                                    </div>
+                                    
+                                    <div class="weapon-check text-center">
+                                        <i class="fas fa-exclamation-circle text-5xl text-red-600 mb-3"></i>
+                                        <p class="font-black text-2xl text-red-900 mb-2">
+                                            DUPLICIDAD DE SERIE DETECTADA
+                                        </p>
+                                        <p class="text-red-800 font-bold text-lg">
+                                            ESTA SERIE YA EXISTE EN EL SISTEMA
+                                        </p>
+                                    </div>
+
+                                    ${detallesHtml}
+
+                                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                                        <p class="font-bold mb-2">Posibles causas graves:</p>
+                                        <ul class="list-none space-y-2 text-sm font-medium text-gray-700">
+                                            <li class="flex items-center"><span class="text-2xl mr-2">❌</span> El arma ya fue vendida y no debería estar aquí.</li>
+                                            <li class="flex items-center"><span class="text-2xl mr-2">❌</span> El arma ya tuvo un egreso manual previo.</li>
+                                            <li class="flex items-center"><span class="text-2xl mr-2">❌</span> Estás intentando ingresar la misma arma dos veces.</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="physical-check text-center">
+                                        <p class="font-black text-xl mb-2 text-yellow-900">👀 REVISIÓN FÍSICA OBLIGATORIA</p>
+                                        <p class="text-gray-900 font-bold text-lg">
+                                            ¿TIENES EL <span class="text-red-600 underline decoration-4">ARMA FÍSICA</span> EN TUS MANOS?
+                                        </p>
+                                        <p class="text-sm mt-2 text-gray-600">
+                                            Verifica el troquelado en el metal. No confíes solo en la etiqueta.
+                                        </p>
+                                    </div>
                                 </div>
                             `,
                             icon: 'error',
-                            confirmButtonText: 'ENTENDIDO, VERIFICARÉ',
-                            confirmButtonColor: '#d33',
-                            width: '600px',
-                            padding: '2em',
+                            iconColor: '#ff0000',
+                            showCancelButton: false,
+                            confirmButtonText: '🚨 HE VERIFICADO EL ARMA FÍSICA 🚨',
+                            confirmButtonColor: '#dc2626',
+                            width: '850px',
+                            padding: '2.5em',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
                             backdrop: `
-                                rgba(0,0,123,0.4)
+                                rgba(120,0,0,0.7)
                                 left top
                                 no-repeat
                             `

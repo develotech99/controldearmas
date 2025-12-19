@@ -830,23 +830,40 @@ public function getPaisesActivos(): JsonResponse
                     ], 422);
                 }
     
-                // CORRECCIÓN: Verificar series duplicadas SOLO EN EL MISMO PRODUCTO
-                $seriesExistentes = SerieProducto::whereIn('serie_numero_serie', $series)
-                    ->where('serie_producto_id', $producto->producto_id) // ← LÍNEA CRÍTICA AGREGADA
-                    ->where('serie_situacion', 1) // Solo series activas
-                    ->select('serie_numero_serie')
-                    ->get();
-                
-                if ($seriesExistentes->isNotEmpty()) {
-                    $seriesDuplicadas = $seriesExistentes->pluck('serie_numero_serie');
+            // CORRECCIÓN: Verificar series duplicadas SOLO EN EL MISMO PRODUCTO
+            $seriesExistentes = SerieProducto::with(['movimientos.usuario'])
+                ->whereIn('serie_numero_serie', $series)
+                ->where('serie_producto_id', $producto->producto_id)
+                ->where('serie_situacion', 1)
+                ->get();
+            
+            if ($seriesExistentes->isNotEmpty()) {
+                $detallesDuplicados = $seriesExistentes->map(function ($serie) {
+                    // Buscar el primer movimiento (ingreso)
+                    $primerMovimiento = $serie->movimientos->sortBy('mov_fecha')->first();
+                    $usuarioNombre = $primerMovimiento && $primerMovimiento->usuario 
+                        ? $primerMovimiento->usuario->name . ' ' . $primerMovimiento->usuario->apellido 
+                        : 'Usuario desconocido';
                     
-                    DB::rollback();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Las siguientes series ya existen en este producto: ' . $seriesDuplicadas->implode(', '),
-                        'series_duplicadas' => $seriesDuplicadas->toArray()
-                    ], 422);
-                }
+                    return [
+                        'serie' => $serie->serie_numero_serie,
+                        'fecha_ingreso' => $serie->serie_fecha_ingreso ? $serie->serie_fecha_ingreso->format('d/m/Y H:i') : 'N/A',
+                        'usuario' => $usuarioNombre,
+                        'estado' => $serie->serie_estado,
+                        'observaciones' => $serie->serie_observaciones ?? 'Sin observaciones'
+                    ];
+                });
+
+                $seriesDuplicadas = $seriesExistentes->pluck('serie_numero_serie');
+                
+                DB::rollback();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Una o más series ya existen para este producto.',
+                    'series_duplicadas' => $seriesDuplicadas->toArray(),
+                    'detalles_duplicados' => $detallesDuplicados->toArray()
+                ], 422);
+            }
     
                 // CREAR UN MOVIMIENTO POR CADA SERIE
                 foreach ($series as $numeroSerie) {
