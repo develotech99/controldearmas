@@ -1295,7 +1295,7 @@ public function buscarClientes(Request $request): JsonResponse
     public function getDetalleVenta($id)
     {
         try {
-            $venta = ProVenta::with([
+            $venta = ProVenta::withTrashed()->with([
                 'cliente',
                 'vendedor',
                 'detalleVentas.producto',
