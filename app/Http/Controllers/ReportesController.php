@@ -301,8 +301,8 @@ public function buscarClientes(Request $request): JsonResponse
                 ->leftJoin('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
-                ->where('dv.det_situacion', 'ACTIVO')
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
+                ->whereIn('dv.det_situacion', ['ACTIVO', 'ACTIVA'])
                 ->select([
                     'p.producto_id',
                     'p.pro_codigo_sku',
@@ -613,10 +613,7 @@ public function buscarClientes(Request $request): JsonResponse
     {
         try {
             $ventasQuery = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
-
-           $ventasQuery = DB::table('pro_ventas')
-    ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA']);
 
             $totalVentas = $ventasQuery->count();
 
@@ -625,8 +622,8 @@ public function buscarClientes(Request $request): JsonResponse
 
             $productosVendidos = ProDetalleVenta::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
                 $q->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                    ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
-            })->where('det_situacion', 'ACTIVO')
+                    ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA']);
+            })->whereIn('det_situacion', ['ACTIVO', 'ACTIVA'])
                 ->sum('det_cantidad') ?? 0;
 
             $comisionesPendientes = ProPorcentajeVendedor::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
@@ -659,7 +656,7 @@ public function buscarClientes(Request $request): JsonResponse
             $ventas = DB::table('pro_ventas')
                 ->selectRaw('DATE(ven_fecha) as fecha, COUNT(*) as total_ventas, COALESCE(SUM(ven_total_vendido), 0) as monto_total')
                 ->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
                 ->groupBy(DB::raw('DATE(ven_fecha)'))
                 ->orderBy('fecha')
                 ->get();
@@ -695,8 +692,8 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(dv.det_cantidad * dv.det_precio), 0) as total_ingresos
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
-                ->where('dv.det_situacion', 'ACTIVO')
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
+                ->whereIn('dv.det_situacion', ['ACTIVO', 'ACTIVA'])
                 ->groupBy('p.producto_id', 'p.producto_nombre')
                 ->orderBy('total_vendido', 'desc')
                 ->limit($limit)
@@ -733,7 +730,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(v.ven_total_vendido), 0) as monto_total
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
                 ->groupBy('u.user_id', 'u.user_primer_nombre', 'u.user_primer_apellido')
                 ->orderBy('monto_total', 'desc')
                 ->get();
@@ -771,7 +768,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(dp.det_pago_monto), 0) as monto_total
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', [1, 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
                 ->where('dp.det_pago_estado', 'VALIDO')
                 ->groupBy('mp.metpago_id', 'mp.metpago_descripcion')
                 ->orderBy('monto_total', 'desc')

@@ -871,7 +871,7 @@ public function certificarCambiaria(Request $request)
                 // 2. Marcar detalles como ACTIVOS
                 DB::table('pro_detalle_ventas')
                     ->where('det_ven_id', $venta->ven_id)
-                    ->update(['det_situacion' => 'ACTIVA']);
+                    ->update(['det_situacion' => 'ACTIVO']);
 
                 // 3. Procesar SERIES y LOTES (Descontar stock)
                 $refVenta = 'VENTA-' . $venta->ven_id;
