@@ -802,10 +802,20 @@ class ReportesManager {
 
             // Colores para estado de venta
             let colorVenta = 'bg-gray-100 text-gray-800';
-            if (venta.ven_situacion === 'ACTIVA' || venta.ven_situacion === 'FACTURADA') colorVenta = 'bg-green-100 text-green-800';
-            else if (venta.ven_situacion === 'COMPLETADA') colorVenta = 'bg-blue-100 text-blue-800';
-            else if (venta.ven_situacion === 'ANULADA') colorVenta = 'bg-red-100 text-red-800';
-            else if (venta.ven_situacion === 'PENDIENTE') colorVenta = 'bg-yellow-100 text-yellow-800';
+            let estadoTexto = venta.ven_situacion;
+
+            if (venta.deleted_at) {
+                colorVenta = 'bg-red-200 text-red-900 border border-red-300';
+                estadoTexto = 'ELIMINADA';
+            } else if (venta.ven_situacion === 'ACTIVA' || venta.ven_situacion === 'FACTURADA') {
+                colorVenta = 'bg-green-100 text-green-800';
+            } else if (venta.ven_situacion === 'COMPLETADA') {
+                colorVenta = 'bg-blue-100 text-blue-800';
+            } else if (venta.ven_situacion === 'ANULADA') {
+                colorVenta = 'bg-red-100 text-red-800';
+            } else if (venta.ven_situacion === 'PENDIENTE') {
+                colorVenta = 'bg-yellow-100 text-yellow-800';
+            }
 
             return `
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -851,7 +861,7 @@ class ReportesManager {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorVenta}">
-                            ${venta.ven_situacion}
+                            ${estadoTexto}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">

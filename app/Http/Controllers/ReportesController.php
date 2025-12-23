@@ -105,7 +105,7 @@ class ReportesController extends Controller
 public function getReporteVentas(Request $request): JsonResponse
 {
     try {
-        $query = ProVenta::with([
+        $query = ProVenta::withTrashed()->with([
             'vendedor:user_id,user_primer_nombre,user_primer_apellido',
             'detalleVentas.producto:producto_id,producto_nombre,pro_codigo_sku',
             'cliente:cliente_id,cliente_nombre1,cliente_apellido1,cliente_dpi',
