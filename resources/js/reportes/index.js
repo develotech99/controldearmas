@@ -1563,7 +1563,7 @@ class ReportesManager {
             if (anioSelect && !filtros.anio) anioSelect.value = anio;
 
             const params = new URLSearchParams({ mes, anio });
-            const response = await fetch(`/ reportes / digecam / armas ? ${params} `);
+            const response = await fetch(`/reportes/digecam/armas?${params}`);
 
             if (response.ok) {
                 const result = await response.json();
@@ -1592,7 +1592,7 @@ class ReportesManager {
                 fecha_fin: filtros.fecha_fin || this.filtros.fecha_fin
             });
 
-            const response = await fetch(`/ reportes / digecam / municiones ? ${params} `);
+            const response = await fetch(`/reportes/digecam/municiones?${params}`);
 
             if (response.ok) {
                 const result = await response.json();
