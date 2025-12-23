@@ -617,7 +617,10 @@ public function buscarClientes(Request $request): JsonResponse
 
             $totalVentas = $ventasQuery->count();
 
-            $montoTotal = $ventasQuery->sum('ven_total_vendido') ?? 0;
+            // Re-instanciar o clonar para la siguiente consulta, ya que count() modifica el builder o ejecuta
+            $montoTotal = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
+                ->sum('ven_total_vendido') ?? 0;
             $promedioVenta = $totalVentas > 0 ? round($montoTotal / $totalVentas, 2) : 0;
 
             $productosVendidos = ProDetalleVenta::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
