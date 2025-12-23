@@ -1697,7 +1697,6 @@ class ReportesManager {
             <td class="px-2 py-2 text-center text-xs">${arma.modelo || 'N/A'}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.calibre || 'N/A'}</td>
             <td class="px-2 py-2 text-xs">${arma.comprador.toUpperCase()}</td>
-            <td class="px-2 py-2 text-center text-xs">${arma.autorizacion}</td>
             <td class="px-2 py-2 text-center text-xs">${this.formatearFechaDisplay(arma.fecha)}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.factura || ''}</td>
         </tr>
@@ -1729,8 +1728,7 @@ class ReportesManager {
             return `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
-            <td class="px-2 py-2 text-center text-xs">${municion.autorizacion}</td>
-            <td class="px-2 py-2 text-center text-xs">${municion.documento}</td>
+            <td class="px-2 py-2 text-center text-xs">${municion.documento_tipo || ''} ${municion.documento_numero || ''} ${municion.documento_secundario || ''}</td>
             <td class="px-2 py-2 text-xs">${municion.nombre.toUpperCase()}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100">${municion.factura || ''}</td>
             <td class="px-2 py-2 text-center text-xs">${this.formatearFechaDisplay(municion.fecha)}</td>

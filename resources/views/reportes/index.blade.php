@@ -825,7 +825,6 @@
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Modelo</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Calibre</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Comprador</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Autorización</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Fecha</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Factura</th>
                             </tr>
@@ -921,7 +920,6 @@
                         <thead class="bg-gray-800 dark:bg-gray-900">
                             <tr>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">No.</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Autorización</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Documento</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Nombre</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Factura</th>

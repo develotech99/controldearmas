@@ -140,7 +140,6 @@
                 <th style="width: 8%;">MODELO</th>
                 <th style="width: 8%;">CALIBRE</th>
                 <th style="width: 15%;">COMPRADOR</th>
-                <th style="width: 8%;">AUTORIZACIÓN</th>
                 <th style="width: 8%;">FECHA</th>
                 <th style="width: 10%;">FACTURA</th>
             </tr>
@@ -163,7 +162,6 @@
                 <td style="text-align: left; padding-left: 5px;">
                     {{ strtoupper($ventaObj->comprador ?? 'CLIENTE GENERAL') }}
                 </td>
-                <td>{{ $ventaObj->autorizacion ?? '' }}</td>
                 <td>
                     {{ isset($ventaObj->fecha) ? \Carbon\Carbon::parse($ventaObj->fecha)->format('Y-m-d') : '' }}
                 </td>

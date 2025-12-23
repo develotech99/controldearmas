@@ -127,7 +127,6 @@
         <thead>
             <tr>
                 <th style="width: 4%;">No.</th>
-                <th style="width: 10%;">AUTORIZACIÓN</th>
                 <th style="width: 10%;">DOCUMENTO</th>
                 <th style="width: 20%;">NOMBRE</th>
                 <th style="width: 10%;">FACTURA</th>
@@ -147,8 +146,7 @@
             @endphp
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $ventaObj->autorizacion ?? '' }}</td>
-                <td>{{ $ventaObj->documento ?? 'DOCUMENTO' }}</td>
+                <td>{{ $ventaObj->documento_tipo ?? '' }} {{ $ventaObj->documento_numero ?? '' }} {{ $ventaObj->documento_secundario ?? '' }}</td>
                 <td style="text-align: left; padding-left: 5px;">
                     {{ strtoupper($ventaObj->nombre ?? 'CLIENTE GENERAL') }}
                 </td>
