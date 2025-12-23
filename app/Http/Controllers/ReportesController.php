@@ -1090,6 +1090,7 @@ public function getReporteVentas(Request $request): JsonResponse
                          ->where('mov.mov_situacion', '=', 1);
                 })
                 ->leftJoin('pro_clientes_documentos as doc', 'mov.mov_licencia_anterior', '=', 'doc.id')
+                ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ RE-AGREGAR JOIN FACTURACION
                 ->select([
                     DB::raw('CASE 
                         WHEN doc.id IS NOT NULL THEN doc.tipo
