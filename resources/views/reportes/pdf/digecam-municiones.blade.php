@@ -146,7 +146,21 @@
             @endphp
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $ventaObj->documento_tipo ?? '' }} {{ $ventaObj->documento_numero ?? '' }} {{ $ventaObj->documento_secundario ?? '' }}</td>
+                <td>
+                    @php
+                        $tipo = strtoupper($ventaObj->documento_tipo ?? '');
+                        $num = $ventaObj->documento_numero ?? '';
+                        $sec = $ventaObj->documento_secundario ?? '';
+                    @endphp
+
+                    @if($tipo === 'TENENCIA')
+                        TENENCIA: {{ $num }} <br> PROP: {{ $sec }}
+                    @elseif($tipo === 'PORTACION')
+                        LICENCIA: {{ $num }} <br> COD1: {{ $sec }}
+                    @else
+                        {{ $tipo }} {{ $num }} {{ $sec }}
+                    @endif
+                </td>
                 <td style="text-align: left; padding-left: 5px;">
                     {{ strtoupper($ventaObj->nombre ?? 'CLIENTE GENERAL') }}
                 </td>
