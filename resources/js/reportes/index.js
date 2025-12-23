@@ -110,7 +110,8 @@ class ReportesManager {
         try {
             await Promise.all([
                 this.cambiarTab(this.currentTab),
-                this.loadFiltros()
+                this.loadFiltros(),
+                this.loadDashboard() // Cargar KPIs iniciales
             ]);
         } catch (error) {
             console.error('Error cargando datos iniciales:', error);
@@ -2036,9 +2037,9 @@ class ReportesManager {
         }
 
         // Recargar datos con las nuevas fechas
-        if (this.currentTab === 'dashboard') {
-            this.loadDashboard();
-        } else {
+        this.loadDashboard(); // Siempre actualizar KPIs
+
+        if (this.currentTab !== 'dashboard') {
             this.loadTabData(this.currentTab);
         }
     }
