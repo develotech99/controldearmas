@@ -984,6 +984,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->join('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
                 ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
                 ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
+                ->leftJoin('pro_clientes_empresas as ce', 'cl.cliente_id', '=', 'ce.emp_cliente_id')
                 ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') 
                 ->select([
                     'mov.mov_licencia_anterior AS pro_tenencia_anterior',
@@ -997,9 +998,9 @@ public function getReporteVentas(Request $request): JsonResponse
                         COALESCE(cl.cliente_nombre1, ""), " ", 
                         COALESCE(cl.cliente_nombre2, ""), " ",
                         COALESCE(cl.cliente_apellido1, ""), " ",
-                        COALESCE(cl.cliente_apellido2, "")
+                        COALESCE(cl.cliente_apellido2, ""),
+                        CASE WHEN ce.emp_nombre IS NOT NULL AND ce.emp_nombre != "" THEN CONCAT(" - ", ce.emp_nombre) ELSE "" END
                     ) as comprador'),
-                    'v.ven_id as autorizacion',
                     'v.ven_fecha as fecha',
                     DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura')
                 ])
@@ -1028,7 +1029,6 @@ public function getReporteVentas(Request $request): JsonResponse
                     'modelo' => $venta->modelo,
                     'calibre' => $venta->calibre,
                     'comprador' => trim($venta->comprador),
-                    'autorizacion' => $venta->autorizacion,
                     'fecha' => $venta->fecha,
                     'factura' => $venta->factura
                 ];
