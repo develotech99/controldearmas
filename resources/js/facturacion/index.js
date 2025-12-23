@@ -273,6 +273,7 @@ const seleccionarVentaCambiaria = (venta) => {
                         precio: det.det_precio,
                         descuento: descuentoUnitario.toFixed(2),
                         producto_id: det.det_producto_id,
+                        detalle_venta_id: det.det_id,
                         max: 1
                     });
                 });
@@ -292,6 +293,7 @@ const seleccionarVentaCambiaria = (venta) => {
                         precio: det.det_precio,
                         descuento: det.det_descuento,
                         producto_id: det.det_producto_id,
+                        detalle_venta_id: det.det_id,
                         max: pendiente,
                         pendiente: pendiente
                     });
@@ -576,6 +578,16 @@ const agregarItemCambiaria = (prefill = {}) => {
     if (prefill.producto_id) {
         q(nodo, 'input[name="det_fac_producto_id[]"]').value = prefill.producto_id;
     }
+
+    // FIX: Add hidden input for detail ID linkage
+    if (prefill.detalle_venta_id) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'det_fac_detalle_venta_id[]';
+        input.value = prefill.detalle_venta_id;
+        nodo.appendChild(input);
+    }
+
     if (typeof prefill.cantidad !== 'undefined') q(nodo, '.cam-item-cantidad').value = prefill.cantidad;
     if (typeof prefill.precio !== 'undefined') q(nodo, '.cam-item-precio').value = prefill.precio;
     if (typeof prefill.descuento !== 'undefined') q(nodo, '.cam-item-descuento').value = prefill.descuento;
