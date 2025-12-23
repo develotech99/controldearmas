@@ -1728,7 +1728,21 @@ class ReportesManager {
             return `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
-            <td class="px-2 py-2 text-center text-xs">${municion.documento_tipo || ''} ${municion.documento_numero || ''} ${municion.documento_secundario || ''}</td>
+            <td class="px-2 py-2 text-center text-xs">
+                ${(() => {
+                    const tipo = (municion.documento_tipo || '').toUpperCase();
+                    const num = municion.documento_numero || '';
+                    const sec = municion.documento_secundario || '';
+
+                    if (tipo === 'TENENCIA') {
+                        return `TENENCIA: ${num} <br> <span class="text-gray-500">PROP: ${sec}</span>`;
+                    } else if (tipo === 'PORTACION') {
+                        return `LICENCIA: ${num} <br> <span class="text-gray-500">COD1: ${sec}</span>`;
+                    } else {
+                        return `${tipo} ${num} ${sec}`;
+                    }
+                })()}
+            </td>
             <td class="px-2 py-2 text-xs">${municion.nombre.toUpperCase()}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100">${municion.factura || ''}</td>
             <td class="px-2 py-2 text-center text-xs">${this.formatearFechaDisplay(municion.fecha)}</td>

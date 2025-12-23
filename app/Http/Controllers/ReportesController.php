@@ -1083,13 +1083,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
                 ->leftJoin('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
-                ->join('pro_movimientos as mov', function($join) {
-                    $join->on(DB::raw("CONCAT('VENTA-', v.ven_id)"), '=', 'mov.mov_documento_referencia')
-                         ->on('dv.det_producto_id', '=', 'mov.mov_producto_id')
-                         ->where('mov.mov_tipo', '=', 'venta')
-                         ->where('mov.mov_situacion', '=', 1);
-                })
-                ->leftJoin('pro_clientes_documentos as doc', 'mov.mov_licencia_anterior', '=', 'doc.id')
+                ->leftJoin('pro_clientes_documentos as doc', 'v.ven_documento_id', '=', 'doc.id')
                 ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ RE-AGREGAR JOIN FACTURACION
                 ->select([
                     DB::raw('CASE 
