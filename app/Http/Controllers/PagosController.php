@@ -369,10 +369,11 @@ class PagosController extends Controller
                         'puede_pagar_en_linea' => $disponibles > 0,
                     ];
                 } else {
-                    if ($fechaCompletado && Carbon::parse($fechaCompletado)->gte($corte)) {
+                    $fechaReferencia = $fechaCompletado ?: $v->ven_fecha;
+                    if ($fechaReferencia && Carbon::parse($fechaReferencia)->gte($corte)) {
                         $pagadasUlt4m[] = $base + [
                             'marcar_como' => 'PAGADO',
-                            'fecha_ultimo_pago' => $ultimaFechaPago ?: $v->pago_fecha_completado,
+                            'fecha_ultimo_pago' => $ultimaFechaPago ?: $v->pago_fecha_completado ?: $v->ven_fecha,
                         ];
                     }
                 }
