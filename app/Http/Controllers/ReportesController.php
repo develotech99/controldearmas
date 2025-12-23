@@ -1005,7 +1005,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ])
                 ->whereYear('v.ven_fecha', $anio)
                 ->whereMonth('v.ven_fecha', $mes)
-                ->where('v.ven_situacion', 'ACTIVA')
+                ->whereIn('v.ven_situacion', ['COMPLETADA', 'FACTURADA'])
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%ARMA%')
                         ->orWhere('c.categoria_nombre', 'LIKE', '%PISTOLA%')
