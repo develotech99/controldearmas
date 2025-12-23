@@ -1083,13 +1083,28 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
                 ->leftJoin('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
-                ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ JOIN FACTURACION
+                ->join('pro_movimientos as mov', function($join) {
+                    $join->on(DB::raw("CONCAT('VENTA-', v.ven_id)"), '=', 'mov.mov_documento_referencia')
+                         ->on('dv.det_producto_id', '=', 'mov.mov_producto_id')
+                         ->where('mov.mov_tipo', '=', 'venta')
+                         ->where('mov.mov_situacion', '=', 1);
+                })
+                ->leftJoin('pro_clientes_documentos as doc', 'mov.mov_licencia_anterior', '=', 'doc.id')
                 ->select([
-                    'v.ven_id as autorizacion',
                     DB::raw('CASE 
-                    WHEN cl.cliente_dpi IS NOT NULL THEN "DPI"
-                    ELSE "DOCUMENTO"
-                END as documento'),
+                        WHEN doc.id IS NOT NULL THEN doc.tipo
+                        WHEN cl.cliente_dpi IS NOT NULL THEN "DPI"
+                        ELSE "DOCUMENTO"
+                    END as documento_tipo'),
+                    DB::raw('CASE 
+                        WHEN doc.id IS NOT NULL THEN doc.numero_documento
+                        WHEN cl.cliente_dpi IS NOT NULL THEN cl.cliente_dpi
+                        ELSE ""
+                    END as documento_numero'),
+                    DB::raw('CASE 
+                        WHEN doc.id IS NOT NULL THEN doc.numero_secundario
+                        ELSE ""
+                    END as documento_secundario'),
                     DB::raw('CONCAT(
                     COALESCE(cl.cliente_nombre1, ""), " ",
                     COALESCE(cl.cliente_nombre2, ""), " ",
@@ -1105,7 +1120,7 @@ public function getReporteVentas(Request $request): JsonResponse
                     'dv.det_cantidad as cantidad'
                 ])
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', ['ACTIVA', 'AUTORIZADA', 1, '1', 'COMPLETADA', 'FACTURADA']) // ✅ FIX: Incluir todos los estados válidos
+                ->whereIn('v.ven_situacion', ['COMPLETADA', 'FACTURADA']) // ✅ FIX: Incluir todos los estados válidos
                 ->whereIn('dv.det_situacion', ['ACTIVO', 'AUTORIZADA', 1, '1'])
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%MUNICION%')
