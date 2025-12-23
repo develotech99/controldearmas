@@ -296,19 +296,7 @@ public function getReporteVentas(Request $request): JsonResponse
         }
     }
 
-    } catch (\Exception $e) {
-        \Log::error('Error buscando clientes', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Error buscando clientes: ' . $e->getMessage(),
-            'results' => []
-        ], 500);
-    }
-}
+
 
     /**
      * Reporte de productos más vendidos
