@@ -2409,6 +2409,8 @@ class ReportesManager {
         // Vendedores
         this.populateSelect('filtro-vendedor-ventas', data.vendedores, 'user_id', (item) =>
             `${item.user_primer_nombre} ${item.user_primer_apellido}`);
+        this.populateSelect('filtro-vendedor-historial', data.vendedores, 'user_id', (item) =>
+            `${item.user_primer_nombre} ${item.user_primer_apellido}`);
         this.populateSelect('filtro-vendedor-comisiones', data.vendedores, 'user_id', (item) =>
             `${item.user_primer_nombre} ${item.user_primer_apellido}`);
 

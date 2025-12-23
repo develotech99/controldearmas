@@ -586,7 +586,6 @@ public function getReporteVentas(Request $request): JsonResponse
     {
         try {
             $vendedores = User::select('user_id', 'user_primer_nombre', 'user_primer_apellido')
-                ->where('user_situacion', 1)
                 ->orderBy('user_primer_nombre')
                 ->get();
 
