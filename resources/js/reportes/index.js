@@ -150,6 +150,7 @@ class ReportesManager {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
+                    this.filtrosData = result.data;
                     this.populateFiltros(result.data);
                 }
             }
@@ -157,6 +158,10 @@ class ReportesManager {
             console.error('Error cargando filtros:', error);
         }
     }
+
+
+
+
 
     /**
      * Cambiar tab activo
@@ -665,6 +670,13 @@ class ReportesManager {
      * Cargar reporte de historial de ventas (TODAS)
      */
     async loadReporteHistorialVentas(page = 1) {
+        // Ensure filters are populated if data is available
+        const vendedorSelect = document.getElementById('filtro-vendedor-historial');
+        if (vendedorSelect && vendedorSelect.options.length <= 1 && this.filtrosData && this.filtrosData.vendedores) {
+            this.populateSelect('filtro-vendedor-historial', this.filtrosData.vendedores, 'user_id', (item) =>
+                `${item.user_primer_nombre} ${item.user_primer_apellido}`);
+        }
+
         try {
             this.showLoading('historial-ventas');
 
