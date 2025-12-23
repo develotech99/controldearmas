@@ -777,9 +777,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Año</label>
                             <select id="filtro-anio-digecam-armas"
                                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
-                                <option value="2023">2023</option>
+                                <!-- Se llena dinámicamente con JS -->
                             </select>
                         </div>
                         <div></div>

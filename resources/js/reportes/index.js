@@ -34,10 +34,31 @@ class ReportesManager {
 
         this.setupEventListeners();
         this.setupFechasIniciales();
+        this.populateYears(); // Add this line
         this.loadInitialData();
+    }
 
+    /**
+     * Poblar selector de años dinámicamente
+     */
+    populateYears() {
+        const yearSelect = document.getElementById('filtro-anio-digecam-armas');
+        if (yearSelect) {
+            const currentYear = new Date().getFullYear();
+            // Limpiar opciones existentes si las hubiera
+            yearSelect.innerHTML = '';
 
-
+            // Generar años desde 2023 hasta el año actual
+            for (let year = currentYear; year >= 2023; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                yearSelect.appendChild(option);
+            }
+        }
     }
     /**
      * Configurar event listeners
