@@ -126,6 +126,17 @@ public function getReporteVentas(Request $request): JsonResponse
             $query->where('pro_ventas.ven_user', $request->vendedor_id);
         }
 
+        // Filtro por cliente ID (desde el select)
+        if ($request->filled('cliente_id')) {
+            $clienteId = $request->cliente_id;
+            // Si viene compuesto "123_45", tomamos solo el 123
+            if (strpos($clienteId, '_') !== false) {
+                $parts = explode('_', $clienteId);
+                $clienteId = $parts[0];
+            }
+            $query->where('pro_ventas.ven_cliente', $clienteId);
+        }
+
         // Filtro por cliente - CORREGIDO: búsqueda por nombre o DPI
         if ($request->filled('cliente_buscar')) {
             $busqueda = $request->cliente_buscar;
@@ -201,71 +212,89 @@ public function getReporteVentas(Request $request): JsonResponse
 } 
 
 
-public function buscarClientes(Request $request): JsonResponse
-{
-    try {
-        $termino = $request->get('q', '');
-        
-        // 🔍 LOG para debug
-        \Log::info('Búsqueda de clientes', [
-            'termino' => $termino,
-            'request_all' => $request->all()
-        ]);
-        
-        // ✅ Construir query base
-        $query = ProCliente::select(
-                'cliente_id', 
-                'cliente_nombre1', 
-                'cliente_nombre2',
-                'cliente_apellido1', 
-                'cliente_apellido2',
-                'cliente_dpi'
-            )
-            ->where('cliente_situacion', 1);
-        
-        // Si hay término de búsqueda, filtrar
-        if (!empty($termino) && strlen($termino) >= 1) {
-            $query->where(function($q) use ($termino) {
-                $q->where('cliente_nombre1', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_nombre2', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_apellido1', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_apellido2', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_dpi', 'LIKE', "%{$termino}%");
-            });
-        }
-        
-        // Obtener resultados
-        $clientes = $query->limit(10)
-            ->orderBy('cliente_nombre1', 'asc')
-            ->get()
-            ->map(function($cliente) {
-                $nombreCompleto = trim(
-                    implode(' ', array_filter([
-                        $cliente->cliente_nombre1,
-                        $cliente->cliente_nombre2,
-                        $cliente->cliente_apellido1,
-                        $cliente->cliente_apellido2
-                    ]))
-                );
+    public function buscarClientes(Request $request): JsonResponse
+    {
+        try {
+            $termino = $request->get('q', '');
+            
+            // Construir query con JOIN a empresas para mostrar variantes
+            $query = ProCliente::select(
+                    'pro_clientes.cliente_id', 
+                    'pro_clientes.cliente_nombre1', 
+                    'pro_clientes.cliente_nombre2',
+                    'pro_clientes.cliente_apellido1', 
+                    'pro_clientes.cliente_apellido2',
+                    'pro_clientes.cliente_dpi',
+                    'ce.emp_nombre as empresa_nombre',
+                    'ce.emp_id as empresa_id'
+                )
+                ->leftJoin('pro_clientes_empresas as ce', 'pro_clientes.cliente_id', '=', 'ce.emp_cliente_id')
+                ->where('pro_clientes.cliente_situacion', 1);
+            
+            // Si hay término de búsqueda, filtrar
+            if (!empty($termino) && strlen($termino) >= 1) {
+                $query->where(function($q) use ($termino) {
+                    $q->where('pro_clientes.cliente_nombre1', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_nombre2', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_apellido1', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_apellido2', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_dpi', 'LIKE', "%{$termino}%")
+                      ->orWhere('ce.emp_nombre', 'LIKE', "%{$termino}%");
+                });
+            }
+            
+            // Obtener resultados
+            $clientes = $query->limit(20)
+                ->orderBy('pro_clientes.cliente_nombre1', 'asc')
+                ->get()
+                ->map(function($cliente) {
+                    $nombreCompleto = trim(
+                        implode(' ', array_filter([
+                            $cliente->cliente_nombre1,
+                            $cliente->cliente_nombre2,
+                            $cliente->cliente_apellido1,
+                            $cliente->cliente_apellido2
+                        ]))
+                    );
+                    
+                    $texto = $nombreCompleto;
+                    
+                    // Agregar empresa si existe
+                    if (!empty($cliente->empresa_nombre)) {
+                        $texto .= " - " . $cliente->empresa_nombre;
+                    } else {
+                        $texto .= " (Personal)";
+                    }
+
+                    if ($cliente->cliente_dpi) {
+                        $texto .= " [DPI: {$cliente->cliente_dpi}]";
+                    }
+                    
+                    // ID compuesto para diferenciar opciones en el select
+                    // Formato: clienteId_empresaId (0 si no tiene)
+                    $empresaId = $cliente->empresa_id ?? 0;
+                    $idCompuesto = "{$cliente->cliente_id}_{$empresaId}";
+                    
+                    return [
+                        'id' => $idCompuesto,
+                        'text' => $texto
+                    ];
+                });
                 
-                return [
-                    'id' => $cliente->cliente_id,
-                    'text' => $nombreCompleto . 
-                             ($cliente->cliente_dpi ? " (DPI: {$cliente->cliente_dpi})" : '')
-                ];
-            });
-
-        // 🔍 LOG de resultados
-        \Log::info('Clientes encontrados', [
-            'cantidad' => $clientes->count(),
-            'resultados' => $clientes->toArray()
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'results' => $clientes,
-            'total' => $clientes->count()
-        ]);
+            return response()->json([
+                'success' => true,
+                'results' => $clientes
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en buscarClientes: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'results' => [],
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
 
     } catch (\Exception $e) {
         \Log::error('Error buscando clientes', [
