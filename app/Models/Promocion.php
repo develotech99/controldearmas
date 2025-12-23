@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Promocion extends Model
+class Promocion extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
     
     protected $table = 'pro_promociones';
     protected $primaryKey = 'promo_id';

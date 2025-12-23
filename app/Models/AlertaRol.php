@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modelo pivote para la relación entre Alertas y Roles
  * Define qué roles pueden ver cada alerta específica
  */
-class AlertaRol extends Model
+class AlertaRol extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'pro_alertas_roles';
     protected $primaryKey = 'alerta_rol_id';

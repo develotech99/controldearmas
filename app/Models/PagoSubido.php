@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class PagoSubido extends Model
+class PagoSubido extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     // Tabla y PK personalizados
     protected $table = 'pro_pagos_subidos';
     protected $primaryKey = 'ps_id';

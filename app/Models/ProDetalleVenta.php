@@ -5,8 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-class ProDetalleVenta extends Model
+use OwenIt\Auditing\Contracts\Auditable;
+
+class ProDetalleVenta extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_detalle_ventas';
     protected $primaryKey = 'det_id';
     public $timestamps = false;

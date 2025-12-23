@@ -6,14 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modelo para la asignación de productos a licencias de importación
  * Conecta productos del inventario con licencias específicas
  */
-class LicenciaAsignacionProducto extends Model
+class LicenciaAsignacionProducto extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'pro_licencia_asignacion_producto';
     protected $primaryKey = 'asignacion_id';

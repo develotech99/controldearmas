@@ -448,6 +448,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/clientes/estado-cuenta', [EstadoCuentaController::class, 'listar']);
     Route::get('/api/clientes/estado-cuenta/{id}', [EstadoCuentaController::class, 'detalle']);
 
+    // Auditoría
+    Route::get('/audits', [App\Http\Controllers\AuditController::class, 'index'])->name('audits.index');
+    Route::get('/audits/{id}', [App\Http\Controllers\AuditController::class, 'show'])->name('audits.show');
+
 });
 
 require __DIR__ . '/auth.php';

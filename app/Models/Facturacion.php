@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Facturacion extends Model
+class Facturacion extends Model implements Auditable
 {
     use SoftDeletes;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'facturacion';
     protected $primaryKey = 'fac_id';

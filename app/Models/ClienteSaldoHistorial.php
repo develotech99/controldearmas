@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ClienteSaldoHistorial extends Model
+class ClienteSaldoHistorial extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_clientes_saldo_historial';
     protected $primaryKey = 'hist_id';
 

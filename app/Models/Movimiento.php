@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modelo para los movimientos de inventario
  * Registra todo el historial de entradas, salidas y ajustes
  */
-class Movimiento extends Model
+class Movimiento extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'pro_movimientos';
     protected $primaryKey = 'mov_id';

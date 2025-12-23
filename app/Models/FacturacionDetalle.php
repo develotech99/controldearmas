@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class FacturacionDetalle extends Model
+class FacturacionDetalle extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'facturacion_detalle';
     protected $primaryKey = 'det_fac_id';
 
