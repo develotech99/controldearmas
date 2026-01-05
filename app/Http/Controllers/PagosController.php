@@ -464,9 +464,11 @@ class PagosController extends Controller
         $ventaId = (int) $data['venta_id'];
         $cuotasArr = json_decode($data['cuotas'] ?? '[]', true) ?: [];
 
-        // Validar que haya cuotas O detalle_pago_id
-        if (empty($cuotasArr) && empty($data['detalle_pago_id'])) {
-            return response()->json(['codigo' => 0, 'mensaje' => 'Debe seleccionar cuotas o un pago existente'], 422);
+        // Validar que haya cuotas O detalle_pago_id O que sea un pago general (sin cuotas específicas)
+        // Antes: if (empty($cuotasArr) && empty($data['detalle_pago_id'])) { ... }
+        // AHORA: Permitimos pasar si hay monto > 0, asumiendo que es un pago a cuenta o liquidación total
+        if (empty($cuotasArr) && empty($data['detalle_pago_id']) && $montoComprobante <= 0) {
+             return response()->json(['codigo' => 0, 'mensaje' => 'Debe seleccionar cuotas o ingresar un monto válido'], 422);
         }
 
         // 1) Verificar que la venta exista (y opcionalmente que pertenezca al usuario)
