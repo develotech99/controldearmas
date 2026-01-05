@@ -140,55 +140,54 @@ class DeudasController extends Controller
                 return response()->json(['success' => false, 'message' => 'Deuda no encontrada.'], 404);
             }
 
-        // Handle file upload with compression
-        $comprobantePath = null;
-        if ($request->hasFile('comprobante')) {
-            $file = $request->file('comprobante');
-            $filename = 'pagos_subidos/' . uniqid() . '.' . $file->getClientOriginalExtension();
-            
-            // Simple compression using GD
-            if (in_array(strtolower($file->getClientOriginalExtension()), ['jpg', 'jpeg', 'png'])) {
-                $image = match(strtolower($file->getClientOriginalExtension())) {
-                    'jpg', 'jpeg' => imagecreatefromjpeg($file->getRealPath()),
-                    'png' => imagecreatefrompng($file->getRealPath()),
-                    default => null,
-                };
+            // Handle file upload with compression
+            $comprobantePath = null;
+            if ($request->hasFile('comprobante')) {
+                $file = $request->file('comprobante');
+                $filename = 'pagos_subidos/' . uniqid() . '.' . $file->getClientOriginalExtension();
+                
+                // Simple compression using GD
+                if (in_array(strtolower($file->getClientOriginalExtension()), ['jpg', 'jpeg', 'png'])) {
+                    $image = match(strtolower($file->getClientOriginalExtension())) {
+                        'jpg', 'jpeg' => imagecreatefromjpeg($file->getRealPath()),
+                        'png' => imagecreatefrompng($file->getRealPath()),
+                        default => null,
+                    };
 
-                if ($image) {
-                    // Save with 75% quality
-                    imagejpeg($image, storage_path('app/public/' . $filename), 75);
-                    imagedestroy($image);
-                    $comprobantePath = $filename;
+                    if ($image) {
+                        // Save with 75% quality
+                        imagejpeg($image, storage_path('app/public/' . $filename), 75);
+                        imagedestroy($image);
+                        $comprobantePath = $filename;
+                    } else {
+                        $comprobantePath = $file->store('pagos_subidos', 'public');
+                    }
                 } else {
                     $comprobantePath = $file->store('pagos_subidos', 'public');
                 }
-            } else {
-                $comprobantePath = $file->store('pagos_subidos', 'public');
             }
-        }
 
-        // Determine status based on proof presence
-        $estado = $comprobantePath ? 'PENDIENTE_VALIDACION' : 'PENDIENTE_CARGA';
+            // Determine status based on proof presence
+            $estado = $comprobantePath ? 'PENDIENTE_VALIDACION' : 'PENDIENTE_CARGA';
 
-        // Registrar en pagos subidos
-        DB::table('pro_pagos_subidos')->insert([
-            'ps_deuda_id' => $id,
-            'ps_cliente_user_id' => auth()->id(),
-            'ps_estado' => $estado,
-            'ps_canal' => 'WEB',
-            'ps_fecha_comprobante' => $request->fecha_pago ? Carbon::parse($request->fecha_pago) : now(),
-            'ps_monto_comprobante' => $request->monto,
-            'ps_banco_id' => $request->banco_id,
-            'ps_referencia' => $request->referencia,
-            'ps_concepto' => $request->nota,
-            'ps_imagen_path' => $comprobantePath,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            // Registrar en pagos subidos
+            DB::table('pro_pagos_subidos')->insert([
+                'ps_deuda_id' => $id,
+                'ps_cliente_user_id' => auth()->id(),
+                'ps_estado' => $estado,
+                'ps_canal' => 'WEB',
+                'ps_fecha_comprobante' => $request->fecha_pago ? Carbon::parse($request->fecha_pago) : now(),
+                'ps_monto_comprobante' => $request->monto,
+                'ps_banco_id' => $request->banco_id,
+                'ps_referencia' => $request->referencia,
+                'ps_concepto' => $request->nota,
+                'ps_imagen_path' => $comprobantePath,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        // Notificar al administrador si hay comprobante
-        if ($comprobantePath) {
-            try {
+            // Notificar al administrador si hay comprobante
+            if ($comprobantePath) {
                 $admins = \App\Models\User::whereHas('rol', function($q){
                     $q->whereIn('nombre', ['administrador', 'contador']);
                 })
@@ -219,29 +218,30 @@ class DeudasController extends Controller
                         Mail::to($admin->email)->send(new \App\Mail\NotificarpagoMail($payload, $comprobantePath, 'DEUDA'));
                     }
                 }
-
-                DB::commit();
-
-                $msg = $comprobantePath 
-                    ? 'Pago enviado a validación correctamente.' 
-                    : 'Pago registrado. Por favor sube el comprobante en "Mis Pagos" para validarlo.';
-
-                return response()->json(['success' => true, 'message' => $msg]);
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Error al registrar pago: ' . $e->getMessage());
-
-                $msg = 'Error al procesar el pago.';
-                if (str_contains($e->getMessage(), 'Data too long')) {
-                    $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
-                } elseif (config('app.debug')) {
-                    $msg .= ' ' . $e->getMessage();
-                }
-
-                return response()->json(['success' => false, 'message' => $msg], 500);
             }
+
+            DB::commit();
+
+            $msg = $comprobantePath 
+                ? 'Pago enviado a validación correctamente.' 
+                : 'Pago registrado. Por favor sube el comprobante en "Mis Pagos" para validarlo.';
+
+            return response()->json(['success' => true, 'message' => $msg]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al registrar pago: ' . $e->getMessage());
+
+            $msg = 'Error al procesar el pago.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
+            return response()->json(['success' => false, 'message' => $msg], 500);
         }
+    }
 
     public function historial($id)
     {
