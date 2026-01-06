@@ -466,6 +466,7 @@ class PagosController extends Controller
 
         $ventaId = (int) $data['venta_id'];
         $cuotasArr = json_decode($data['cuotas'] ?? '[]', true) ?: [];
+        $montoComprobante = (float) $data['monto'];
 
         // Validar que haya cuotas O detalle_pago_id O que sea un pago general (sin cuotas específicas)
         // Antes: if (empty($cuotasArr) && empty($data['detalle_pago_id'])) { ... }
