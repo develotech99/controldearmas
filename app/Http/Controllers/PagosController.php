@@ -457,8 +457,11 @@ class PagosController extends Controller
             'concepto' => ['nullable', 'string', 'max:255'],
             'banco_id' => ['nullable', 'integer'],        // <- bigint en tu BD
             'banco_nombre' => ['nullable', 'string', 'max:64'],
-            'comprobante' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'comprobante' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf,webp', 'max:5120'],
             'detalle_pago_id' => ['nullable', 'integer'], // ID del pago existente
+        ], [
+            'comprobante.mimes' => 'El comprobante debe ser una imagen (jpg, png, webp) o un archivo PDF.',
+            'comprobante.max' => 'El archivo no debe pesar más de 5MB.',
         ]);
 
         $ventaId = (int) $data['venta_id'];
