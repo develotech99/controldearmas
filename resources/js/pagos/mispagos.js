@@ -1963,8 +1963,12 @@ btnEnviarPago?.addEventListener('click', async () => {
     const detallePagoId = btnSubir?.dataset?.detalle_pago_id;
 
     if (!selectedCuotas.length && !detallePagoId) {
-        showError('Error', 'No hay cuotas seleccionadas');
-        return;
+        // Relaxed validation: If no quotas selected, check if we have a valid amount (for general payments/uploads)
+        const tempFinalData = getFinalData();
+        if (!tempFinalData.monto || Number(tempFinalData.monto) <= 0) {
+            showError('Error', 'No hay cuotas seleccionadas y no se ha ingresado un monto válido.');
+            return;
+        }
     }
 
     const finalData = getFinalData();
