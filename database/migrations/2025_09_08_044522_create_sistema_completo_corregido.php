@@ -344,18 +344,7 @@ return new class extends Migration
             $table->foreign('foto_producto_id')->references('producto_id')->on('pro_productos')->onDelete('cascade');
         });
 
-          Schema::create('factura_abonos', function (Blueprint $table) {
-        $table->id();
-        $table->unsignedBigInteger('factura_id');
-        $table->unsignedInteger('numero'); 
-        $table->date('fecha_vencimiento');
-        $table->decimal('monto', 14, 2);
-        $table->timestamps();
 
-        $table->foreign('factura_id')
-              ->references('fac_id')->on('facturacion')
-              ->onDelete('cascade');
-    });
 
         Schema::create('pro_series_productos', function (Blueprint $table) {
             $table->id('serie_id');
