@@ -8,72 +8,265 @@ async function clientesParticulares() {
     const nit = document.getElementById("nitClientes").value.trim();
     const dpi = document.getElementById("dpiClientes").value.trim();
     const select = document.getElementById("clienteSelect");
+    const loader = document.getElementById("loaderCliente");
+    const btn = document.getElementById("btnBuscarCliente");
 
     const params = new URLSearchParams();
     if (nit) params.append("nit", nit);
     if (dpi) params.append("dpi", dpi);
 
-    const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
-    const data = await res.json();
-    //('venttas desde el buscar',data);
+    if (loader) loader.classList.remove("hidden");
+    if (btn) btn.disabled = true;
 
-    // Siempre limpiamos el select
-    select.innerHTML = "";
+    try {
+        const res = await fetch(`/api/ventas/buscar?${params.toString()}`);
+        const data = await res.json();
+        console.log('Resultados búsqueda clientes:', data);
 
-    if (data.length > 0) {
-        Swal.fire({
-            title: "Cliente Encontrado",
-            text: `Se ${data.length === 1 ? "encontró" : "encontraron"} ${data.length} cliente(s).`,
-            icon: "success",
-            confirmButtonText: "Aceptar",
-        });
+        // Siempre limpiamos el select
+        select.innerHTML = "";
 
-        // SOLO mostramos los resultados, sin "Seleccionar..."
-        data.forEach((c) => {
-            // ✅ NUEVO: Construir nombre completo del cliente
-            const nombreCliente = [
-                c.cliente_nombre1,
-                c.cliente_nombre2,
-                c.cliente_apellido1,
-                c.cliente_apellido2,
-            ]
-                .filter(Boolean)
-                .join(" ");
+        if (data.length > 0) {
+            Swal.fire({
+                title: "Cliente Encontrado",
+                text: `Se ${data.length === 1 ? "encontró" : "encontraron"} ${data.length} cliente(s).`,
+                icon: "success",
+                confirmButtonText: "Aceptar",
+            });
 
-            // ✅ NUEVO: Si es cliente tipo 3 (empresa), mostrar nombre de empresa primero
-            let nombreMostrar = '';
-            if (c.cliente_tipo == 3 && c.cliente_nom_empresa) {
-                // Formato: "EMPRESA XYZ - Nombre Cliente — NIT: 123"
-                nombreMostrar = `Empresa: ${c.cliente_nom_empresa} - ${nombreCliente}`;
-            } else {
-                // Formato normal: "Nombre Cliente — NIT: 123"
-                nombreMostrar = nombreCliente;
+            // SOLO mostramos los resultados, sin "Seleccionar..."
+            data.forEach((c) => {
+                // ✅ NUEVO: Construir nombre completo del cliente
+                const nombreCliente = [
+                    c.cliente_nombre1,
+                    c.cliente_nombre2,
+                    c.cliente_apellido1,
+                    c.cliente_apellido2,
+                ]
+                    .filter(Boolean)
+                    .join(" ");
+
+                // ✅ NUEVO: Si es cliente tipo 3 (empresa), mostrar nombre de empresa primero
+                let nombreMostrar = '';
+                if (c.cliente_tipo == 3 && c.cliente_nom_empresa) {
+                    // Formato: "EMPRESA XYZ - Nombre Cliente — NIT: 123"
+                    nombreMostrar = `Empresa: ${c.cliente_nom_empresa} - ${nombreCliente}`;
+                } else {
+                    // Formato normal: "Nombre Cliente — NIT: 123"
+                    nombreMostrar = nombreCliente;
+                }
+
+                // Codificar empresas como JSON seguro para HTML
+                const empresasJson = JSON.stringify(c.empresas || []).replace(/"/g, '&quot;');
+                const saldoFavor = c.saldo ? parseFloat(c.saldo.saldo_monto) : 0;
+
+                select.innerHTML += `
+                    <option value="${c.cliente_id}" data-empresas="${empresasJson}" data-saldo="${saldoFavor}" data-tipo="${c.cliente_tipo}">
+                        ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
+                    </option>`;
+            });
+
+            // Si hay resultados, seleccionamos el primero y disparamos el evento
+            if (data.length > 0) {
+                select.selectedIndex = 0;
+                select.dispatchEvent(new Event('change'));
             }
-
-            select.innerHTML += `
-                <option value="${c.cliente_id}">
-                    ${nombreMostrar} — NIT: ${c.cliente_nit ?? "SN"}
-                </option>`;
-        });
-
-        // Si hay un único resultado → se selecciona automáticamente
-        if (data.length === 1) {
-            select.value = data[0].cliente_id;
+        } else {
+            Swal.fire({
+                title: "Cliente No Encontrado",
+                text: "No se encontró el cliente con los datos proporcionados.",
+                icon: "error",
+                confirmButtonText: "Aceptar",
+            });
+            select.innerHTML = '<option value="">Cliente no encontrado</option>';
         }
-    } else {
+    } catch (error) {
+        console.error("Error buscando cliente:", error);
         Swal.fire({
-            title: "Cliente No Encontrado",
-            text: "No se encontró el cliente con los datos proporcionados.",
+            title: "Error",
+            text: "Ocurrió un error al buscar el cliente.",
             icon: "error",
             confirmButtonText: "Aceptar",
         });
-        select.innerHTML = '<option value="">Cliente no encontrado</option>';
+    } finally {
+        if (loader) loader.classList.add("hidden");
+        if (btn) btn.disabled = false;
     }
 }
 
 btnBuscarCliente.addEventListener("click", function () {
     clientesParticulares();
 });
+
+// Event listener para cambio de cliente -> Cargar empresas
+document.getElementById("clienteSelect").addEventListener("change", function () {
+    const selectedOption = this.options[this.selectedIndex];
+    const divEmpresa = document.getElementById("divEmpresaSelect");
+    const selectEmpresa = document.getElementById("empresaSelect");
+
+    // Limpiar select de empresas
+    selectEmpresa.innerHTML = '<option value="">Seleccionar empresa...</option>';
+
+    // Resetear Saldo a Favor
+    const saldoContainer = document.getElementById('saldoFavorContainer');
+    const checkSaldo = document.getElementById('checkSaldoFavor');
+    const textoSaldo = document.getElementById('textoSaldoFavor');
+    const infoRestante = document.getElementById('infoSaldoRestante');
+
+    if (checkSaldo) checkSaldo.checked = false;
+    if (infoRestante) infoRestante.classList.add('hidden');
+
+    if (!selectedOption || !selectedOption.dataset.empresas) {
+        divEmpresa.classList.add("hidden");
+        if (saldoContainer) saldoContainer.classList.add('hidden');
+        return;
+    }
+
+    // Manejo de Saldo a Favor
+    const saldo = parseFloat(selectedOption.dataset.saldo || 0);
+    if (saldo > 0 && saldoContainer) {
+        saldoContainer.classList.remove('hidden');
+        textoSaldo.textContent = `Q${saldo.toFixed(2)}`;
+        checkSaldo.dataset.saldoDisponible = saldo;
+    } else if (saldoContainer) {
+        saldoContainer.classList.add('hidden');
+    }
+
+    try {
+        const empresas = JSON.parse(selectedOption.dataset.empresas.replace(/&quot;/g, '"'));
+
+        if (Array.isArray(empresas) && empresas.length > 0) {
+            empresas.forEach(emp => {
+                selectEmpresa.innerHTML += `<option value="${emp.emp_id}">${emp.emp_nombre} - ${emp.emp_nit || 'S/N'}</option>`;
+            });
+            divEmpresa.classList.remove("hidden");
+        } else {
+            divEmpresa.classList.add("hidden");
+        }
+    } catch (e) {
+        console.error("Error al parsear empresas:", e);
+        divEmpresa.classList.add("hidden");
+    }
+
+    // Recalcular precios del carrito al cambiar cliente
+    recalcularPreciosCarrito();
+});
+
+// Event listener para cambio de empresa
+document.getElementById("empresaSelect").addEventListener("change", function () {
+    recalcularPreciosCarrito();
+});
+
+// Listener para el checkbox de Saldo a Favor
+document.getElementById('checkSaldoFavor')?.addEventListener('change', function () {
+    const infoRestante = document.getElementById('infoSaldoRestante');
+    const montoRestante = document.getElementById('montoRestantePagar');
+    const inputSaldo = document.getElementById('inputSaldoUsar');
+    const totalElement = document.getElementById('totalModal'); // Total de la venta
+
+    if (this.checked) {
+        infoRestante.classList.remove('hidden');
+
+        const totalVenta = parseFloat(totalElement.textContent.replace('Q', '')) || 0;
+        const saldoDisponible = parseFloat(this.dataset.saldoDisponible || 0);
+
+        // Por defecto, usar el máximo posible
+        const maxUsar = Math.min(totalVenta, saldoDisponible);
+        inputSaldo.value = maxUsar.toFixed(2);
+
+        actualizarRestante();
+    } else {
+        infoRestante.classList.add('hidden');
+        inputSaldo.value = '';
+    }
+
+    // Si hay lógica de cuotas, actualizarla también
+    if (typeof updateCuotasFromTotal === 'function') {
+        updateCuotasFromTotal();
+    }
+});
+
+// Listener para el input de Saldo a Usar
+document.getElementById('inputSaldoUsar')?.addEventListener('input', function () {
+    actualizarRestante();
+});
+
+function actualizarRestante() {
+    const totalElement = document.getElementById('totalModal');
+    const checkSaldo = document.getElementById('checkSaldoFavor');
+    const inputSaldo = document.getElementById('inputSaldoUsar');
+    const montoRestante = document.getElementById('montoRestantePagar');
+
+    // Elementos UI para métodos de pago
+    const listaMetodos = document.getElementById('listaMetodosPago');
+    const mensajeCompleto = document.getElementById('mensajePagoCompletoSaldo');
+    const metodoPagoHeader = document.getElementById('metodoPagoHeader');
+    const metodoPagoContenido = document.getElementById('metodoPagoContenido');
+
+    const totalVenta = parseFloat(totalElement.textContent.replace('Q', '')) || 0;
+    const saldoDisponible = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
+    let saldoUsar = parseFloat(inputSaldo.value) || 0;
+
+    // Validaciones
+    if (saldoUsar > saldoDisponible) {
+        saldoUsar = saldoDisponible;
+        inputSaldo.value = saldoDisponible.toFixed(2);
+        Swal.fire('Atención', 'No puede usar más del saldo disponible', 'warning');
+    }
+    if (saldoUsar > totalVenta) {
+        saldoUsar = totalVenta;
+        inputSaldo.value = totalVenta.toFixed(2);
+    }
+
+    let restante = totalVenta - saldoUsar;
+    if (restante < 0) restante = 0;
+
+
+
+    montoRestante.innerHTML = `<span class="font-bold text-red-600">Q${restante.toFixed(2)}</span>`;
+
+    // Mensaje explicativo si hay restante
+    const infoRestante = document.getElementById('infoSaldoRestante');
+    if (restante > 0.01) {
+        if (!document.getElementById('mensajeRestanteExplicativo')) {
+            const msg = document.createElement('div');
+            msg.id = 'mensajeRestanteExplicativo';
+            msg.className = 'text-xs text-gray-600 mt-1 italic';
+            msg.innerHTML = '<i class="fas fa-info-circle mr-1"></i>El monto restante debe ser cubierto con otro método de pago.';
+            infoRestante.appendChild(msg);
+        }
+    } else {
+        const msg = document.getElementById('mensajeRestanteExplicativo');
+        if (msg) msg.remove();
+    }
+
+    // Lógica de visibilidad de métodos de pago
+    if (restante <= 0.01) {
+        // Si no queda nada por pagar
+        if (listaMetodos) listaMetodos.classList.add('hidden');
+        if (mensajeCompleto) mensajeCompleto.classList.remove('hidden');
+
+        // Opcional: Colapsar acordeón si se desea, o dejarlo expandido con el mensaje
+        // if (metodoPagoContenido) metodoPagoContenido.classList.remove('hidden');
+
+        // Desmarcar radios para evitar envíos confusos (aunque el backend ya lo ignora)
+        document.querySelectorAll('input[name="metodoPago"]').forEach(r => r.checked = false);
+
+        // Ocultar detalles de métodos específicos
+        document.getElementById("autorizacionContainer")?.classList.add("hidden");
+        document.getElementById("cuotasContainer")?.classList.add("hidden");
+
+    } else {
+        // Si queda saldo pendiente
+        if (listaMetodos) listaMetodos.classList.remove('hidden');
+        if (mensajeCompleto) mensajeCompleto.classList.add('hidden');
+    }
+
+    // Actualizar cuotas si es necesario
+    if (typeof updateCuotasFromTotal === 'function') {
+        updateCuotasFromTotal();
+    }
+}
 
 // Event listener para el tipo de cliente
 tipoClienteSelect.addEventListener("change", function () {
@@ -746,11 +939,15 @@ document
 
 async function buscarProductosTexto(busqueda) {
     const resultados = document.getElementById("resultadosBusqueda");
+    const loader = document.getElementById("loaderBusqueda");
 
     if (busqueda.length < 2) {
         resultados.classList.add("hidden");
         return;
     }
+
+    if (loader) loader.classList.remove("hidden");
+
     try {
         const response = await fetch(
             `/api/ventas/buscar-productos?busqueda=${encodeURIComponent(
@@ -765,6 +962,8 @@ async function buscarProductosTexto(busqueda) {
         resultados.innerHTML =
             '<div class="p-4 text-red-500">Error al buscar productos</div>';
         resultados.classList.remove("hidden");
+    } finally {
+        if (loader) loader.classList.add("hidden");
     }
 }
 
@@ -1096,6 +1295,18 @@ function agregarProductoAlCarrito(producto, cantidadSolicitada = 1) {
         let precioInicial = precioVenta;
         let precioActivo = 'normal';
 
+        // 👇 Lógica de precio según cliente (Empresa)
+        const clienteSelect = document.getElementById("clienteSelect");
+        const selectedOption = clienteSelect ? clienteSelect.options[clienteSelect.selectedIndex] : null;
+        const tipoCliente = selectedOption ? selectedOption.dataset.tipo : null;
+        const empresaSelect = document.getElementById("empresaSelect");
+        const esEmpresa = (tipoCliente == 3) || (empresaSelect && empresaSelect.value);
+
+        if (esEmpresa && precioVentaEmpresa > 0) {
+            precioInicial = precioVentaEmpresa;
+            precioActivo = 'empresa';
+        }
+
         carritoProductos.push({
             // Identidad / visual
             producto_id: producto.producto_id,
@@ -1207,6 +1418,44 @@ function eliminarProducto(producto_id) {
 
     actualizarVistaCarrito();
     actualizarContadorCarrito?.();
+    actualizarVistaCarrito();
+    actualizarContadorCarrito?.();
+}
+
+function recalcularPreciosCarrito() {
+    if (!carritoProductos || carritoProductos.length === 0) return;
+
+    const selectCliente = document.getElementById("clienteSelect");
+    const selectEmpresa = document.getElementById("empresaSelect");
+
+    let esEmpresa = false;
+
+    if (selectCliente && selectCliente.value) {
+        const option = selectCliente.options[selectCliente.selectedIndex];
+        const tipo = option.dataset.tipo;
+        // Es empresa si tipo es 3 O si se seleccionó una empresa específica
+        esEmpresa = (tipo == 3) || (selectEmpresa && selectEmpresa.value);
+    }
+
+    let cambios = false;
+    carritoProductos.forEach(p => {
+        let nuevoPrecio = parseFloat(p.precio_venta) || 0;
+
+        if (esEmpresa && parseFloat(p.precio_venta_empresa) > 0) {
+            nuevoPrecio = parseFloat(p.precio_venta_empresa);
+        }
+
+        if (p.precio !== nuevoPrecio) {
+            p.precio = nuevoPrecio;
+            p.subtotal = p.cantidad * p.precio;
+            cambios = true;
+        }
+    });
+
+    if (cambios) {
+        actualizarVistaCarrito();
+        mostrarNotificacion("Precios actualizados según cliente", "info");
+    }
 }
 
 function routeReservarURL() {
@@ -1231,6 +1480,10 @@ async function procesarReserva() {
         const fechaReserva = document.getElementById('fecha_reserva')?.value || new Date().toISOString().slice(0, 10);
         const diasVigencia = Number(document.getElementById('dias_vigencia')?.value || 7);
         const observaciones = (document.getElementById('observaciones')?.value || '').trim();
+
+        // Obtener empresa seleccionada si existe
+        const empresaSelect = document.getElementById("empresaSelect");
+        const empresaId = (empresaSelect && !empresaSelect.closest('.hidden')) ? empresaSelect.value : null;
 
 
         if (!Array.isArray(carritoProductos) || carritoProductos.length === 0) {
@@ -1283,7 +1536,9 @@ async function procesarReserva() {
             total,
             productos,
             observaciones,
-            dias_vigencia: diasVigencia
+            dias_vigencia: diasVigencia,
+            dias_vigencia: diasVigencia,
+            empresa_id: empresaId // <-- Corregido: ID de empresa
         };
 
         // === 4) POST a Laravel ===
@@ -1459,7 +1714,7 @@ function mostrarReservasCliente(reservas) {
   </div>
 
   <!-- Lista de productos de la reserva -->
-  <div class="space-y-2 mb-6">
+  <div class="space-y-2 mb-6 hidden">
     ${items.map((item) => {
             const necesitaStock = Number(item.producto_requiere_stock ?? 1) === 1;
             const requiereSerie = Number(item.producto_requiere_serie ?? 0) === 1;
@@ -2238,29 +2493,195 @@ function verificarEstructuraCarrito() {
     return carritoProductos.length;
 }
 
-// ===== NUEVA versión de cargarReservaEnCarrito(items): respeta tu listener =====
-async function cargarReservaEnCarrito(items) {
+// ==========================================
+// LÓGICA DE DOCUMENTACIÓN (LICENCIAS/TENENCIAS)
+// ==========================================
 
-    ('intentar abrir modal')
-    if (!Array.isArray(items) || items.length === 0) {
-        Swal?.fire?.('Reserva vacía', 'No hay productos para cargar.', 'info');
+const modalDoc = document.getElementById('modalDocumentacion');
+const btnCerrarDoc = document.getElementById('btnCerrarModalDocumentacion');
+
+// Asumiendo que el checkbox tiene un ID o clase específica, pero en el HTML vi un label envolviendo.
+// Vamos a buscar el checkbox dentro del label que contiene el texto.
+const labelDoc = Array.from(document.querySelectorAll('label')).find(l => l.textContent.includes('Esta venta requiere documentación'));
+const checkboxDoc = labelDoc ? labelDoc.querySelector('input[type="checkbox"]') : null;
+
+let documentoSeleccionado = null;
+
+if (checkboxDoc) {
+    checkboxDoc.addEventListener('change', function (e) {
+        if (this.checked) {
+            abrirModalDocumentacion();
+        } else {
+            documentoSeleccionado = null;
+            const docInput = document.getElementById('documentoSeleccionadoId');
+            if (docInput) docInput.value = '';
+        }
+    });
+}
+
+if (btnCerrarDoc) {
+    btnCerrarDoc.addEventListener('click', () => {
+        modalDoc.classList.add('hidden');
+        modalDoc.classList.remove('flex');
+        // Si no seleccionó nada, desmarcar checkbox
+        if (!documentoSeleccionado && checkboxDoc) {
+            checkboxDoc.checked = false;
+        }
+    });
+}
+
+function abrirModalDocumentacion() {
+    const clienteId = validarCliente().clienteId;
+    if (!clienteId) {
+        Swal.fire('Error', 'Seleccione un cliente primero', 'error');
+        if (checkboxDoc) checkboxDoc.checked = false;
         return;
     }
 
-    // 1) calcular lo que falta (reserva - carrito)
-    const cargables = prepararCargaDesdeReserva(items, carritoProductos);
-    if (!cargables.length) {
-        Swal?.fire?.('Sin cambios', 'Tienes que vender o reservar primero.', 'info');
-        return;
-    }
+    modalDoc.classList.remove('hidden');
+    modalDoc.classList.add('flex');
+    cargarDocumentosCliente(clienteId);
+}
 
-    // 2) pedir al usuario cantidades/series
-    const result = await mostrarModalSeleccionReserva(cargables);
+async function cargarDocumentosCliente(clienteId) {
+    const lista = document.getElementById('listaDocumentosCliente');
+    lista.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Cargando...</p>';
 
-    // 3) aplicar
-    if (result.isConfirmed && result.value) {
-        aplicarCargaReservaSeleccion(result.value);
+    try {
+        const response = await fetch(`/api/clientes/${clienteId}/documentos`);
+        const data = await response.json();
+
+        if (data.success && data.documentos.length > 0) {
+            lista.innerHTML = data.documentos.map(doc => `
+                <div class="flex items-center p-2 border rounded hover:bg-blue-50 cursor-pointer transition-colors doc-item" 
+                     onclick="seleccionarDocumento(this, ${doc.id})">
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-sm text-gray-800">${doc.tipo}</span>
+                            <span class="text-xs text-gray-500">${doc.fecha_vencimiento ? 'Vence: ' + doc.fecha_vencimiento : 'Sin vencimiento'}</span>
+                        </div>
+                        <div class="text-xs text-gray-600">
+                            Doc: ${doc.numero_documento} 
+                            ${doc.numero_secundario ? `| Sec: ${doc.numero_secundario}` : ''}
+                        </div>
+                    </div>
+                    ${doc.id == documentoSeleccionado ? '<i class="fas fa-check-circle text-green-600 ml-2"></i>' : ''}
+                </div>
+            `).join('');
+        } else {
+            lista.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No hay documentos registrados. Agregue uno nuevo.</p>';
+        }
+    } catch (error) {
+        console.error('Error cargando documentos:', error);
+        lista.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error al cargar documentos.</p>';
     }
+}
+
+window.seleccionarDocumento = function (el, id) {
+    document.querySelectorAll('.doc-item').forEach(d => {
+        d.classList.remove('bg-blue-100', 'border-blue-500');
+        d.querySelector('.fa-check-circle')?.remove();
+    });
+
+    el.classList.add('bg-blue-100', 'border-blue-500');
+    el.insertAdjacentHTML('beforeend', '<i class="fas fa-check-circle text-green-600 ml-2"></i>');
+
+    documentoSeleccionado = id;
+    const docInput = document.getElementById('documentoSeleccionadoId');
+    if (docInput) docInput.value = id;
+    document.getElementById('btnConfirmarDocumento').disabled = false;
+};
+
+document.getElementById('btnConfirmarDocumento')?.addEventListener('click', () => {
+    if (documentoSeleccionado) {
+        modalDoc.classList.add('hidden');
+        modalDoc.classList.remove('flex');
+        Swal.fire({
+            icon: 'success',
+            title: 'Documento Seleccionado',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    }
+});
+
+// Cambio de etiquetas según tipo
+document.getElementById('docTipo')?.addEventListener('change', function () {
+    const lblNum = document.getElementById('lblDocNum');
+    const lblSec = document.getElementById('lblDocSec');
+
+    if (this.value === 'TENENCIA') {
+        lblNum.textContent = 'Número de Tenencia';
+        lblSec.textContent = 'Número de Propietario';
+        document.getElementById('docSecundario').placeholder = 'Ej: 12345';
+    } else {
+        lblNum.textContent = 'Código 1 (Licencia)';
+        lblSec.textContent = 'Código 2 (Licencia)';
+        document.getElementById('docSecundario').placeholder = 'Ej: ABCD';
+    }
+});
+
+// Guardar nuevo documento
+document.getElementById('formNuevoDocumento')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const clienteId = validarCliente().clienteId;
+    if (!clienteId) return;
+
+    const formData = new FormData(this);
+    const btn = this.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+    try {
+        const response = await fetch(`/api/clientes/${clienteId}/documentos`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            this.reset();
+            cargarDocumentosCliente(clienteId);
+            Swal.fire({
+                icon: 'success',
+                title: 'Guardado',
+                text: 'Documento agregado correctamente',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        } else {
+            Swal.fire('Error', data.message || 'Error al guardar', 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'Ocurrió un error al procesar la solicitud', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+});
+
+// Modificar procesarVentaFinal para incluir documento_id
+// Esto se hace buscando la función existente y asegurándose que lea documentoSeleccionado
+// Como no puedo editar funciones existentes fácilmente sin reemplazarlas, 
+// asumiré que procesarVentaFinal lee de variables globales o inputs.
+// Voy a inyectar el valor en el formData en el evento de click del botón procesar.
+
+const btnProcesarOriginal = document.getElementById('procesarVentaModal');
+if (btnProcesarOriginal) {
+    // Clonar para quitar listeners anteriores si es necesario, o mejor, interceptar la llamada a la API
+    // Pero como estoy editando el archivo, puedo buscar dónde se llama a procesarVentaFinal
 }
 
 
@@ -2791,6 +3212,9 @@ function calcularTotales() {
     }
 
     document.getElementById("totalModal").textContent = `Q${total.toFixed(2)}`;
+
+    // ✅ NUEVO: Actualizar saldo a favor si está activo
+    actualizarRestante();
 }
 function actualizarContadorCarrito() {
     const contador = carritoProductos.reduce((sum, p) => sum + p.cantidad, 0);
@@ -3332,32 +3756,7 @@ function validarCuotas() {
     return errores;  // Devolvemos el arreglo de errores
 }
 
-// Repartir según total y cantidad actual
-// Repartir según total y cantidad actual
-function updateCuotasFromTotal() {
-    const cont = document.getElementById("cuotasContainer");
-    if (!cont || cont.classList.contains("hidden")) return; // solo si método 6
 
-    const total = getTotalVenta();
-
-    // Restar abono del total
-    const abono = Math.min(
-        total,
-        Math.max(0, Number(document.getElementById("abonoInicial")?.value || 0))
-    );
-    const saldo = Math.max(0, total - abono);
-
-    // Si hay abono, permite 1 cuota; si no, mínimo 2
-    const minCuotas = abono > 0 ? 1 : 2;
-    const n = Math.max(minCuotas, Math.min(36, Number(document.getElementById("cuotasNumero")?.value || 2)));
-
-    // (opcional) mostrar saldo si tienes #saldoCuotas en el HTML
-    const saldoEl = document.getElementById("saldoCuotas");
-    if (saldoEl) saldoEl.textContent = `Q${saldo.toFixed(2)}`;
-
-    // Repartir SOLO el saldo
-    renderCuotas(repartirEnCuotas(saldo, n));
-}
 
 document.getElementById("abonoInicial")?.addEventListener("input", () => {
     const total = getTotalVenta();
@@ -3380,9 +3779,15 @@ document.querySelectorAll('input[name="metodoPago"]').forEach((radio) => {
         const numeroAut = document.getElementById("numeroAutorizacion");
 
         if (["2", "3", "4", "5"].includes(val)) {
-            // Mostrar autorización
+            // Mostrar autorización completa
             cuotasContainer.classList.add("hidden");
             autorizacionContainer.classList.remove("hidden");
+
+            // Mostrar campos de banco/referencia
+            document.getElementById("div-select-banco")?.classList.remove("hidden");
+            document.getElementById("div-numero-auth")?.classList.remove("hidden");
+            document.getElementById("div-fecha-pago")?.classList.remove("hidden");
+
             // Validación rápida: no permitir procesar si falta autorización
             numeroAut.removeEventListener("input", checkAuth);
             numeroAut.addEventListener("input", checkAuth);
@@ -3398,12 +3803,28 @@ document.querySelectorAll('input[name="metodoPago"]').forEach((radio) => {
             });
             // Inicializar cuotas según total
             updateCuotasFromTotal();
+        } else if (val === "1") {
+            // Efectivo: Mostrar solo comprobante (y ocultar banco/referencia si es posible, o dejarlos opcionales)
+            // Para simplificar, mostramos el contenedor pero ocultamos los inputs innecesarios visualmente o los deshabilitamos
+            // Pero como están en el mismo contenedor, vamos a mostrarlo y manejar la visibilidad de los hijos
+
+            cuotasContainer.classList.add("hidden");
+            autorizacionContainer.classList.remove("hidden");
+
+            // Ocultar Banco y Referencia para Efectivo
+            document.getElementById("div-select-banco").classList.add("hidden");
+            document.getElementById("div-numero-auth").classList.add("hidden");
+            document.getElementById("div-fecha-pago").classList.add("hidden"); // Opcional, si la fecha es la actual
+
+            // Asegurar que el input de archivo esté visible (es hijo directo del grid)
+            // Nota: Necesito agregar IDs a los divs padres en el blade para poder ocultarlos selectivamente.
+            // Por ahora, asumiré que voy a editar el blade también.
+
         } else {
-            // Otro método
+            // Otro método (si hubiera)
             autorizacionContainer.classList.add("hidden");
             numeroAut.value = "";
             document.getElementById("cuotasContainer").classList.add("hidden");
-            // deja el estado del botón a cargo de calcularTotales()
         }
 
         calcularTotales?.(); // sigue tu flujo
@@ -3715,9 +4136,23 @@ function validarMetodoPago() {
     const metodoPago = document.querySelector('input[name="metodoPago"]:checked')?.value;
     const numeroAutorizacion = document.getElementById("numeroAutorizacion")?.value.trim() || '';
     const selecBanco = document.getElementById("selectBanco")?.value.trim() || '';
+    const fechaPago = document.getElementById("fechaPago")?.value;
+
+    const checkSaldoFavor = document.getElementById('checkSaldoFavor');
+    const montoRestanteElem = document.getElementById('montoRestantePagar');
+
+    // Si usa saldo a favor y cubre todo el monto
+    if (checkSaldoFavor && checkSaldoFavor.checked) {
+        const montoRestanteText = montoRestanteElem ? montoRestanteElem.textContent.replace('Q', '').trim() : '0';
+        const montoRestante = parseFloat(montoRestanteText) || 0;
+
+        if (montoRestante <= 0.01) {
+            return { valido: true, errores: [] };
+        }
+    }
 
     if (!metodoPago) {
-        errores.push("Debe seleccionar un método de pago");
+        errores.push("Debe seleccionar un método de pago para el saldo restante");
         return { valido: false, errores };
     }
 
@@ -3732,52 +4167,26 @@ function validarMetodoPago() {
     // Validaciones específicas por método de pago
     switch (metodoPago) {
         case "1": // Efectivo
-            // No requiere validaciones adicionales
+            // El comprobante ahora es opcional
             break;
 
         case "2": // Tarjeta de crédito
         case "3": // Tarjeta de débito
         case "4": // Transferencia
         case "5": // Cheque
-            if (!selecBanco || selecBanco === "") {
+            // Banco, autorización y comprobante ahora son opcionales
+            if (!fechaPago) {
                 errores.push(
-                    `Debe seleccionar el tipo de banco para ${tipoMetodo[metodoPago]}`
-                );
-            }
-
-            if (!numeroAutorizacion) {
-                errores.push(
-                    `Debe ingresar el número de autorización para ${tipoMetodo[metodoPago]}`
+                    `Debe ingresar la fecha de pago para ${tipoMetodo[metodoPago]}`
                 );
             }
             break;
 
         case "6": // Pagos/Cuotas
-            // Verificar si el abono es por transferencia
-            const esTransferencia = document.querySelector(
-                'input[name="metodoAbono"][value="transferencia"]:checked'
-            );
-
-            if (esTransferencia) {
-                if (!selecBanco || selecBanco === "") {
-                    errores.push(
-                        `Debe seleccionar el tipo de banco para el abono por transferencia`
-                    );
-                }
-
-                if (!numeroAutorizacion) {
-                    errores.push(
-                        `Debe ingresar el número de autorización de la transferencia`
-                    );
-                }
-            }
-
             const erroresCuotas = validarCuotas();
-
             if (erroresCuotas.length > 0) {
                 errores.push(...erroresCuotas);
             }
-
             break;
 
         default:
@@ -3812,43 +4221,40 @@ function validarDatosGenerales() {
     };
 }
 
+// Repartir según total y cantidad actual
+function updateCuotasFromTotal() {
+    const cont = document.getElementById("cuotasContainer");
+    if (!cont || cont.classList.contains("hidden")) return; // solo si método 6
 
+    const total = getTotalVenta();
 
+    // Deducción de Saldo a Favor
+    const checkSaldo = document.getElementById('checkSaldoFavor');
+    let saldoFavor = 0;
+    if (checkSaldo && checkSaldo.checked) {
+        saldoFavor = parseFloat(checkSaldo.dataset.saldoDisponible || 0);
+        // No podemos usar más saldo del total
+        if (saldoFavor > total) saldoFavor = total;
+    }
 
+    // Restar abono del total (después de restar saldo a favor)
+    const abono = Math.min(
+        total - saldoFavor,
+        Math.max(0, Number(document.getElementById("abonoInicial")?.value || 0))
+    );
+    const saldo = Math.max(0, total - saldoFavor - abono);
 
+    // Si hay abono o saldo favor, permite 1 cuota; si no, mínimo 2
+    const minCuotas = (abono > 0 || saldoFavor > 0) ? 1 : 2;
+    const n = Math.max(minCuotas, Math.min(36, Number(document.getElementById("cuotasNumero")?.value || 2)));
 
+    // (opcional) mostrar saldo si tienes #saldoCuotas en el HTML
+    const saldoEl = document.getElementById("saldoCuotas");
+    if (saldoEl) saldoEl.textContent = `Q${saldo.toFixed(2)}`;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // Repartir SOLO el saldo
+    renderCuotas(repartirEnCuotas(saldo, n));
+}
 
 // ============================================
 // FUNCIÓN PARA PROCESAR LA VENTA FINAL
@@ -3869,8 +4275,14 @@ async function procesarVentaFinal() {
         // 1. DATOS GENERALES DE LA VENTA
         const clienteId = document.getElementById("clienteSelect").value;
         const fechaVenta = document.getElementById("fechaVenta").value;
-        const metodoPago = document.querySelector('input[name="metodoPago"]:checked').value;
+        const metodoPagoInput = document.querySelector('input[name="metodoPago"]:checked');
+        const metodoPago = metodoPagoInput ? metodoPagoInput.value : null;
         const descuento = parseFloat(document.getElementById("descuentoModal").value) || 0;
+        const documentoId = document.getElementById("documentoSeleccionadoId")?.value || null; // ✅ NUEVO
+
+        // Obtener empresa seleccionada si existe
+        const empresaSelect = document.getElementById("empresaSelect");
+        const empresaId = (empresaSelect && !empresaSelect.closest('.hidden')) ? empresaSelect.value : null;
 
         // Calcular totales
         const subtotal = carritoProductos.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
@@ -3889,6 +4301,15 @@ async function procesarVentaFinal() {
         const descuentoMonto = subtotal * (descuento / 100);
         const total = subtotal - descuentoMonto + totalTenencia; // ✅ SUMAR TENENCIA
 
+        // Saldo a Favor
+        const checkSaldo = document.getElementById('checkSaldoFavor');
+        let saldoFavorUsado = 0;
+        if (checkSaldo && checkSaldo.checked) {
+            saldoFavorUsado = parseFloat(document.getElementById('inputSaldoUsar').value) || 0;
+        }
+
+        const montoRestante = Math.max(0, total - saldoFavorUsado);
+
         // 2. DATOS DE VENTA
         const datosVenta = {
             // Información general
@@ -3898,6 +4319,11 @@ async function procesarVentaFinal() {
             descuento_porcentaje: descuento,
             descuento_monto: descuentoMonto.toFixed(2),
             total: total.toFixed(2),
+            empresa_id: empresaId,
+            documento_id: documentoId, // ✅ NUEVO
+
+            // Saldo a favor
+            saldo_favor_usado: saldoFavorUsado.toFixed(2),
 
             // Método de pago
             metodo_pago: metodoPago,
@@ -3924,82 +4350,112 @@ async function procesarVentaFinal() {
         };
 
         // 3. DATOS ESPECÍFICOS SEGÚN MÉTODO DE PAGO
-        switch (metodoPago) {
-            case "1": // Efectivo
-                datosVenta.pago = {
-                    tipo: "efectivo",
-                    monto: total.toFixed(2)
-                };
-                break;
+        // Solo si hay monto restante por pagar
+        if (montoRestante > 0.01) {
+            if (!metodoPago) {
+                Swal.close();
+                Swal.fire('Error', 'Debe seleccionar un método de pago para el saldo restante', 'error');
+                return;
+            }
 
-            case "2": // Tarjeta de crédito
-            case "3": // Tarjeta de débito  
-            case "4": // Transferencia
-            case "5": // Cheque
-                const numeroAutorizacion = document.getElementById("numeroAutorizacion").value.trim();
-                const bancoId = document.getElementById("selectBanco").value;
+            switch (metodoPago) {
+                case "1": // Efectivo
+                    datosVenta.pago = [{
+                        tipo: "efectivo",
+                        monto: montoRestante.toFixed(2)
+                    }];
+                    break;
 
-                datosVenta.pago = {
-                    tipo: metodoPago === "2" ? "tarjeta_credito" :
-                        metodoPago === "3" ? "tarjeta_debito" :
-                            metodoPago === "4" ? "transferencia" : "cheque",
-                    monto: total.toFixed(2),
-                    numero_autorizacion: numeroAutorizacion,
-                    banco_id: bancoId
-                };
-                break;
+                case "2": // Tarjeta de crédito
+                case "3": // Tarjeta de débito  
+                case "4": // Transferencia
+                case "5": // Cheque
+                    const numeroAutorizacion = document.getElementById("numeroAutorizacion").value.trim();
+                    const bancoId = document.getElementById("selectBanco").value;
+                    const fechaPagoVal = document.getElementById("fechaPago").value;
 
-            case "6": // Pagos/Cuotas
-                const abonoInicial = parseFloat(document.getElementById("abonoInicial").value) || 0;
-                const metodoAbono = document.querySelector('input[name="metodoAbono"]:checked')?.value || "efectivo";
+                    datosVenta.pago = [{
+                        tipo: metodoPago === "2" ? "tarjeta_credito" :
+                            metodoPago === "3" ? "tarjeta_debito" :
+                                metodoPago === "4" ? "transferencia" : "cheque",
+                        monto: montoRestante.toFixed(2),
+                        numero_autorizacion: numeroAutorizacion,
+                        banco_id: bancoId,
+                        fecha_pago: fechaPagoVal
+                    }];
+                    break;
 
-                // Recopilar cuotas
-                const cuotasInputs = document.querySelectorAll("#cuotasLista .cuota-input");
-                const cuotas = Array.from(cuotasInputs).map((input, index) => ({
-                    numero_cuota: index + 1,
-                    monto: parseFloat(input.value) || 0,
-                    fecha_vencimiento: null // Se calculará en el backend
-                }));
+                case "6": // Pagos/Cuotas
+                    const abonoInicial = parseFloat(document.getElementById("abonoInicial").value) || 0;
+                    const metodoAbono = document.querySelector('input[name="metodoAbono"]:checked')?.value || "efectivo";
+                    const fechaPagoAbono = document.getElementById("fechaPago").value;
 
-                datosVenta.pago = {
-                    tipo: "cuotas",
-                    abono_inicial: abonoInicial.toFixed(2),
-                    metodo_abono: metodoAbono,
-                    total_cuotas: cuotas.reduce((sum, c) => sum + c.monto, 0).toFixed(2),
-                    cantidad_cuotas: cuotas.length,
-                    cuotas: cuotas
-                };
+                    // Recopilar cuotas
+                    const cuotasInputs = document.querySelectorAll("#cuotasLista .cuota-input");
+                    const cuotas = Array.from(cuotasInputs).map((input, index) => ({
+                        numero_cuota: index + 1,
+                        monto: parseFloat(input.value) || 0,
+                        fecha_vencimiento: null // Se calculará en el backend
+                    }));
 
-                // Si el abono es por transferencia, agregar datos bancarios
-                if (metodoAbono === "transferencia") {
-                    const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
-                    const bancoIdAbono = document.getElementById("selectBanco").value;
-
-                    datosVenta.pago.numero_autorizacion_abono = numeroAutorizacionAbono;
-                    datosVenta.pago.banco_id_abono = bancoIdAbono;
-                }
-                // Si el abono es por transferencia, agregar datos bancarios
-                if (metodoAbono === "cheque") {
-                    const numeroAutorizacionAbono = document.getElementById("numeroAutorizacion").value.trim();
-                    const bancoIdAbono = document.getElementById("selectBanco").value;
-
-                    datosVenta.pago.numero_autorizacion_abono = numeroAutorizacionAbono;
-                    datosVenta.pago.banco_id_abono = bancoIdAbono;
-                }
-                break;
-
+                    datosVenta.pago = [{
+                        tipo: "cuotas",
+                        abono_inicial: abonoInicial.toFixed(2),
+                        metodo_abono: metodoAbono,
+                        total_cuotas: cuotas.reduce((sum, c) => sum + c.monto, 0).toFixed(2),
+                        cantidad_cuotas: cuotas.length,
+                        cuotas: cuotas,
+                        // Agregar datos de banco si es transferencia
+                        banco_abono: (metodoAbono === 'transferencia' || metodoAbono === 'cheque') ? document.getElementById("selectBanco").value : null,
+                        autorizacion_abono: (metodoAbono === 'transferencia' || metodoAbono === 'cheque') ? document.getElementById("numeroAutorizacion").value : null,
+                        fecha_pago_abono: (metodoAbono === 'transferencia' || metodoAbono === 'cheque') ? fechaPagoAbono : null
+                    }];
+                    break;
+            }
+        } else {
+            // Pago total con saldo a favor
+            datosVenta.pago = [];
         }
 
         ('Datos de venta a enviar:', datosVenta);
 
         // 4. ENVIAR AL CONTROLADOR
+        // 4. ENVIAR AL CONTROLADOR
+        const formData = new FormData();
+
+        // Agregar campos simples
+        formData.append('cliente_id', datosVenta.cliente_id);
+        formData.append('fecha_venta', datosVenta.fecha_venta);
+        formData.append('subtotal', datosVenta.subtotal);
+        formData.append('descuento_porcentaje', datosVenta.descuento_porcentaje);
+        formData.append('descuento_monto', datosVenta.descuento_monto);
+        formData.append('total', datosVenta.total);
+        if (datosVenta.empresa_id) formData.append('empresa_id', datosVenta.empresa_id);
+        if (datosVenta.documento_id) formData.append('documento_id', datosVenta.documento_id); // ✅ NUEVO
+        formData.append('saldo_favor_usado', datosVenta.saldo_favor_usado);
+        if (datosVenta.metodo_pago) formData.append('metodo_pago', datosVenta.metodo_pago);
+
+        // Agregar productos (JSON stringified)
+        formData.append('productos', JSON.stringify(datosVenta.productos));
+
+        // Agregar pago (JSON stringified)
+        if (datosVenta.pago) {
+            formData.append('pago', JSON.stringify(datosVenta.pago));
+        }
+
+        // Agregar comprobante si existe
+        const fileInput = document.getElementById('comprobante_pago');
+        if (fileInput && fileInput.files.length > 0) {
+            formData.append('comprobante', fileInput.files[0]);
+        }
+
         const response = await fetch('/api/ventas/procesar-venta', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                // Content-Type header is automatically set by fetch when using FormData
             },
-            body: JSON.stringify(datosVenta)
+            body: formData
         });
 
         const resultado = await response.json();
@@ -4075,8 +4531,13 @@ function limpiarFormularioVenta() {
     // Limpiar campos
     document.getElementById("numeroAutorizacion").value = "";
     document.getElementById("selectBanco").value = "";
+    document.getElementById("selectBanco").value = "";
     document.getElementById("abonoInicial").value = "";
     document.getElementById("descuentoModal").value = "";
+
+    // Limpiar y ocultar empresa
+    document.getElementById("empresaSelect").innerHTML = '<option value="">Seleccionar empresa...</option>';
+    document.getElementById("divEmpresaSelect").classList.add("hidden");
 
     // Limpiar cuotas
     document.getElementById("cuotasLista").innerHTML = "";
@@ -4090,6 +4551,7 @@ function limpiarFormularioVenta() {
         .toISOString()
         .slice(0, 16);
     document.getElementById("fechaVenta").value = fechaHoraLocal;
+    document.getElementById("fechaPago").value = fechaHoraLocal;
 
     // Recalcular totales
     calcularTotales();

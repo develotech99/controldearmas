@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
 // app/Models/PagoLicencia.php
-class PagoLicencia extends Model 
+class PagoLicencia extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
+
     protected $table = 'pro_pagos_licencias';
     protected $primaryKey = 'pago_lic_id';
     
@@ -28,8 +31,10 @@ class PagoLicencia extends Model
 }
 
 // app/Models/PagoMetodo.php
-class PagoMetodo extends Model 
+class PagoMetodo extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
+
     protected $table = 'pro_pagos_lic_metodos';
     protected $primaryKey = 'pagomet_id';
     
@@ -66,8 +71,9 @@ class PagoMetodo extends Model
 // app/Models/PagoComprobante.php
 
 
-class PagoComprobante extends Model
+class PagoComprobante extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_comprobantes_pago_licencias'; // tu tabla real
     protected $primaryKey = 'comprob_id';
     public $timestamps = true;

@@ -24,9 +24,14 @@ export default defineConfig({
                 'resources/js/pagos/administrar.js',
                 'resources/js/reportes/index.js',
                 'resources/js/clientes/clientes.js',
+                'resources/js/clientes/deudas.js',
                 'resources/js/dashboard.js',
                 'resources/js/facturacion/index.js',
                 'resources/js/ventas/reservadas.js',
+                'resources/js/preventas/index.js',
+                'resources/js/clientes/estado_cuenta.js',
+                'resources/js/preventas/listado.js',
+                'resources/js/pagos/historial.js'
 
             ],
             refresh: true,

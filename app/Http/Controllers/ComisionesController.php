@@ -19,7 +19,7 @@ class ComisionesController extends Controller
         // Obtener solo vendedores que han realizado ventas (tienen comisiones)
         $vendedores = User::with('rol')
             ->whereHas('comisiones.venta', function($query) {
-                $query->where('ven_situacion', 'ACTIVA');
+                $query->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
             })
             ->whereHas('comisiones', function($query) {
                 $query->where('porc_vend_situacion', 'ACTIVO');
@@ -27,8 +27,14 @@ class ComisionesController extends Controller
             ->where('user_situacion', 1)
             ->select('user_id', 'user_primer_nombre', 'user_primer_apellido')
             ->distinct()
-            ->orderBy('user_primer_nombre')
-            ->get();
+            ->orderBy('user_primer_nombre');
+
+        // Si es vendedor, solo mostrarse a sí mismo
+        if ($usuarioLogueado->rol && strtolower($usuarioLogueado->rol->nombre) === 'vendedor') {
+            $vendedores->where('user_id', $usuarioLogueado->id);
+        }
+
+        $vendedores = $vendedores->get();
 
         return view('comisiones.index', compact('vendedores', 'usuarioLogueado'));
     }
@@ -47,6 +53,11 @@ class ComisionesController extends Controller
             // Solo filtrar por vendedor si se especifica uno
             if ($vendedor_id) {
                 $query->where('porc_vend_user_id', $vendedor_id);
+            }
+
+            // Enforce filter for sellers
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                $query->where('porc_vend_user_id', auth()->id());
             }
 
             if ($fecha_inicio) {
@@ -121,11 +132,16 @@ class ComisionesController extends Controller
                 ->join('users as u', 'pv.porc_vend_user_id', '=', 'u.user_id')
                 ->join('pro_ventas as v', 'pv.porc_vend_ven_id', '=', 'v.ven_id')
                 ->where('pv.porc_vend_situacion', 'ACTIVO')
-                ->where('v.ven_situacion', 'ACTIVA');
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA']);
 
             // Filtros
             if ($vendedor_id) {
                 $query->where('pv.porc_vend_user_id', $vendedor_id);
+            }
+
+            // Enforce filter for sellers
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                $query->where('pv.porc_vend_user_id', auth()->id());
             }
 
             if ($fecha_inicio) {
@@ -182,6 +198,11 @@ class ComisionesController extends Controller
     public function update(Request $request)
     {
         try {
+            // Validar que solo admin pueda actualizar
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) !== 'administrador') {
+                return response()->json(['codigo' => 0, 'mensaje' => 'No tiene permisos para realizar esta acción'], 403);
+            }
+
             $id = $request->input('id');
             $estado = $request->input('estado', 'PAGADO');
             $comision = ProPorcentajeVendedor::findOrFail($id);
@@ -216,6 +237,11 @@ class ComisionesController extends Controller
     public function cancelar(Request $request)
     {
         try {
+            // Validar que solo admin pueda cancelar
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) !== 'administrador') {
+                return response()->json(['codigo' => 0, 'mensaje' => 'No tiene permisos para realizar esta acción'], 403);
+            }
+
             $id = $request->input('id');
             $comision = ProPorcentajeVendedor::findOrFail($id);
             

@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements Auditable
 {
     use Notifiable;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'users';
     protected $primaryKey = 'user_id';

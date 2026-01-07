@@ -43,7 +43,7 @@ class InventarioManager {
      * Inicializar el gestor
      */
     init() {
-        ('🚀 InventarioManager inicializado');
+        console.log('🚀 InventarioManager inicializado');
         this.setupEventListeners();
         this.setupExcelFilters();
         this.setupFotosHandling();
@@ -55,149 +55,153 @@ class InventarioManager {
      * Configurar event listeners
      */
     setupEventListeners() {
-        // Filtros
-        document.getElementById('search-productos').addEventListener('input', (e) => {
-            this.filtros.search = e.target.value;
-            this.aplicarFiltros();
-        });
+        try {
+            // Filtros
+            document.getElementById('search-productos').addEventListener('input', (e) => {
+                this.filtros.search = e.target.value;
+                this.aplicarFiltros();
+            });
 
-        document.getElementById('filter-categoria').addEventListener('change', (e) => {
-            this.filtros.categoria = e.target.value;
-            this.aplicarFiltros();
-        });
+            document.getElementById('filter-categoria').addEventListener('change', (e) => {
+                this.filtros.categoria = e.target.value;
+                this.aplicarFiltros();
+            });
 
-        document.getElementById('filter-stock').addEventListener('change', (e) => {
-            this.filtros.stock = e.target.value;
-            this.aplicarFiltros();
-        });
+            document.getElementById('filter-stock').addEventListener('change', (e) => {
+                this.filtros.stock = e.target.value;
+                this.aplicarFiltros();
+            });
 
-        // Formularios
-        document.getElementById('registro-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleRegistroSubmit();
-        });
+            // Formularios
+            document.getElementById('registro-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegistroSubmit();
+            });
 
-        document.getElementById('ingreso-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleIngresoSubmit();
-        });
+            document.getElementById('ingreso-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleIngresoSubmit();
+            });
 
-        // Búsqueda de productos para ingreso
-        document.getElementById('buscar_producto').addEventListener('input', (e) => {
-            this.buscarProductos(e.target.value);
-        });
+            // Búsqueda de productos para ingreso
+            document.getElementById('buscar_producto').addEventListener('input', (e) => {
+                this.buscarProductos(e.target.value);
+            });
 
-        // Cambios en categoría para cargar subcategorías
-        document.getElementById('producto_categoria').addEventListener('change', (e) => {
-            this.loadSubcategorias(e.target.value);
-        });
+            // Cambios en categoría para cargar subcategorías
+            document.getElementById('producto_categoria').addEventListener('change', (e) => {
+                this.loadSubcategorias(e.target.value);
+            });
 
-        // Cambios en marca para cargar modelos
-        document.getElementById('producto_marca').addEventListener('change', (e) => {
-            this.loadModelos(e.target.value);
-        });
+            // Cambios en marca para cargar modelos
+            document.getElementById('producto_marca').addEventListener('change', (e) => {
+                this.loadModelos(e.target.value);
+            });
 
-        // Cerrar modales con ESC
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeModal('registro');
-                this.closeModal('ingreso');
+            // Cerrar modales con ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.closeModal('registro');
+                    this.closeModal('ingreso');
+                }
+            });
+
+
+            // Búsqueda de licencias
+            const buscarLicenciaInput = document.getElementById('buscar_licencia');
+            if (buscarLicenciaInput) {
+                buscarLicenciaInput.addEventListener('input', (e) => {
+                    this.buscarLicencias(e.target.value);
+                });
             }
-        });
 
-
-        // Búsqueda de licencias
-        const buscarLicenciaInput = document.getElementById('buscar_licencia');
-        if (buscarLicenciaInput) {
-            buscarLicenciaInput.addEventListener('input', (e) => {
-                this.buscarLicencias(e.target.value);
+            // Radio buttons para generar lote  
+            document.querySelectorAll('input[name="generar_lote"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.toggleLoteInput(e.target.value);
+                });
             });
-        }
 
-        // Radio buttons para generar lote  
-        document.querySelectorAll('input[name="generar_lote"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.toggleLoteInput(e.target.value);
-            });
-        });
+            // Contador de series
+            const numerosSeriesInput = document.getElementById('numeros_series');
+            if (numerosSeriesInput) {
+                numerosSeriesInput.addEventListener('input', (e) => {
+                    this.contarSeries(e.target.value);
+                });
+            }
 
-        // Contador de series
-        const numerosSeriesInput = document.getElementById('numeros_series');
-        if (numerosSeriesInput) {
-            numerosSeriesInput.addEventListener('input', (e) => {
-                this.contarSeries(e.target.value);
-            });
-        }
-
-        // Checkbox para agregar precios
-        const checkboxPrecios = document.getElementById('agregar_precios');
-        if (checkboxPrecios) {
-            checkboxPrecios.addEventListener('change', (e) => {
-                const seccionPrecios = document.getElementById('seccion_precios');
-                if (seccionPrecios) {
-                    if (e.target.checked) {
-                        seccionPrecios.classList.remove('hidden');
-                    } else {
-                        seccionPrecios.classList.add('hidden');
+            // Checkbox para agregar precios
+            const checkboxPrecios = document.getElementById('agregar_precios');
+            if (checkboxPrecios) {
+                checkboxPrecios.addEventListener('change', (e) => {
+                    const seccionPrecios = document.getElementById('seccion_precios');
+                    if (seccionPrecios) {
+                        if (e.target.checked) {
+                            seccionPrecios.classList.remove('hidden');
+                        } else {
+                            seccionPrecios.classList.add('hidden');
+                        }
                     }
-                }
-            });
-        }
+                });
+            }
 
-        // Checkbox para producto importado
-        const checkboxImportado = document.getElementById('producto_es_importado');
-        if (checkboxImportado) {
-            checkboxImportado.addEventListener('change', (e) => {
-                const seccionLicencia = document.getElementById('seccion_licencia_registro');
-                if (seccionLicencia) {
-                    if (e.target.checked) {
-                        seccionLicencia.classList.remove('hidden');
-                    } else {
-                        seccionLicencia.classList.add('hidden');
-                        this.limpiarLicenciaSeleccionadaRegistro();
+            // Checkbox para producto importado
+            const checkboxImportado = document.getElementById('producto_es_importado');
+            if (checkboxImportado) {
+                checkboxImportado.addEventListener('change', (e) => {
+                    const seccionLicencia = document.getElementById('seccion_licencia_registro');
+                    if (seccionLicencia) {
+                        if (e.target.checked) {
+                            seccionLicencia.classList.remove('hidden');
+                        } else {
+                            seccionLicencia.classList.add('hidden');
+                            this.limpiarLicenciaSeleccionadaRegistro();
+                        }
                     }
-                }
+                });
+            }
+
+            // Búsqueda de licencias en registro
+            const buscarLicenciaRegistro = document.getElementById('buscar_licencia_registro');
+            if (buscarLicenciaRegistro) {
+                buscarLicenciaRegistro.addEventListener('input', (e) => {
+                    this.buscarLicenciasRegistro(e.target.value);
+                });
+            }
+
+
+            const checkboxUsarLotes = document.getElementById('usar_lotes');
+            if (checkboxUsarLotes) {
+                checkboxUsarLotes.addEventListener('change', (e) => {
+                    const opcionesLote = document.getElementById('opciones_lote');
+                    if (e.target.checked) {
+                        opcionesLote.classList.remove('hidden');
+                        this.configurarTipoLote('automatico'); // Por defecto automático
+                    } else {
+                        opcionesLote.classList.add('hidden');
+                        this.limpiarConfiguracionLotes();
+                    }
+                });
+            }
+
+            // NUEVO: Radio buttons para tipo de lote
+            document.querySelectorAll('input[name="tipo_lote"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.configurarTipoLote(e.target.value);
+                });
             });
+
+            document.getElementById('egreso-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEgresoSubmit();
+            });
+
+            document.getElementById('buscar_producto_egreso').addEventListener('input', (e) => {
+                this.buscarProductosEgreso(e.target.value);
+            });
+        } catch (error) {
+            console.error('Error in setupEventListeners:', error);
         }
-
-        // Búsqueda de licencias en registro
-        const buscarLicenciaRegistro = document.getElementById('buscar_licencia_registro');
-        if (buscarLicenciaRegistro) {
-            buscarLicenciaRegistro.addEventListener('input', (e) => {
-                this.buscarLicenciasRegistro(e.target.value);
-            });
-        }
-
-
-        const checkboxUsarLotes = document.getElementById('usar_lotes');
-        if (checkboxUsarLotes) {
-            checkboxUsarLotes.addEventListener('change', (e) => {
-                const opcionesLote = document.getElementById('opciones_lote');
-                if (e.target.checked) {
-                    opcionesLote.classList.remove('hidden');
-                    this.configurarTipoLote('automatico'); // Por defecto automático
-                } else {
-                    opcionesLote.classList.add('hidden');
-                    this.limpiarConfiguracionLotes();
-                }
-            });
-        }
-
-        // NUEVO: Radio buttons para tipo de lote
-        document.querySelectorAll('input[name="tipo_lote"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.configurarTipoLote(e.target.value);
-            });
-        });
-
-        document.getElementById('egreso-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleEgresoSubmit();
-        });
-
-        document.getElementById('buscar_producto_egreso').addEventListener('input', (e) => {
-            this.buscarProductosEgreso(e.target.value);
-        });
 
         const buscarLoteInput = document.getElementById('buscar_lote');
         if (buscarLoteInput) {
@@ -322,8 +326,12 @@ class InventarioManager {
     }
 
     openEgresoModal() {
-        this.resetEgresoForm();
-        this.showModal('egreso');
+        try {
+            this.resetEgresoForm();
+            this.showModal('egreso');
+        } catch (error) {
+            console.error('Error opening Egreso Modal:', error);
+        }
     }
 
     egresoRapido(productoId) {
@@ -872,18 +880,7 @@ class InventarioManager {
 
 
 
-    resetEgresoForm() {
-        document.getElementById('egreso-form').reset();
-        this.clearErrors('egreso');
 
-        document.getElementById('egreso-step-1').classList.remove('hidden');
-        document.getElementById('egreso-step-2').classList.add('hidden');
-        document.getElementById('productos_encontrados_egreso').classList.add('hidden');
-
-        this.productoSeleccionadoEgreso = null;
-        this.seriesSeleccionadasEgreso = [];
-        this.origenEgresoSeleccionado = null; // AGREGAR ESTA LÍNEA
-    }
 
 
     /**
@@ -915,6 +912,16 @@ class InventarioManager {
      * Cargar productos
      */
     async loadProductos() {
+        const container = document.getElementById('productos-list');
+        if (container) {
+            container.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-gray-500 dark:text-gray-400">Cargando inventario...</p>
+                </div>
+            `;
+        }
+
         try {
             const response = await fetch('/inventario/productos-stock');
             if (response.ok) {
@@ -1114,144 +1121,7 @@ class InventarioManager {
     }
 
 
-    /**
-     * Buscar licencias para el formulario de ingreso (no registro)
-     */
-    async buscarLicenciasRegistro(query) {
-        const container = document.getElementById('licencias_encontradas_registro');
 
-        if (!query || query.length < 2) {
-            if (container) {
-                container.classList.add('hidden');
-            }
-            return;
-        }
-
-        try {
-            const response = await fetch(`/licencias/buscar?q=${encodeURIComponent(query)}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.renderResultadosLicenciasRegistro(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error buscando licencias en ingreso:', error);
-        }
-    }
-
-    /**
-     * Renderizar resultados de búsqueda de licencias en ingreso
-     */
-    renderResultadosLicenciasRegistro(licencias) {
-        const container = document.getElementById('licencias_encontradas_registro');
-        if (!container) return;
-
-        if (licencias.length === 0) {
-            container.innerHTML = `
-            <div class="p-3 text-center text-gray-500 dark:text-gray-400">
-                No se encontraron licencias
-            </div>
-        `;
-            container.classList.remove('hidden');
-            return;
-        }
-
-        container.innerHTML = licencias.map(licencia => `
-        <div onclick="inventarioManager.seleccionarLicenciaRegistro(${licencia.lipaimp_id})" 
-             class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0">
-            <div class="font-medium text-gray-900 dark:text-gray-100">
-                Póliza: ${licencia.lipaimp_poliza}
-            </div>
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-                ${licencia.lipaimp_descripcion}
-            </div>
-            <div class="text-xs text-gray-400 dark:text-gray-500">
-                Vence: ${new Date(licencia.lipaimp_fecha_vencimiento).toLocaleDateString()}
-            </div>
-        </div>
-    `).join('');
-
-        container.classList.remove('hidden');
-    }
-
-    /**
-     * Seleccionar licencia en el formulario de ingreso
-     */
-    async seleccionarLicenciaRegistro(licenciaId) {
-        try {
-            const response = await fetch(`/licencias/${licenciaId}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.licenciaSeleccionadaRegistro = data.data;
-
-                // Actualizar interfaz
-                const container = document.getElementById('licencia_seleccionada_registro');
-                const inputHidden = document.getElementById('licencia_id_registro');
-                const searchInput = document.getElementById('buscar_licencia_registro');
-
-                if (container) {
-                    container.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="font-medium text-gray-900 dark:text-gray-100">
-                                Póliza: ${this.licenciaSeleccionadaRegistro.lipaimp_poliza}
-                            </div>
-                            <div class="text-sm text-gray-500 dark:text-gray-400">
-                                ${this.licenciaSeleccionadaRegistro.lipaimp_descripcion}
-                            </div>
-                        </div>
-                        <button onclick="inventarioManager.limpiarLicenciaSeleccionadaRegistro()" 
-                                class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-                }
-
-                if (inputHidden) {
-                    inputHidden.value = licenciaId;
-                }
-
-                if (searchInput) {
-                    searchInput.value = this.licenciaSeleccionadaRegistro.lipaimp_poliza;
-                }
-
-                // Ocultar resultados
-                document.getElementById('licencias_encontradas_registro').classList.add('hidden');
-            }
-        } catch (error) {
-            console.error('Error obteniendo licencia en ingreso:', error);
-        }
-    }
-
-
-
-
-    /**
-     * Limpiar licencia seleccionada en ingreso
-     */
-    limpiarLicenciaSeleccionadaRegistro() {
-        this.licenciaSeleccionadaRegistro = null;
-
-        const container = document.getElementById('licencia_seleccionada_registro');
-        const inputHidden = document.getElementById('licencia_id_registro');
-        const searchInput = document.getElementById('buscar_licencia_registro');
-
-        if (container) {
-            container.innerHTML = `
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-                Ninguna licencia seleccionada
-            </div>
-        `;
-        }
-
-        if (inputHidden) {
-            inputHidden.value = '';
-        }
-
-        if (searchInput) {
-            searchInput.value = '';
-        }
-    }
 
     /**
      * Cargar categorías
@@ -1425,13 +1295,13 @@ class InventarioManager {
         }
 
         // Validar tipos de archivo
-        const tiposValidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const tiposValidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
         const archivosInvalidos = Array.from(archivos).filter(archivo =>
-            !tiposValidos.includes(archivo.type) || archivo.size > 2048000
+            !tiposValidos.includes(archivo.type) || archivo.size > 5120000 // Aumentado a 5MB para coincidir con backend
         );
 
         if (archivosInvalidos.length > 0) {
-            this.showAlert('error', 'Archivos inválidos', 'Solo se permiten JPG, PNG, WebP hasta 2MB');
+            this.showAlert('error', 'Archivos inválidos', 'Solo se permiten JPG, PNG, WebP, HEIC hasta 5MB');
             return;
         }
 
@@ -2182,10 +2052,10 @@ class InventarioManager {
         <div onclick="inventarioManager.seleccionarLicencia(${licencia.lipaimp_id})" 
              class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0">
             <div class="font-medium text-gray-900 dark:text-gray-100">
-                Póliza: ${licencia.lipaimp_poliza}
+                Licencia: ${licencia.lipaimp_numero}
             </div>
             <div class="text-sm text-gray-500 dark:text-gray-400">
-                ${licencia.lipaimp_descripcion}
+                Póliza: ${licencia.lipaimp_poliza || 'N/A'} • ${licencia.lipaimp_descripcion}
             </div>
             <div class="text-xs text-gray-400 dark:text-gray-500">
                 Vence: ${new Date(licencia.lipaimp_fecha_vencimiento).toLocaleDateString()}
@@ -2216,10 +2086,10 @@ class InventarioManager {
                     <div class="flex items-center justify-between">
                         <div>
                             <div class="font-medium text-gray-900 dark:text-gray-100">
-                                Póliza: ${this.licenciaSeleccionada.lipaimp_poliza}
+                                Licencia: ${this.licenciaSeleccionada.lipaimp_numero}
                             </div>
                             <div class="text-sm text-gray-500 dark:text-gray-400">
-                                ${this.licenciaSeleccionada.lipaimp_descripcion}
+                                Póliza: ${this.licenciaSeleccionada.lipaimp_poliza || 'N/A'} • ${this.licenciaSeleccionada.lipaimp_descripcion}
                             </div>
                         </div>
                         <button onclick="inventarioManager.limpiarLicenciaSeleccionada()" 
@@ -2235,7 +2105,7 @@ class InventarioManager {
                 }
 
                 if (searchInput) {
-                    searchInput.value = this.licenciaSeleccionada.lipaimp_poliza;
+                    searchInput.value = this.licenciaSeleccionada.lipaimp_numero;
                 }
 
                 // Ocultar resultados
@@ -2255,6 +2125,143 @@ class InventarioManager {
         const container = document.getElementById('licencia_seleccionada');
         const inputHidden = document.getElementById('licencia_id');
         const searchInput = document.getElementById('buscar_licencia');
+
+        if (container) {
+            container.innerHTML = `
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                Ninguna licencia seleccionada
+            </div>
+        `;
+        }
+
+        if (inputHidden) {
+            inputHidden.value = '';
+        }
+
+        if (searchInput) {
+            searchInput.value = '';
+        }
+    }
+
+    /**
+     * Buscar licencias para registro (Ingreso)
+     */
+    async buscarLicenciasRegistro(query) {
+        const container = document.getElementById('licencias_encontradas_registro');
+
+        if (!query || query.length < 2) {
+            if (container) {
+                container.classList.add('hidden');
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch(`/licencias/buscar?q=${encodeURIComponent(query)}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.renderResultadosLicenciasRegistro(data.data || []);
+            }
+        } catch (error) {
+            console.error('Error buscando licencias:', error);
+        }
+    }
+
+    /**
+     * Renderizar resultados de búsqueda de licencias para registro
+     */
+    renderResultadosLicenciasRegistro(licencias) {
+        const container = document.getElementById('licencias_encontradas_registro');
+        if (!container) return;
+
+        if (licencias.length === 0) {
+            container.innerHTML = `
+            <div class="p-3 text-center text-gray-500 dark:text-gray-400">
+                No se encontraron licencias
+            </div>
+        `;
+            container.classList.remove('hidden');
+            return;
+        }
+
+        container.innerHTML = licencias.map(licencia => `
+        <div onclick="inventarioManager.seleccionarLicenciaRegistro(${licencia.lipaimp_id})" 
+             class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0">
+            <div class="font-medium text-gray-900 dark:text-gray-100">
+                Licencia: ${licencia.lipaimp_numero}
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                Póliza: ${licencia.lipaimp_poliza || 'N/A'} • ${licencia.lipaimp_descripcion}
+            </div>
+            <div class="text-xs text-gray-400 dark:text-gray-500">
+                Vence: ${new Date(licencia.lipaimp_fecha_vencimiento).toLocaleDateString()}
+            </div>
+        </div>
+    `).join('');
+
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Seleccionar licencia para registro
+     */
+    async seleccionarLicenciaRegistro(licenciaId) {
+        try {
+            const response = await fetch(`/licencias/${licenciaId}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.licenciaSeleccionadaRegistro = data.data;
+
+                // Actualizar interfaz
+                const container = document.getElementById('licencia_seleccionada_registro');
+                const inputHidden = document.getElementById('licencia_id_registro');
+                const searchInput = document.getElementById('buscar_licencia_registro');
+
+                if (container) {
+                    container.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">
+                                Licencia: ${this.licenciaSeleccionadaRegistro.lipaimp_numero}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                Póliza: ${this.licenciaSeleccionadaRegistro.lipaimp_poliza || 'N/A'}
+                            </div>
+                        </div>
+                        <button onclick="inventarioManager.limpiarLicenciaSeleccionadaRegistro()" 
+                                type="button"
+                                class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                }
+
+                if (inputHidden) {
+                    inputHidden.value = licenciaId;
+                }
+
+                if (searchInput) {
+                    searchInput.value = this.licenciaSeleccionadaRegistro.lipaimp_numero;
+                }
+
+                // Ocultar resultados
+                document.getElementById('licencias_encontradas_registro').classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error obteniendo licencia:', error);
+        }
+    }
+
+    /**
+     * Limpiar licencia seleccionada para registro
+     */
+    limpiarLicenciaSeleccionadaRegistro() {
+        this.licenciaSeleccionadaRegistro = null;
+
+        const container = document.getElementById('licencia_seleccionada_registro');
+        const inputHidden = document.getElementById('licencia_id_registro');
+        const searchInput = document.getElementById('buscar_licencia_registro');
 
         if (container) {
             container.innerHTML = `
@@ -2421,102 +2428,7 @@ class InventarioManager {
     //seleccionarProducto() 
     // ================================
 
-    async seleccionarProducto(productoId) {
-        try {
-            const response = await fetch(`/inventario/productos/${productoId}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.productoSeleccionado = data.data;
 
-                // Ocultar step 1 y mostrar step 2
-                document.getElementById('ingreso-step-1').classList.add('hidden');
-                document.getElementById('ingreso-step-2').classList.remove('hidden');
-
-                // Actualizar información del producto
-                document.getElementById('producto_seleccionado_nombre').textContent = this.productoSeleccionado.producto_nombre;
-                document.getElementById('producto_seleccionado_info').textContent =
-                    `Stock actual: ${this.productoSeleccionado.stock_cantidad_disponible || 0} • SKU: ${this.productoSeleccionado.pro_codigo_sku}`;
-
-                // Obtener elementos del DOM
-                const cantidadSection = document.getElementById('cantidad_section');
-                const seriesSection = document.getElementById('series_section');
-                const loteSection = document.getElementById('lote_section');
-                const importadoSection = document.getElementById('contenedor_importacion');
-                const movCantidadInput = document.getElementById('mov_cantidad');
-                const numerosSeriesTextarea = document.getElementById('numeros_series');
-
-                // Configurar campos según tipo de producto
-                if (this.productoSeleccionado.producto_requiere_serie) {
-                    // PRODUCTO CON SERIE
-                    ('Producto requiere serie - configurando campos');
-
-                    // Mostrar sección de series, ocultar cantidad
-                    if (seriesSection) seriesSection.classList.remove('hidden');
-                    if (cantidadSection) cantidadSection.classList.add('hidden');
-
-                    // Configurar atributos required
-                    if (movCantidadInput) {
-                        movCantidadInput.removeAttribute('required');
-                        movCantidadInput.value = '';
-                    }
-                    if (numerosSeriesTextarea) {
-                        numerosSeriesTextarea.setAttribute('required', 'required');
-                    }
-
-                } else {
-                    // PRODUCTO SIN SERIE
-                    ('Producto NO requiere serie - configurando campos');
-
-                    // Mostrar sección de cantidad, ocultar series
-                    if (cantidadSection) cantidadSection.classList.remove('hidden');
-                    if (seriesSection) seriesSection.classList.add('hidden');
-
-                    // Configurar atributos required
-                    if (movCantidadInput) {
-                        movCantidadInput.setAttribute('required', 'required');
-                        movCantidadInput.value = '1';
-                    }
-                    if (numerosSeriesTextarea) {
-                        numerosSeriesTextarea.removeAttribute('required');
-                        numerosSeriesTextarea.value = '';
-                    }
-                }
-
-                // GESTIÓN DE SECCIÓN DE IMPORTACIÓN
-                // Solo mostrar si el producto ES importado
-                if (importadoSection) {
-                    if (this.productoSeleccionado.producto_es_importado) {
-                        importadoSection.classList.remove('hidden');
-                        ('Producto importado - mostrando sección de importación');
-                    } else {
-                        importadoSection.classList.add('hidden');
-                        ('Producto NO importado - ocultando sección de importación');
-                    }
-                }
-
-                // SIEMPRE MOSTRAR SECCIÓN DE LOTES (para ambos tipos de productos)
-                if (loteSection) {
-                    loteSection.classList.remove('hidden');
-                    // Generar preview del lote automático por defecto
-                    this.generarPreviewLote();
-                }
-
-                // Gestión de licencias (si aplica)
-                const licenciaSection = document.getElementById('licencia_section');
-                if (this.productoSeleccionado.requiere_licencia && licenciaSection) {
-                    licenciaSection.classList.remove('hidden');
-                } else if (licenciaSection) {
-                    licenciaSection.classList.add('hidden');
-                }
-
-                // Ocultar resultados de búsqueda
-                document.getElementById('productos_encontrados').classList.add('hidden');
-            }
-        } catch (error) {
-            console.error('Error obteniendo detalle del producto:', error);
-            this.showAlert('error', 'Error', 'Error al cargar el producto');
-        }
-    }
     /**
      * Eliminar producto (con validaciones completas)
      */
@@ -2887,10 +2799,9 @@ class InventarioManager {
                 const movCantidadInput = document.getElementById('mov_cantidad');
                 const numerosSeriesTextarea = document.getElementById('numeros_series');
 
-                // **CRÍTICO: Gestión correcta de atributos required y visibilidad**
                 if (this.productoSeleccionado.producto_requiere_serie) {
                     // PRODUCTO CON SERIE
-                    ('Producto requiere serie - configurando campos');
+                    console.log('Producto requiere serie - configurando campos');
 
                     // Mostrar sección de series, ocultar cantidad y lotes
                     if (seriesSection) seriesSection.classList.remove('hidden');
@@ -2901,16 +2812,16 @@ class InventarioManager {
                     if (movCantidadInput) {
                         movCantidadInput.removeAttribute('required');
                         movCantidadInput.value = '';
-                        ('Removed required from mov_cantidad');
+                        console.log('Removed required from mov_cantidad');
                     }
                     if (numerosSeriesTextarea) {
                         numerosSeriesTextarea.setAttribute('required', 'required');
-                        ('Added required to numeros_series');
+                        console.log('Added required to numeros_series');
                     }
 
                 } else {
                     // PRODUCTO SIN SERIE
-                    ('Producto NO requiere serie - configurando campos');
+                    console.log('Producto NO requiere serie - configurando campos');
 
                     // Mostrar sección de cantidad y lotes, ocultar series
                     if (cantidadSection) cantidadSection.classList.remove('hidden');
@@ -2921,12 +2832,12 @@ class InventarioManager {
                     if (movCantidadInput) {
                         movCantidadInput.setAttribute('required', 'required');
                         movCantidadInput.value = '1';
-                        ('Added required to mov_cantidad');
+                        console.log('Added required to mov_cantidad');
                     }
                     if (numerosSeriesTextarea) {
                         numerosSeriesTextarea.removeAttribute('required');
                         numerosSeriesTextarea.value = '';
-                        ('Removed required from numeros_series');
+                        console.log('Removed required from numeros_series');
                     }
 
                     // Generar preview del lote
@@ -2954,27 +2865,26 @@ class InventarioManager {
      * Abrir modal de registro de producto
      */
     openRegistroModal() {
-        this.resetRegistroForm();
-        this.showModal('registro');
+        try {
+            this.resetRegistroForm();
+            this.showModal('registro');
+        } catch (error) {
+            console.error('Error opening Registro Modal:', error);
+        }
     }
 
     /**
      * Abrir modal de ingreso a inventario
      */
     openIngresoModal() {
-        this.showModal('ingreso');
+        try {
+            this.showModal('ingreso');
+        } catch (error) {
+            console.error('Error opening Ingreso Modal:', error);
+        }
     }
 
-    /**
-     * Abrir modal de egreso
-     */
-    /**
-  * Abrir modal de egreso
-  */
-    openEgresoModal() {
-        this.resetEgresoForm();
-        this.showModal('egreso');
-    }
+
 
     /**
      * Ver historial de movimientos
@@ -2999,27 +2909,11 @@ class InventarioManager {
         }, 100);
     }
 
-    /**
-     * Ver detalle de producto
-     */
-    verDetalleProducto(productoId) {
-        this.showAlert('info', 'Próximamente', 'Vista de detalle en desarrollo');
-    }
 
-    /**
-     * Editar producto
-     */
-    editarProducto(productoId) {
-        this.showAlert('info', 'Próximamente', 'Edición de productos en desarrollo');
-    }
 
-    /**
-     * Toggle panel de alertas
-     */
-    toggleAlertas() {
-        const container = document.getElementById('alerts-container');
-        container.classList.toggle('hidden');
-    }
+
+
+
 
     /**
      * Manejar envío del formulario de registro
@@ -3181,7 +3075,190 @@ class InventarioManager {
                 if (data.errors) {
                     this.showValidationErrors('ingreso', data.errors);
                 } else {
-                    this.showAlert('error', 'Error', data.message || 'Error al procesar la solicitud');
+                    // Check for specific duplicate series error
+                    if (data.message && data.message.includes('Una o más series ya existen')) {
+
+                        // Play warning sound loop
+                        let soundInterval;
+                        const playWarningSound = () => {
+                            try {
+                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                const playBeep = () => {
+                                    const osc = ctx.createOscillator();
+                                    const gain = ctx.createGain();
+
+                                    osc.connect(gain);
+                                    gain.connect(ctx.destination);
+
+                                    osc.type = 'sawtooth';
+                                    osc.frequency.value = 200; // Low frequency for "Error"
+
+                                    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+                                    osc.start();
+                                    osc.stop(ctx.currentTime + 0.5);
+
+                                    // Second beep
+                                    setTimeout(() => {
+                                        const osc2 = ctx.createOscillator();
+                                        const gain2 = ctx.createGain();
+                                        osc2.connect(gain2);
+                                        gain2.connect(ctx.destination);
+                                        osc2.type = 'sawtooth';
+                                        osc2.frequency.value = 150;
+                                        gain2.gain.setValueAtTime(0.5, ctx.currentTime);
+                                        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                                        osc2.start();
+                                        osc2.stop(ctx.currentTime + 0.5);
+                                    }, 200);
+
+                                };
+
+                                playBeep(); // Play immediately
+                                soundInterval = setInterval(playBeep, 1500); // Loop every 1.5 seconds
+
+                            } catch (e) {
+                                console.error('Audio play failed', e);
+                            }
+                        };
+
+                        playWarningSound();
+
+                        let detallesHtml = '';
+                        if (data.detalles_duplicados && data.detalles_duplicados.length > 0) {
+                            const rows = data.detalles_duplicados.map(d => `
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-4 py-2 font-bold text-gray-900 border-r">${d.serie}</td>
+                                    <td class="px-4 py-2 text-gray-600 border-r">${d.fecha_ingreso}</td>
+                                    <td class="px-4 py-2 text-gray-600 border-r">${d.usuario}</td>
+                                    <td class="px-4 py-2">
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold ${d.estado === 'vendido' ? 'bg-blue-100 text-blue-800' :
+                                    d.estado === 'disponible' ? 'bg-green-100 text-green-800' :
+                                        d.estado === 'reservado' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'
+                                }">
+                                            ${d.estado ? d.estado.toUpperCase() : 'DESCONOCIDO'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('');
+
+                            detallesHtml = `
+                                <div class="mt-6 mb-4 text-left">
+                                    <p class="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">🔍 RASTREO DE SERIES CONFLICTIVAS:</p>
+                                    <div class="overflow-hidden rounded-lg border border-gray-300 shadow-sm">
+                                        <table class="min-w-full text-sm text-left">
+                                            <thead class="bg-gray-100 text-gray-700 font-bold uppercase text-xs">
+                                                <tr>
+                                                    <th class="px-4 py-2 border-r">Serie</th>
+                                                    <th class="px-4 py-2 border-r">Fecha Ingreso</th>
+                                                    <th class="px-4 py-2 border-r">Ingresado Por</th>
+                                                    <th class="px-4 py-2">Estado Actual</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-200">
+                                                ${rows}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        Swal.fire({
+                            title: '🚨 ¡ALERTA CRÍTICA DE SEGURIDAD! 🚨',
+                            html: `
+                                <style>
+                                    @keyframes blink-critical {
+                                        0% { opacity: 1; color: #ff0000; transform: scale(1); }
+                                        50% { opacity: 0.5; color: #990000; transform: scale(1.1); }
+                                        100% { opacity: 1; color: #ff0000; transform: scale(1); }
+                                    }
+                                    .critical-blink {
+                                        animation: blink-critical 0.8s infinite;
+                                        font-weight: 900;
+                                        font-size: 1.8rem;
+                                        text-transform: uppercase;
+                                        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+                                        margin-bottom: 20px;
+                                    }
+                                    .weapon-check {
+                                        background-color: #fee2e2;
+                                        border: 4px solid #ef4444;
+                                        padding: 15px;
+                                        border-radius: 12px;
+                                        margin: 20px 0;
+                                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                                    }
+                                    .physical-check {
+                                        background-color: #fef3c7;
+                                        border: 3px dashed #d97706;
+                                        padding: 15px;
+                                        border-radius: 8px;
+                                        margin-top: 20px;
+                                    }
+                                </style>
+                                <div class="text-left">
+                                    <div class="critical-blink text-center">
+                                        🛑 ¡DETENTE AHORA! 🛑
+                                    </div>
+                                    
+                                    <div class="weapon-check text-center">
+                                        <i class="fas fa-exclamation-circle text-5xl text-red-600 mb-3"></i>
+                                        <p class="font-black text-2xl text-red-900 mb-2">
+                                            DUPLICIDAD DE SERIE DETECTADA
+                                        </p>
+                                        <p class="text-red-800 font-bold text-lg">
+                                            ESTA SERIE YA EXISTE EN EL SISTEMA
+                                        </p>
+                                    </div>
+
+                                    ${detallesHtml}
+
+                                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                                        <p class="font-bold mb-2">Posibles causas graves:</p>
+                                        <ul class="list-none space-y-2 text-sm font-medium text-gray-700">
+                                            <li class="flex items-center"><span class="text-2xl mr-2">❌</span> El arma ya fue vendida y no debería estar aquí.</li>
+                                            <li class="flex items-center"><span class="text-2xl mr-2">❌</span> El arma ya tuvo un egreso manual previo.</li>
+                                            <li class="flex items-center"><span class="text-2xl mr-2">❌</span> Estás intentando ingresar la misma arma dos veces.</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="physical-check text-center">
+                                        <p class="font-black text-xl mb-2 text-yellow-900">👀 REVISIÓN FÍSICA OBLIGATORIA</p>
+                                        <p class="text-gray-900 font-bold text-lg">
+                                            ¿TIENES EL <span class="text-red-600 underline decoration-4">ARMA FÍSICA</span> EN TUS MANOS?
+                                        </p>
+                                        <p class="text-sm mt-2 text-gray-600">
+                                            Verifica el troquelado en el metal. No confíes solo en la etiqueta.
+                                        </p>
+                                    </div>
+                                </div>
+                            `,
+                            icon: 'error',
+                            iconColor: '#ff0000',
+                            showCancelButton: false,
+                            confirmButtonText: '🚨 HE VERIFICADO EL ARMA FÍSICA 🚨',
+                            confirmButtonColor: '#dc2626',
+                            width: '850px',
+                            padding: '2.5em',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            backdrop: `
+                                rgba(120,0,0,0.7)
+                                left top
+                                no-repeat
+                            `,
+                            willClose: () => {
+                                if (soundInterval) {
+                                    clearInterval(soundInterval);
+                                }
+                            }
+                        });
+                    } else {
+                        this.showAlert('error', 'Error', data.message || 'Error al procesar la solicitud');
+                    }
                 }
             }
         } catch (error) {
@@ -3495,37 +3572,7 @@ class InventarioManager {
     /**
      * MANTENER: calcularMargen() para formulario de registro
      */
-    calcularMargen() {
-        const costInput = document.getElementById('precio_costo');
-        const ventaInput = document.getElementById('precio_venta');
-        const margenElement = document.getElementById('margen_calculado');
-        const gananciaElement = document.getElementById('ganancia_calculada');
 
-        if (!costInput || !ventaInput || !margenElement || !gananciaElement) return;
-
-        const costo = parseFloat(costInput.value) || 0;
-        const venta = parseFloat(ventaInput.value) || 0;
-
-        if (costo > 0 && venta > 0) {
-            const ganancia = venta - costo;
-            const margen = ((ganancia / costo) * 100);
-
-            margenElement.textContent = `${margen.toFixed(1)}%`;
-            gananciaElement.textContent = `Q${ganancia.toFixed(2)}`;
-
-            if (margen < 10) {
-                margenElement.className = 'text-red-600 font-bold';
-            } else if (margen < 25) {
-                margenElement.className = 'text-yellow-600 font-bold';
-            } else {
-                margenElement.className = 'text-green-600 font-bold';
-            }
-        } else {
-            margenElement.textContent = '0%';
-            gananciaElement.textContent = 'Q0.00';
-            margenElement.className = 'text-gray-400 font-bold';
-        }
-    }
 
 
 
@@ -3533,9 +3580,19 @@ class InventarioManager {
      * Mostrar modal
      */
     showModal(type) {
-        const modal = document.getElementById(`${type}-modal`);
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+
+        try {
+            const modal = document.getElementById(`${type}-modal`);
+            if (!modal) {
+                console.error(`Modal ${type}-modal not found!`);
+                return;
+            }
+            modal.classList.remove('hidden');
+
+            document.body.style.overflow = 'hidden';
+        } catch (error) {
+            console.error(`Error showing modal ${type}:`, error);
+        }
     }
 
     /**
@@ -3543,7 +3600,9 @@ class InventarioManager {
      */
     closeModal(type) {
         const modal = document.getElementById(`${type}-modal`);
-        modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
         document.body.style.overflow = 'auto';
 
         this.setLoading(type, false);
@@ -3691,7 +3750,7 @@ class InventarioManager {
         this.licenciaSeleccionadaRegistro = null;
         this.lotePreview = '';
 
-        ('Formulario de ingreso reseteado correctamente');
+        console.log('Formulario de ingreso reseteado correctamente');
     }
 
 
@@ -4595,49 +4654,49 @@ class InventarioManager {
      * Método poblarSelectsEdicion con debug - TEMPORAL
      */
     async poblarSelectsEdicion() {
-        ('=== DEBUG POBLAR SELECTS EDICIÓN ===');
-        ('this.categorias:', this.categorias?.length);
-        ('this.marcas:', this.marcas?.length);
-        ('this.calibres:', this.calibres?.length);
-        ('this.paises antes:', this.paises?.length);
+        console.log('=== DEBUG POBLAR SELECTS EDICIÓN ===');
+        console.log('this.categorias:', this.categorias?.length);
+        console.log('this.marcas:', this.marcas?.length);
+        console.log('this.calibres:', this.calibres?.length);
+        console.log('this.paises antes:', this.paises?.length);
 
         // Usar los datos ya cargados
         if (this.categorias && this.categorias.length > 0) {
             this.populateSelect('editar_producto_categoria', this.categorias, 'categoria_id', 'categoria_nombre');
-            ('✅ Categorías pobladas');
+            console.log('✅ Categorías pobladas');
         } else {
-            ('❌ No hay categorías');
+            console.log('❌ No hay categorías');
         }
 
         if (this.marcas && this.marcas.length > 0) {
             this.populateSelect('editar_producto_marca', this.marcas, 'marca_id', 'marca_descripcion');
-            ('✅ Marcas pobladas');
+            console.log('✅ Marcas pobladas');
         } else {
-            ('❌ No hay marcas');
+            console.log('❌ No hay marcas');
         }
 
         if (this.calibres && this.calibres.length > 0) {
             this.populateSelect('editar_producto_calibre', this.calibres, 'calibre_id', 'calibre_nombre');
-            ('✅ Calibres poblados');
+            console.log('✅ Calibres poblados');
         } else {
-            ('❌ No hay calibres');
+            console.log('❌ No hay calibres');
         }
 
         // Cargar países si no están cargados
         if (!this.paises || this.paises.length === 0) {
-            ('Cargando países...');
+            console.log('Cargando países...');
             await this.loadPaises();
-            ('this.paises después:', this.paises?.length);
+            console.log('this.paises después:', this.paises?.length);
         }
 
         if (this.paises && this.paises.length > 0) {
             this.populateSelect('editar_producto_madein', this.paises, 'pais_id', 'pais_descripcion');
-            ('✅ Países poblados');
+            console.log('✅ Países poblados');
         } else {
-            ('❌ No hay países');
+            console.log('❌ No hay países');
         }
 
-        ('=== FIN DEBUG ===');
+        console.log('=== FIN DEBUG ===');
     }
 
     /**
@@ -6011,7 +6070,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Inicializar el gestor de inventario
-    window.inventarioManager = new InventarioManager();
-
-    console.log('Sistema de inventario inicializado correctamente');
+    try {
+        window.inventarioManager = new InventarioManager();
+        console.log('Sistema de inventario inicializado correctamente');
+    } catch (error) {
+        console.error('Error initializing InventarioManager:', error);
+    }
 });

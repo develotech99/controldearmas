@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modelo para el stock actual de productos
  * Tabla de consulta rápida para inventario en tiempo real
  */
-class StockActual extends Model
+class StockActual extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'pro_stock_actual';
     protected $primaryKey = 'stock_id';

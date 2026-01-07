@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Subcategoria extends Model
+class Subcategoria extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'pro_subcategorias';
     protected $primaryKey = 'subcategoria_id';
@@ -27,6 +29,11 @@ class Subcategoria extends Model
     public function categoria()
     {
         return $this->belongsTo(Categoria::class, 'subcategoria_idcategoria', 'categoria_id');
+    }
+
+    public function productos()
+    {
+        return $this->hasMany(Producto::class, 'producto_subcategoria_id', 'subcategoria_id');
     }
 
     // Scopes

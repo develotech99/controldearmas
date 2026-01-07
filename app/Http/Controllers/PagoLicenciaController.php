@@ -55,7 +55,15 @@ public function index($licenciaId)
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Error al crear pago:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Error al crear pago: ' . $e->getMessage()], 500);
+            
+            $msg = 'Error al crear pago.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json(['error' => $msg], 500);
         }
     }
 

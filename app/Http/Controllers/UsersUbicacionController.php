@@ -31,6 +31,7 @@ class UsersUbicacionController extends Controller
 
         $rules = [
             'cliente_id'        => ['required', 'integer', 'exists:pro_clientes,cliente_id'],
+            'empresa_id'        => ['nullable', 'integer', 'exists:pro_clientes_empresas,emp_id'],
             'lat'               => ['required', 'numeric', 'between:-90,90'],
             'lng'               => ['required', 'numeric', 'between:-180,180'],
             'direccion'         => ['nullable', 'string', 'max:255'],
@@ -118,6 +119,7 @@ class UsersUbicacionController extends Controller
 
                 $ubicacion = UsersUbicacion::create([
                     'ubi_user' => $clienteId,
+                    'empresa_id' => $empresaId,
                     'ubi_latitud' => $lat,
                     'ubi_longitud' => $lng,
                     'ubi_descripcion' => $direccion, 
@@ -212,6 +214,8 @@ class UsersUbicacionController extends Controller
                     'vv.visita_venta',
                     'vv.visita_descripcion',
                     'vv.created_at AS visita_created_at',
+                    'ub.empresa_id',
+                    DB::raw('(SELECT emp_nombre FROM pro_clientes_empresas WHERE emp_id = ub.empresa_id) as nombre_empresa_ubicacion')
                 ])
                 ->orderByRaw("CASE WHEN c.cliente_tipo = 3 THEN c.cliente_nom_empresa ELSE c.cliente_nombre1 END");
 
@@ -354,6 +358,7 @@ public function getDetallesCliente($clienteId)
         // 1. VALIDACIONES
         $rules = [
             'cliente_id'        => ['required', 'integer', 'exists:pro_clientes,cliente_id'],
+            'empresa_id'        => ['nullable', 'integer', 'exists:pro_clientes_empresas,emp_id'],
             'lat'               => ['required', 'numeric', 'between:-90,90'],
             'lng'               => ['required', 'numeric', 'between:-180,180'],
             'direccion'         => ['nullable', 'string', 'max:255'],
@@ -459,6 +464,7 @@ public function getDetallesCliente($clienteId)
 
                 $ubicacionExistente->update([
                     'ubi_user' => $clienteId,
+                    'empresa_id' => $empresaId,
                     'ubi_latitud' => $lat,
                     'ubi_longitud' => $lng,
                     'ubi_descripcion' => $direccion, 

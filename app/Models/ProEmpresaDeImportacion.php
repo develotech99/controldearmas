@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ProEmpresaDeImportacion extends Model
+class ProEmpresaDeImportacion extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     // Especificar el nombre de la tabla
     protected $table = 'pro_empresas_de_importacion';

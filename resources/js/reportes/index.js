@@ -5,7 +5,7 @@
 import Chart from 'chart.js/auto';
 class ReportesManager {
     constructor() {
-        this.currentTab = 'dashboard';
+        this.currentTab = 'ventas';
         this.kpis = {};
         this.filtros = {
             fecha_inicio: null,
@@ -34,10 +34,31 @@ class ReportesManager {
 
         this.setupEventListeners();
         this.setupFechasIniciales();
+        this.populateYears(); // Add this line
         this.loadInitialData();
+    }
 
+    /**
+     * Poblar selector de años dinámicamente
+     */
+    populateYears() {
+        const yearSelect = document.getElementById('filtro-anio-digecam-armas');
+        if (yearSelect) {
+            const currentYear = new Date().getFullYear();
+            // Limpiar opciones existentes si las hubiera
+            yearSelect.innerHTML = '';
 
-
+            // Generar años desde 2023 hasta el año actual
+            for (let year = currentYear; year >= 2023; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                yearSelect.appendChild(option);
+            }
+        }
     }
     /**
      * Configurar event listeners
@@ -88,8 +109,9 @@ class ReportesManager {
     async loadInitialData() {
         try {
             await Promise.all([
-                this.loadDashboard(),
-                this.loadFiltros()
+                this.cambiarTab(this.currentTab),
+                this.loadFiltros(),
+                this.loadDashboard() // Cargar KPIs iniciales
             ]);
         } catch (error) {
             console.error('Error cargando datos iniciales:', error);
@@ -128,6 +150,7 @@ class ReportesManager {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
+                    this.filtrosData = result.data;
                     this.populateFiltros(result.data);
                 }
             }
@@ -135,6 +158,10 @@ class ReportesManager {
             console.error('Error cargando filtros:', error);
         }
     }
+
+
+
+
 
     /**
      * Cambiar tab activo
@@ -455,10 +482,201 @@ class ReportesManager {
         }
     }
 
+    async editarVentaClick(venta) {
+        let htmlContent = '<div class="text-left">';
+
+        for (const det of venta.detalles) {
+            htmlContent += `
+                <div class="mb-4 p-3 border rounded bg-gray-50">
+                    <div class="font-bold text-gray-700">${det.producto_nombre}</div>
+                    <div class="text-sm text-gray-500 mb-2">Cantidad: ${det.cantidad}</div>
+            `;
+
+            if (det.series && det.series.length > 0) {
+                htmlContent += `<div class="text-sm font-semibold mb-1">Series Asignadas:</div>`;
+                for (const serie of det.series) {
+                    htmlContent += `
+                        <div class="flex items-center justify-between mb-2 bg-white p-2 rounded border">
+                            <span class="text-gray-800 font-mono">${serie.numero}</span>
+                            <button class="text-blue-600 text-sm hover:text-blue-800 font-semibold" 
+                                onclick="reportesManager.cambiarSerie(${venta.ven_id}, ${det.det_id}, ${det.producto_id}, '${serie.id}', '${serie.numero}')">
+                                <i class="fas fa-exchange-alt mr-1"></i> Cambiar
+                            </button>
+                        </div>
+                    `;
+                }
+            } else if (det.lotes && det.lotes.length > 0) {
+                htmlContent += `<div class="text-sm font-semibold mb-1">Lotes Asignados:</div>`;
+                for (const lote of det.lotes) {
+                    htmlContent += `
+                        <div class="flex items-center justify-between mb-2 bg-white p-2 rounded border">
+                            <span class="text-gray-800 font-mono">${lote.codigo}</span>
+                            <button class="text-blue-600 text-sm hover:text-blue-800 font-semibold" 
+                                onclick="reportesManager.cambiarLote(${venta.ven_id}, ${det.det_id}, ${det.producto_id}, '${lote.id}', '${lote.codigo}')">
+                                <i class="fas fa-exchange-alt mr-1"></i> Cambiar
+                            </button>
+                        </div>
+                    `;
+                }
+            } else {
+                htmlContent += `<div class="text-sm text-gray-400 italic">Sin series/lotes asignados</div>`;
+            }
+            htmlContent += `</div>`;
+        }
+        htmlContent += '</div>';
+
+        Swal.fire({
+            title: `Editar Venta #${venta.ven_id}`,
+            html: htmlContent,
+            showCloseButton: true,
+            showConfirmButton: false,
+            width: '600px'
+        });
+    }
+
+    async cambiarSerie(venId, detId, productoId, oldSerieId, oldSerieNumero) {
+        try {
+            // 1. Fetch available series
+            // Updated route: /inventario/productos/{id}/series-disponibles
+            const response = await fetch(`/inventario/productos/${productoId}/series-disponibles`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Error al cargar series');
+            }
+
+            const seriesDisponibles = data.data;
+
+            if (seriesDisponibles.length === 0) {
+                Swal.fire('Atención', 'No hay otras series disponibles para este producto.', 'warning');
+                return;
+            }
+
+            // 2. Show selection modal
+            const options = {};
+            seriesDisponibles.forEach(s => {
+                options[s.serie_id] = s.serie_numero_serie;
+            });
+
+            const { value: newSerieId } = await Swal.fire({
+                title: 'Seleccionar Nueva Serie',
+                text: `Cambiando serie: ${oldSerieNumero}`,
+                input: 'select',
+                inputOptions: options,
+                inputPlaceholder: 'Seleccione una serie',
+                showCancelButton: true,
+                inputValidator: (value) => {
+                    return !value && 'Debe seleccionar una serie';
+                }
+            });
+
+            if (newSerieId) {
+                this.procesarCambio(venId, {
+                    det_id: detId,
+                    producto_id: productoId,
+                    old_serie_id: oldSerieId,
+                    new_serie_id: newSerieId
+                });
+            }
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', error.message, 'error');
+        }
+    }
+
+    async cambiarLote(venId, detId, productoId, oldLoteId, oldLoteCodigo) {
+        try {
+            // 1. Fetch available lotes
+            // Route is correct: /inventario/productos/{id}/stock-lotes
+            const response = await fetch(`/inventario/productos/${productoId}/stock-lotes`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Error al cargar lotes');
+            }
+
+            // Filter valid lotes
+            const lotesDisponibles = (data.data.lotes || []).filter(l => l.cantidad_disponible > 0 && l.lote_id != oldLoteId);
+
+            if (lotesDisponibles.length === 0) {
+                Swal.fire('Atención', 'No hay otros lotes con stock disponible.', 'warning');
+                return;
+            }
+
+            // 2. Show selection modal
+            const options = {};
+            lotesDisponibles.forEach(l => {
+                options[l.lote_id] = `${l.lote_codigo} (Disp: ${l.cantidad_disponible})`;
+            });
+
+            const { value: newLoteId } = await Swal.fire({
+                title: 'Seleccionar Nuevo Lote',
+                text: `Cambiando lote: ${oldLoteCodigo}`,
+                input: 'select',
+                inputOptions: options,
+                inputPlaceholder: 'Seleccione un lote',
+                showCancelButton: true,
+                inputValidator: (value) => {
+                    return !value && 'Debe seleccionar un lote';
+                }
+            });
+
+            if (newLoteId) {
+                this.procesarCambio(venId, {
+                    det_id: detId,
+                    producto_id: productoId,
+                    old_lote_id: oldLoteId,
+                    new_lote_id: newLoteId
+                });
+            }
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', error.message, 'error');
+        }
+    }
+
+    async procesarCambio(venId, cambio) {
+        try {
+            const updateResponse = await fetch('/ventas/update-editable', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    ven_id: venId,
+                    cambios: [cambio]
+                })
+            });
+
+            const result = await updateResponse.json();
+
+            if (result.success) {
+                Swal.fire('Éxito', 'Cambio aplicado correctamente', 'success').then(() => {
+                    this.loadReporteVentas();
+                });
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', error.message, 'error');
+        }
+    }
+
     /**
      * Cargar reporte de historial de ventas (TODAS)
      */
     async loadReporteHistorialVentas(page = 1) {
+        // Ensure filters are populated if data is available
+        const vendedorSelect = document.getElementById('filtro-vendedor-historial');
+        if (vendedorSelect && vendedorSelect.options.length <= 1 && this.filtrosData && this.filtrosData.vendedores) {
+            this.populateSelect('filtro-vendedor-historial', this.filtrosData.vendedores, 'user_id', (item) =>
+                `${item.user_primer_nombre} ${item.user_primer_apellido}`);
+        }
+
         try {
             this.showLoading('historial-ventas');
 
@@ -513,6 +731,57 @@ class ReportesManager {
         this.loadReporteHistorialVentas(1);
     }
 
+    async eliminarVenta(venId) {
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Esta acción eliminará la venta, sus pagos y registros de caja. ¡No se puede deshacer!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/ventas/cancelar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        ven_id: venId,
+                        motivo: 'Eliminación desde Historial de Ventas'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire(
+                        '¡Eliminado!',
+                        'La venta ha sido eliminada correctamente.',
+                        'success'
+                    );
+                    // Recargar tablas
+                    this.loadReporteHistorialVentas(1);
+                    this.loadReporteVentas();
+                } else {
+                    throw new Error(data.message || 'Error al eliminar la venta');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire(
+                    'Error',
+                    error.message || 'Hubo un problema al eliminar la venta.',
+                    'error'
+                );
+            }
+        }
+    }
+
     renderTablaHistorialVentas(ventas) {
         const tbody = document.getElementById('tbody-historial-ventas');
         if (!tbody) return;
@@ -545,14 +814,28 @@ class ReportesManager {
 
             // Colores para estado de venta
             let colorVenta = 'bg-gray-100 text-gray-800';
-            if (venta.ven_situacion === 'ACTIVA') colorVenta = 'bg-green-100 text-green-800';
-            else if (venta.ven_situacion === 'ANULADA') colorVenta = 'bg-red-100 text-red-800';
-            else if (venta.ven_situacion === 'PENDIENTE') colorVenta = 'bg-yellow-100 text-yellow-800';
+            let estadoTexto = venta.ven_situacion;
+
+            if (venta.deleted_at) {
+                colorVenta = 'bg-red-200 text-red-900 border border-red-300';
+                estadoTexto = 'ELIMINADA';
+            } else if (venta.ven_situacion === 'ACTIVA' || venta.ven_situacion === 'FACTURADA') {
+                colorVenta = 'bg-green-100 text-green-800';
+            } else if (venta.ven_situacion === 'COMPLETADA') {
+                colorVenta = 'bg-blue-100 text-blue-800';
+            } else if (venta.ven_situacion === 'ANULADA') {
+                colorVenta = 'bg-red-100 text-red-800';
+            } else if (venta.ven_situacion === 'PENDIENTE') {
+                colorVenta = 'bg-yellow-100 text-yellow-800';
+            }
 
             return `
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         ${this.formatearFechaDisplay(venta.ven_fecha)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-bold">
+                        #${venta.ven_id}
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                         ${clienteNombre}
@@ -590,18 +873,30 @@ class ReportesManager {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorVenta}">
-                            ${venta.ven_situacion}
+                            ${estadoTexto}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                         <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
+                        <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
                             class="text-blue-600 hover:text-blue-900 mr-2" title="Ver Detalle">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <a href="/reportes/ventas/${venta.ven_id}/imprimir" target="_blank"
-                            class="text-gray-600 hover:text-gray-900" title="Imprimir Comprobante">
-                            <i class="fas fa-print"></i>
-                        </a>
+                        ${!venta.deleted_at ? `
+                            ${['PENDIENTE', 'RESERVADA', 'EDITABLE'].includes((venta.ven_situacion || '').toUpperCase()) ? `
+                            <button onclick="abrirModalEditarVenta(${venta.ven_id})" 
+                               class="text-amber-600 hover:text-amber-900 mr-2" title="Editar Venta">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="reportesManager.eliminarVenta(${venta.ven_id})"
+                                class="text-red-600 hover:text-red-900 mr-2" title="Eliminar Venta">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            ` : ''}
+                            <a href="/reportes/ventas/${venta.ven_id}/imprimir" target="_blank"
+                                class="text-gray-600 hover:text-gray-900" title="Imprimir Comprobante">
+                                <i class="fas fa-print"></i>
+                            </a>
+                        ` : ''}
                     </td>
                 </tr>
             `;
@@ -627,62 +922,28 @@ class ReportesManager {
         }
 
         tbody.innerHTML = ventas.map(venta => {
-            // Preparar los datos para el dataset
-            const ventaData = {
-                ven_id: venta.ven_id,
-                ven_user: venta.ven_user,
-                cliente: venta.cliente,
-                det_producto_id: venta.det_producto_id,
-                series_ids: venta.series_numeros || venta.series_ids || '',
-                lotes_ids: venta.lotes_ids || '',
-                precio_venta: venta.precio_venta || 0,
-                precio_venta_empresa: venta.precio_venta_empresa || 0
-            };
+            // Preparar los datos para el dataset (aunque ahora usaremos el objeto completo en memoria si es posible, o lo pasamos al click)
+            // Para simplificar, pasamos ven_id y usamos una funcion para buscar los datos o pasamos lo minimo.
 
-
-
-            let identificadoresDisplay = '';
-            if (venta.series_numeros) {
-                identificadoresDisplay = `
-    <div class="text-xs">
-      <span class="font-semibold">Series:</span> ${venta.series_numeros}
-    </div>
-  `;
-            } else if (venta.series_display) {
-                identificadoresDisplay = `
-    <div class="text-xs">
-      <span class="font-semibold">Series:</span> ${venta.series_display}
-    </div>
-  `;
-            }
-
-            if (venta.lotes_display) {
-                identificadoresDisplay += `
-                <div class="text-xs mt-1">
-                    <span class="font-semibold">Lotes:</span> ${venta.lotes_display}
-                </div>
-            `;
-            }
-            if (!identificadoresDisplay) {
-                identificadoresDisplay = '<span class="text-gray-400">Sin series/lotes</span>';
-            }
+            const totalItems = venta.total_items || 0;
+            const resumenProductos = venta.productos_resumen || 'Sin productos';
 
             return `
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" 
-                data-venta='${JSON.stringify(ventaData)}'>
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <!-- Fecha -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <div class="text-gray-500">${this.formatearFechaDisplay(venta.ven_fecha)}</div>
                 </td>
+
+                <!-- Venta # -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-bold">
+                    #${venta.ven_id}
+                </td>
                 
                 <!-- Cliente -->
                 <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                    ${venta.cliente || 'N/A'}
-                </td>
-                
-                <!-- Empresa -->
-                <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                    ${venta.empresa || 'N/A'}
+                    <div class="font-medium">${venta.cliente || 'N/A'}</div>
+                    <div class="text-xs text-gray-500">${venta.empresa || ''}</div>
                 </td>
                 
                 <!-- Vendedor -->
@@ -690,33 +951,35 @@ class ReportesManager {
                     ${venta.vendedor || 'N/A'}
                 </td>
                 
-                <!-- Productos -->
+                <!-- Productos Resumen -->
                 <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    <div class="max-w-xs" title="${venta.productos || 'Sin productos'}">
-                        <div class="font-medium text-gray-900 dark:text-gray-100">
-                            ${venta.productos || 'Sin productos'}
-                        </div>
-                        <div class="mt-1">
-                            ${identificadoresDisplay}
-                        </div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">
+                        ${totalItems} producto(s)
                     </div>
+                    <div class="text-xs truncate max-w-xs" title="${resumenProductos}">
+                        ${resumenProductos}
+                    </div>
+                    <button onclick='reportesManager.verDetalleVenta(${venta.ven_id})'
+                            class="text-blue-600 hover:text-blue-800 text-xs mt-1 underline">
+                        Ver Detalle Completo
+                    </button>
                 </td>
                 
                 <!-- Total -->
-         <td class="px-6 py-4 whitespace-nowrap">
-  <div class="text-sm font-bold text-gray-900 dark:text-gray-100">
-    ${this.formatCurrency(venta.ven_total_vendido)}
-  </div>
-  <div class="text-xs text-gray-600 dark:text-gray-300">
-    <span class="font-semibold">P. Individual:</span> ${this.formatCurrency(venta.precio_venta || 0)}<br>
-    <span class="font-semibold">P. Empresa:</span> ${this.formatCurrency(venta.precio_venta_empresa || 0)}
-  </div>
-</td>
-
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        ${this.formatCurrency(venta.ven_total_vendido)}
+                    </div>
+                </td>
                 
                 <!-- Estado -->
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${venta.ven_situacion === 'EDITABLE' ? 'bg-blue-100 text-blue-800' :
+                    venta.ven_situacion === 'AUTORIZADA' ? 'bg-green-100 text-green-800' :
+                        venta.ven_situacion === 'COMPLETADA' ? 'bg-blue-800 text-white' :
+                            venta.ven_situacion === 'FACTURADA' ? 'bg-green-800 text-white' :
+                                'bg-yellow-100 text-yellow-800'}">
                         <i class="fas fa-clock mr-1"></i>
                         ${venta.ven_situacion || 'PENDIENTE'}
                     </span>
@@ -724,112 +987,171 @@ class ReportesManager {
                 
                 <!-- Acciones -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                   <!--  <button onclick="reportesManager.verDetalleVenta(${venta.ven_id})"
-                            class="text-blue-600 hover:text-blue-900 mr-2" 
-                            title="Ver detalle">
-                        <i class="fas fa-eye"></i>
-                    </button>-->
-                    <button onclick="reportesManager.autorizarVentaClick(this)"
+                    ${venta.ven_situacion === 'EDITABLE' ? `
+                        <button onclick='reportesManager.editarVentaClick(${JSON.stringify(venta)})'
+                                class="text-blue-600 hover:text-blue-900 mr-2" 
+                                title="Editar / Corregir">
+                            <i class="fas fa-edit text-lg"></i>
+                        </button>
+                    ` : ''}
+
+                    ${(venta.ven_situacion === 'PENDIENTE' || venta.ven_situacion === 'EDITABLE') ? `
+                    <button onclick='reportesManager.autorizarVentaClick(${JSON.stringify(venta)})'
                             class="text-green-600 hover:text-green-900 mr-2" 
                             title="Autorizar">
-                        <i class="fas fa-check"></i>
+                        <i class="fas fa-check-circle text-lg"></i>
                     </button>
-                    <button onclick="reportesManager.cancelarVentaClick(${venta.ven_id})"
-                            class="text-red-600 hover:text-red-900" 
-                            title="Rechazar">
-                        <i class="fas fa-times"></i>
+                    ` : ''}
+
+                    <button onclick='reportesManager.cancelarVentaClick(${JSON.stringify(venta)})'
+                        class="text-red-600 hover:text-red-900"
+                        title="Rechazar / Anular">
+                        <i class="fas fa-times-circle text-lg"></i>
                     </button>
                 </td>
             </tr>
-        `;
+                `;
         }).join('');
     }
 
-    async autorizarVentaClick(buttonElement) {
+    verDetalleVenta(venta) {
+        if (!venta || !venta.detalles) return;
+
+        const detallesHtml = venta.detalles.map(det => {
+            const seriesHtml = det.series && det.series.length > 0
+                ? `< div class="text-xs text-gray-500" > SN: ${det.series.join(', ')}</div > `
+                : '';
+            const lotesHtml = det.lotes && det.lotes.length > 0
+                ? `< div class="text-xs text-gray-500" > Lotes: ${det.lotes.join(', ')}</div > `
+                : '';
+
+            return `
+                < tr class="border-b" >
+                    <td class="px-4 py-2 text-left">
+                        <div class="font-medium">${det.producto_nombre}</div>
+                        ${seriesHtml}
+                        ${lotesHtml}
+                    </td>
+                    <td class="px-4 py-2 text-center">${det.cantidad}</td>
+                    <td class="px-4 py-2 text-right">${this.formatCurrency(det.precio_venta)}</td>
+                    <td class="px-4 py-2 text-right font-bold">${this.formatCurrency(det.subtotal)}</td>
+                </tr >
+                `;
+        }).join('');
+
+        Swal.fire({
+            title: `Detalle de Venta #${venta.ven_id} `,
+            html: `
+                < div class="overflow-x-auto" >
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Producto</th>
+                                <th class="px-4 py-2 text-center">Cant.</th>
+                                <th class="px-4 py-2 text-right">Precio</th>
+                                <th class="px-4 py-2 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${detallesHtml}
+                        </tbody>
+                        <tfoot class="bg-gray-50 font-bold">
+                            <tr>
+                                <td colspan="3" class="px-4 py-2 text-right">Total:</td>
+                                <td class="px-4 py-2 text-right">${this.formatCurrency(venta.ven_total_vendido)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div >
+                `,
+            width: '600px',
+            confirmButtonText: 'Cerrar'
+        });
+    }
+
+    async autorizarVentaClick(venta) {
+        let seriesArray = []; // Initialize empty to avoid ReferenceError
         try {
-            const row = buttonElement.closest('tr');
-            const ventaData = JSON.parse(row.dataset.venta);
-            ('📦 Datos de la venta:', ventaData);
-
-            // Series -> array<number>
-            const seriesArray = (ventaData.series_ids || '')
-                .split(',')
-                .map(id => parseInt(id.trim(), 10))
-                .filter(id => !isNaN(id) && id > 0);
-
-            // Lotes -> array<number>
-            const lotesArray = (ventaData.lotes_ids || '')
-                .split(',')
-                .map(id => {
-                    const t = id.trim();
-                    if (t === 'SIN-LOTE' || t === '') return null;
-                    return parseInt(t, 10);
-                })
-                .filter(id => id !== null && !isNaN(id) && id > 0);
-
-            const payload = {
-                ven_id: ventaData.ven_id,
-                ven_user: ventaData.ven_user,
-                cliente: ventaData.cliente,
-                det_producto_id: ventaData.det_producto_id,
-                producto_id: ventaData.det_producto_id,
-                series_ids: seriesArray,
-                lotes_ids: lotesArray
-            };
-
-            ('📤 Payload a enviar:', payload);
-
-            let detallesHtml = `<p><strong>Cliente:</strong> ${payload.cliente}</p>`;
-            if (seriesArray.length > 0) detallesHtml += `<p><strong>Series:</strong> ${seriesArray.length} serie(s)</p>`;
-            if (lotesArray.length > 0) detallesHtml += `<p><strong>Lotes:</strong> ${lotesArray.length} lote(s)</p>`;
-
-            const { value: accion } = await Swal.fire({
+            const { isConfirmed, isDenied } = await Swal.fire({
                 title: 'Autorizar Venta',
                 html: `
-        <div class="text-left mb-4">${detallesHtml}</div>
-        <p class="mb-4 text-sm text-gray-600">Selecciona una acción:</p>
-      `,
+                < div class="text-left" >
+                        <p class="mb-4 text-gray-700">¿Cómo deseas procesar esta venta?</p>
+                        
+                        <div class="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
+                            <div class="text-sm text-gray-600">
+                                <p><strong class="text-gray-800">Cliente:</strong> ${venta.cliente}</p>
+                                <p><strong class="text-gray-800">Total:</strong> ${this.formatCurrency(venta.ven_total_vendido)}</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-start p-2 hover:bg-gray-50 rounded">
+                                <i class="fas fa-file-invoice-dollar text-green-600 mt-1 mr-2"></i>
+                                <div>
+                                    <span class="font-bold text-gray-800">Autorizar y enviar para que facturen la venta</span>
+                                    <p class="text-gray-500 text-xs mt-1">
+                                        Envía la venta al módulo de facturación para generar la factura electrónica (FEL). y hasta que se facture se descontará del stock del inventario
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start p-2 hover:bg-gray-50 rounded">
+                                <i class="fas fa-clipboard-check text-gray-600 mt-1 mr-2"></i>
+                                <div>
+                                    <span class="font-bold text-gray-800">Autorizar sin Facturar</span>
+                                    <p class="text-gray-500 text-xs mt-1">
+                                        Finaliza la venta solo para control de inventario y caja. 
+                                        <span class="text-red-500 font-medium">No genera factura electrónica.</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div >
+                `,
                 icon: 'question',
                 showCancelButton: true,
                 showDenyButton: true,
                 confirmButtonColor: '#10b981', // Verde
                 denyButtonColor: '#3b82f6',    // Azul
                 cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-file-invoice mr-2"></i>Factura Normal',
-                denyButtonText: '<i class="fas fa-file-invoice-dollar mr-2"></i>Factura Cambiaria',
+                confirmButtonText: '<i class="fas fa-file-invoice mr-2"></i>Autorizar y Facturar',
+                denyButtonText: '<i class="fas fa-check mr-2"></i>Autorizar sin Facturar',
                 cancelButtonText: 'Cancelar',
-                footer: '<button id="btn-solo-autorizar" class="swal2-confirm swal2-styled" style="background-color: #8b5cf6; margin-top: 10px;">Solo Autorizar</button>',
+                reverseButtons: true,
+                width: '32em'
+            });
+
+            if (!isConfirmed && !isDenied) return;
+
+            const tipo = isDenied ? 'sin_facturar' : 'facturar';
+
+            if (tipo === 'sin_facturar') {
+                const { isConfirmed: confirmSinFactura } = await Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: "Esta venta quedará autorizada sin proceso de facturación.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3b82f6',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, autorizar sin factura',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!confirmSinFactura) return;
+            }
+
+            // Mostrar loader global para feedback inmediato
+            Swal.fire({
+                title: 'Autorizando venta...',
+                html: 'Por favor espere mientras se procesa la solicitud.',
+                allowOutsideClick: false,
                 didOpen: () => {
-                    const btnSoloAutorizar = document.getElementById('btn-solo-autorizar');
-                    if (btnSoloAutorizar) {
-                        btnSoloAutorizar.addEventListener('click', () => {
-                            Swal.close({ value: 'solo_autorizar' });
-                        });
-                    }
+                    Swal.showLoading();
                 }
             });
 
-            // accion:
-            // true -> Factura Normal
-            // false -> Factura Cambiaria
-            // 'solo_autorizar' -> Solo Autorizar
-            // undefined -> Cancelar
-
-            if (accion === undefined) return;
-
-            let modoFacturacion = null;
-            if (accion === true) modoFacturacion = 'normal';
-            else if (accion === false) modoFacturacion = 'cambiaria';
-
-            // Siempre autorizamos primero como 'solo_autorizar'
-            const payloadFinal = { ...payload, tipo: 'solo_autorizar' };
-
-            Swal.fire({
-                title: modoFacturacion ? 'Redirigiendo...' : 'Autorizando venta...',
-                html: 'Por favor espere',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+            this.showLoading('ventas');
 
             const response = await fetch('/ventas/autorizar', {
                 method: 'POST',
@@ -838,66 +1160,35 @@ class ReportesManager {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(payloadFinal)
+                body: JSON.stringify({
+                    ven_id: venta.ven_id,
+                    tipo: tipo
+                })
             });
 
             if (response.status === 419)
                 throw new Error('Token CSRF inválido. Recarga la página e intenta nuevamente.');
 
             if (!response.ok)
-                throw new Error(`Error ${response.status}: ${await response.text()}`);
+                throw new Error(`Error ${response.status}: ${await response.text()} `);
 
             const result = await response.json();
 
-            if (result.codigo !== 1)
-                throw new Error(result.mensaje || result.detalle || 'Error al autorizar la venta');
+            if (!result.success)
+                throw new Error(result.message || 'Error al autorizar la venta');
 
-            // Redirección según opción
-            // Redirección según opción -> AHORA APERTURA DE MODAL
-            if (modoFacturacion === 'normal' || modoFacturacion === 'cambiaria') {
-                try {
-                    Swal.fire({
-                        title: 'Abriendo facturación...',
-                        text: 'Obteniendo detalles de la venta',
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
+            // Show success message
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: result.message,
+                timer: 2000
+            });
 
-                    // 1. Fetch full sale details
-                    const res = await fetch(`/facturacion/buscar-venta?q=${ventaData.ven_id}`);
-                    const data = await res.json();
+            // Reload ventas list
+            this.loadReporteVentas();
 
-                    Swal.close();
 
-                    if (data.codigo === 1 && data.data.length > 0) {
-                        const ventaFull = data.data[0];
-
-                        // 2. Open Modal & Select
-                        if (modoFacturacion === 'normal') {
-                            if (window.abrirModal) {
-                                window.abrirModal('modalFactura');
-                                // Ensure items container is ready if needed
-                                const contenedorItems = document.getElementById("contenedorItems");
-                                if (contenedorItems && contenedorItems.querySelectorAll('.item-factura').length === 0) {
-                                    if (window.agregarItem) window.agregarItem();
-                                }
-                            }
-                            if (window.seleccionarVenta) window.seleccionarVenta(ventaFull);
-                        } else {
-                            if (window.resetModalFacturaCambiaria) window.resetModalFacturaCambiaria();
-                            if (window.abrirModal) window.abrirModal('modalFacturaCambiaria');
-                            if (window.seleccionarVentaCambiaria) window.seleccionarVentaCambiaria(ventaFull);
-                        }
-                    } else {
-                        Swal.fire('Error', 'No se pudieron obtener los detalles de la venta para facturar.', 'error');
-                    }
-                } catch (e) {
-                    console.error(e);
-                    Swal.close();
-                    Swal.fire('Error', 'Error al cargar datos de la venta.', 'error');
-                }
-                return;
-            }
 
             // Si es Solo Autorizar
             let mensajeExito = result.mensaje || '¡Venta autorizada!';
@@ -906,12 +1197,12 @@ class ReportesManager {
             if (seriesArray.length > 0) {
                 // ... (Lógica de licencias existente) ...
                 let htmlLicencias = `
-        <div style="max-height: 280px; overflow-y: auto; text-align: left;">
-          <p class="text-sm text-gray-600 mb-3">Ingresa las licencias para cada serie:</p>
-      `;
+                < div style = "max-height: 280px; overflow-y: auto; text-align: left;" >
+                    <p class="text-sm text-gray-600 mb-3">Ingresa las licencias para cada serie:</p>
+            `;
                 seriesArray.forEach(serieId => {
                     htmlLicencias += `
-          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; background-color: #f9fafb;">
+                < div style = "border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; background-color: #f9fafb;" >
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #374151;">🔫 Serie ID: ${serieId}</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
               <input id="lic-ant-${serieId}" class="swal2-input" style="margin:0;padding:6px;font-size:13px;" placeholder="Licencia anterior">
@@ -935,10 +1226,10 @@ class ReportesManager {
                         const licencias = [];
                         let errorMsg = '';
                         seriesArray.forEach(serieId => {
-                            const anterior = document.getElementById(`lic-ant-${serieId}`)?.value.trim();
-                            const nueva = document.getElementById(`lic-nueva-${serieId}`)?.value.trim();
+                            const anterior = document.getElementById(`lic - ant - ${serieId} `)?.value.trim();
+                            const nueva = document.getElementById(`lic - nueva - ${serieId} `)?.value.trim();
                             if (!anterior || !nueva) {
-                                errorMsg = `⚠️ Debes llenar ambas licencias para la serie ${serieId}`;
+                                errorMsg = `⚠️ Debes llenar ambas licencias para la serie ${serieId} `;
                             }
                             licencias.push({ serie_id: serieId, licencia_anterior: anterior, licencia_nueva: nueva });
                         });
@@ -965,7 +1256,7 @@ class ReportesManager {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ ven_id: ventaData.ven_id, licencias: formValues })
+                        body: JSON.stringify({ ven_id: venta.ven_id, licencias: formValues })
                     });
 
                     const updateResult = await updateResponse.json();
@@ -974,7 +1265,7 @@ class ReportesManager {
                         throw new Error(updateResult.detalle || updateResult.mensaje || 'Error al actualizar licencias');
                     }
 
-                    mensajeExito += `<br><small class="text-green-600">✅ Licencias actualizadas: ${formValues.length} serie(s)</small>`;
+                    mensajeExito += `< br > <small class="text-green-600">✅ Licencias actualizadas: ${formValues.length} serie(s)</small>`;
                 }
             }
 
@@ -997,11 +1288,11 @@ class ReportesManager {
                 icon: 'error',
                 title: 'Error',
                 html: `
-        <div class="text-left">
+                < div class="text-left" >
           <p class="font-semibold mb-2">No se pudo autorizar la venta:</p>
           <p class="text-sm">${error.message}</p>
-        </div>
-      `,
+        </div >
+                `,
                 confirmButtonColor: '#ef4444'
             });
         }
@@ -1012,12 +1303,64 @@ class ReportesManager {
     /**
      * Cancelar una venta pendiente
      */
-    async cancelarVentaClick(ventaId) {
+    async cancelarVentaClick(venta) {
+        const ventaId = venta.ven_id;
+        const situacion = venta.ven_situacion;
+
+        // 1. Bloquear si ya está facturada
+        if (situacion === 'COMPLETADA' || situacion === 'FACTURADA') {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se puede anular',
+                html: `
+                < div class="text-left" >
+                        <p class="mb-2">Esta venta ya ha sido <strong>FACTURADA</strong>.</p>
+                        <p class="text-sm text-gray-600">
+                            Para anularla, primero debes anular la factura correspondiente en el módulo de Facturación.
+                        </p>
+                    </div >
+                `,
+                confirmButtonColor: '#3b82f6'
+            });
+            return;
+        }
+
+        // 2. Advertencia especial si está autorizada (pero no facturada)
+        let advertenciaHtml = '';
+        let confirmBtnText = '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta';
+
+        if (situacion === 'AUTORIZADA' || situacion === 'ACTIVA') {
+            advertenciaHtml = `
+                < div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left" >
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700 font-bold">
+                                ¡Atención! Esta venta ya fue autorizada.
+                            </p>
+                            <p class="text-sm text-yellow-700 mt-1">
+                                Al anularla:
+                                <ul class="list-disc list-inside ml-2 mt-1">
+                                    <li>Se eliminará el registro de caja.</li>
+                                    <li>El stock reservado regresará a disponibilidad.</li>
+                                    <li>Se revertirán los cambios en series/lotes.</li>
+                                </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div >
+                `;
+            confirmBtnText = '<i class="fas fa-exclamation-triangle mr-2"></i>Sí, revertir y anular';
+        }
+
         try {
             // Solicitar motivo de cancelación
             const { value: motivo } = await Swal.fire({
                 title: '¿Cancelar esta venta?',
                 html: `
+                ${advertenciaHtml}
                 <p class="text-sm text-gray-600 mb-3">Esta acción no se puede deshacer.</p>
                 <textarea 
                     id="motivo-cancelacion" 
@@ -1029,7 +1372,7 @@ class ReportesManager {
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-ban mr-2"></i>Sí, cancelar venta',
+                confirmButtonText: confirmBtnText,
                 cancelButtonText: '<i class="fas fa-arrow-left mr-2"></i>No, volver',
                 preConfirm: () => {
                     return document.getElementById('motivo-cancelacion')?.value.trim() || 'Cancelación sin motivo especificado';
@@ -1066,7 +1409,7 @@ class ReportesManager {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Error ${response.status}: ${errorText}`);
+                throw new Error(`Error ${response.status}: ${errorText} `);
             }
 
             const result = await response.json();
@@ -1096,11 +1439,11 @@ class ReportesManager {
                 icon: 'error',
                 title: 'Error',
                 html: `
-                <div class="text-left">
+                < div class="text-left" >
                     <p class="font-semibold mb-2">No se pudo cancelar la venta:</p>
                     <p class="text-sm">${error.message}</p>
-                </div>
-            `,
+                </div >
+                `,
                 confirmButtonColor: '#ef4444'
             });
         }
@@ -1117,7 +1460,7 @@ class ReportesManager {
             if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
             if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
 
-            const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
+            const url = `/ ventas / pendientes${params.toString() ? '?' + params.toString() : ''} `;
             ('📡 URL:', url);
 
             const response = await fetch(url, {
@@ -1130,7 +1473,7 @@ class ReportesManager {
             ('📡 Pendientes response status:', response.status);
 
             if (!response.ok) {
-                throw new Error(`Error ${response.status}`);
+                throw new Error(`Error ${response.status} `);
             }
 
             const data = await response.json();
@@ -1354,7 +1697,6 @@ class ReportesManager {
             <td class="px-2 py-2 text-center text-xs">${arma.modelo || 'N/A'}</td>
             <td class="px-2 py-2 text-center text-xs">${arma.calibre || 'N/A'}</td>
             <td class="px-2 py-2 text-xs">${arma.comprador.toUpperCase()}</td>
-            <td class="px-2 py-2 text-center text-xs">${arma.autorizacion}</td>
             <td class="px-2 py-2 text-center text-xs">${this.formatearFechaDisplay(arma.fecha)}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100">${arma.factura || ''}</td>
         </tr>
@@ -1386,8 +1728,21 @@ class ReportesManager {
             return `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="px-2 py-2 text-center text-xs">${index + 1}</td>
-            <td class="px-2 py-2 text-center text-xs">${municion.autorizacion}</td>
-            <td class="px-2 py-2 text-center text-xs">${municion.documento}</td>
+            <td class="px-2 py-2 text-center text-xs">
+                ${(() => {
+                    const tipo = (municion.documento_tipo || '').toUpperCase();
+                    const num = municion.documento_numero || '';
+                    const sec = municion.documento_secundario || '';
+
+                    if (tipo === 'TENENCIA') {
+                        return `TENENCIA: ${num} <br> <span class="text-gray-500">PROP: ${sec}</span>`;
+                    } else if (tipo === 'PORTACION') {
+                        return `LICENCIA: ${num} <br> <span class="text-gray-500">COD1: ${sec}</span>`;
+                    } else {
+                        return `${tipo} ${num} ${sec}`;
+                    }
+                })()}
+            </td>
             <td class="px-2 py-2 text-xs">${municion.nombre.toUpperCase()}</td>
             <td class="px-2 py-2 text-center text-xs bg-yellow-100">${municion.factura || ''}</td>
             <td class="px-2 py-2 text-center text-xs">${this.formatearFechaDisplay(municion.fecha)}</td>
@@ -1718,9 +2073,9 @@ class ReportesManager {
         }
 
         // Recargar datos con las nuevas fechas
-        if (this.currentTab === 'dashboard') {
-            this.loadDashboard();
-        } else {
+        this.loadDashboard(); // Siempre actualizar KPIs
+
+        if (this.currentTab !== 'dashboard') {
             this.loadTabData(this.currentTab);
         }
     }
@@ -2077,6 +2432,8 @@ class ReportesManager {
     populateFiltros(data) {
         // Vendedores
         this.populateSelect('filtro-vendedor-ventas', data.vendedores, 'user_id', (item) =>
+            `${item.user_primer_nombre} ${item.user_primer_apellido}`);
+        this.populateSelect('filtro-vendedor-historial', data.vendedores, 'user_id', (item) =>
             `${item.user_primer_nombre} ${item.user_primer_apellido}`);
         this.populateSelect('filtro-vendedor-comisiones', data.vendedores, 'user_id', (item) =>
             `${item.user_primer_nombre} ${item.user_primer_apellido}`);

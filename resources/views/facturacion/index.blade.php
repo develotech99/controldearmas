@@ -28,6 +28,49 @@
                 Nueva Factura Cambiaria
             </button>
         </div>
+
+        <!-- Alerta Informativa: Certificación FEL -->
+        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded shadow-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-file-invoice text-indigo-500"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-indigo-800">Información sobre Certificación FEL</h3>
+                    <div class="mt-2 text-sm text-indigo-700">
+                        <p>
+                            Al hacer clic en <strong>"Certificar"</strong>, la factura se envía inmediatamente a la <strong>SAT</strong>.
+                            <br>
+                            Esta acción es definitiva. Si cometes un error después de certificar, deberás emitir una <strong>Nota de Crédito</strong> para anularla fiscalmente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerta Informativa: Anulación de Factura -->
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-red-500"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-red-800">Advertencia sobre Anulación de Facturas</h3>
+                    <div class="mt-2 text-sm text-red-700 space-y-2">
+                        <p>
+                            <strong>No es recomendable anular facturas</strong> a menos que sea estrictamente necesario.
+                        </p>
+                        <p>
+                            <span class="font-semibold">Consecuencias:</span> Al anular una factura (clic en el botón rojo <i class="fas fa-trash"></i>), la venta asociada regresará a estado <strong>PENDIENTE</strong>.
+                        </p>
+                        <ul class="list-disc list-inside ml-2">
+                            <li>Si la anulación fue por <strong>error en datos</strong> (dirección, NIT, etc.): Podrás buscar la venta nuevamente en "Nueva Factura" (por NIT o ID de venta) y volver a facturarla con los datos correctos.</li>
+                            <li>Si deseas <strong>eliminar la venta completamente</strong>: Solo un <strong>Administrador</strong> puede eliminar una venta que ha quedado en estado pendiente.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
 
         <!-- Sección de Consulta Rápida DTE -->
@@ -173,7 +216,8 @@
                     </button>
                 </div>
             </div>
-
+            <!-- Alerta Informativa: Producto no encontrado -->
+          
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
                 <div>
                     <span class="text-gray-600">UUID:</span>

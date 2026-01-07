@@ -25,17 +25,15 @@ class UnidadMedidaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'unidad_nombre' => 'required|string|max:50|unique:pro_unidades_medida,unidad_nombre',
-            'unidad_abreviacion' => 'required|string|max:10|unique:pro_unidades_medida,unidad_abreviacion',
+            'unidad_nombre' => 'required|string|max:50',
+            'unidad_abreviacion' => 'required|string|max:10',
             'unidad_tipo' => 'required|string|max:20|in:longitud,peso,volumen,otro',
             'unidad_situacion' => 'required|integer|in:0,1',
         ], [
             'unidad_nombre.required' => 'El nombre de la unidad es obligatorio.',
             'unidad_nombre.max' => 'El nombre no puede tener más de 50 caracteres.',
-            'unidad_nombre.unique' => 'Esta unidad de medida ya existe.',
             'unidad_abreviacion.required' => 'La abreviación es obligatoria.',
             'unidad_abreviacion.max' => 'La abreviación no puede tener más de 10 caracteres.',
-            'unidad_abreviacion.unique' => 'Esta abreviación ya está en uso.',
             'unidad_tipo.required' => 'El tipo de unidad es obligatorio.',
             'unidad_tipo.in' => 'El tipo de unidad debe ser: longitud, peso, volumen u otro.',
             'unidad_situacion.required' => 'El estado es obligatorio.',
@@ -61,15 +59,24 @@ class UnidadMedidaController extends Controller
                            ->with('success', 'Unidad de medida creada exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al crear la unidad de medida.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una unidad de medida con ese nombre o abreviación.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al crear la unidad de medida: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al crear la unidad de medida.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }
@@ -86,23 +93,19 @@ class UnidadMedidaController extends Controller
                 'required', 
                 'string', 
                 'max:50',
-                Rule::unique('pro_unidades_medida', 'unidad_nombre')->ignore($unidadMedida->unidad_id, 'unidad_id')
             ],
             'unidad_abreviacion' => [
                 'required', 
                 'string', 
                 'max:10',
-                Rule::unique('pro_unidades_medida', 'unidad_abreviacion')->ignore($unidadMedida->unidad_id, 'unidad_id')
             ],
             'unidad_tipo' => 'required|string|max:20|in:longitud,peso,volumen,otro',
             'unidad_situacion' => 'required|integer|in:0,1',
         ], [
             'unidad_nombre.required' => 'El nombre de la unidad es obligatorio.',
             'unidad_nombre.max' => 'El nombre no puede tener más de 50 caracteres.',
-            'unidad_nombre.unique' => 'Esta unidad de medida ya existe.',
             'unidad_abreviacion.required' => 'La abreviación es obligatoria.',
             'unidad_abreviacion.max' => 'La abreviación no puede tener más de 10 caracteres.',
-            'unidad_abreviacion.unique' => 'Esta abreviación ya está en uso.',
             'unidad_tipo.required' => 'El tipo de unidad es obligatorio.',
             'unidad_tipo.in' => 'El tipo de unidad debe ser: longitud, peso, volumen u otro.',
             'unidad_situacion.required' => 'El estado es obligatorio.',
@@ -128,15 +131,24 @@ class UnidadMedidaController extends Controller
                            ->with('success', 'Unidad de medida actualizada exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar la unidad de medida.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una unidad de medida con ese nombre o abreviación.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al actualizar la unidad de medida: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al actualizar la unidad de medida.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }

@@ -26,13 +26,53 @@ const badge = (estado) => {
 };
 
 
-const BANKS = { '1': 'Banrural', '2': 'Banco Industrial', '3': 'BANTRAB' };
+let BANKS = {};
+let BANKS_LIST = [];
+
+const fetchBanks = async () => {
+    try {
+        const res = await fetch('/api/bancos');
+        const data = await res.json();
+        BANKS = {};
+        BANKS_LIST = data;
+        data.forEach(b => {
+            BANKS[String(b.banco_id)] = b.banco_nombre;
+        });
+        // Update select if exists
+        const select = document.getElementById('bancoSelectTop');
+        if (select) {
+            const current = select.value;
+            select.innerHTML = '<option value="">Seleccione un banco...</option>';
+            data.forEach(b => {
+                select.innerHTML += `<option value="${b.banco_id}">${b.banco_nombre}</option>`;
+            });
+            select.value = current;
+        }
+    } catch (e) {
+        console.error('Error fetching banks:', e);
+    }
+};
+
+fetchBanks();
 
 const detectBanco = (text) => {
     const t = (text || '').toLowerCase().replace(/\s+/g, ' ');
+    // Simple heuristic matching against loaded banks
+    // This is less precise than regex but works for dynamic lists
+    // We could enhance this by adding 'aliases' or 'regex' to the DB in the future
+
+    // Legacy hardcoded regex for common banks (fallback/priority)
     if (/(banrural|banco de desarrollo rural|b\s*\.?\s*rural)/.test(t)) return { id: '1', nombre: 'Banrural' };
     if (/(banco industrial|bi en l[ií]nea|b\s*\.?\s*industrial|\bbi\b(?!.*rural))/.test(t)) return { id: '2', nombre: 'Banco Industrial' };
     if (/(bantrab|banco de los trabajadores)/.test(t)) return { id: '3', nombre: 'BANTRAB' };
+
+    // Dynamic search
+    for (const b of BANKS_LIST) {
+        if (t.includes(b.banco_nombre.toLowerCase())) {
+            return { id: String(b.banco_id), nombre: b.banco_nombre };
+        }
+    }
+
     return { id: null, nombre: '' };
 };
 
@@ -63,7 +103,8 @@ const confirmAction = async (title, text) => {
 const datatable = new DataTable('#tablaFacturas', {
     data: [],
     pageLength: 10,
-    responsive: true,
+    scrollX: true,
+    responsive: false,
     language: ES_LANG,
     order: [[1, 'desc']], // Ordenar por fecha descendente
     columns: [
@@ -189,14 +230,46 @@ const datatable = new DataTable('#tablaFacturas', {
             orderable: false,
             searchable: false,
             render: (_d, _t, row) => {
+                console.log('Row data:', row);
                 let extraBtns = '';
-                if (row.comprobante_revision) {
+
+                // Buscar comprobante en pagos realizados si no hay en revisión
+                let comprobanteUrl = row.comprobante_revision ? `/storage/${row.comprobante_revision}` : null;
+
+                if (!comprobanteUrl && Array.isArray(row.pagos_realizados)) {
+                    const pagoConComprobante = row.pagos_realizados.find(p => p.comprobante);
+                    if (pagoConComprobante) {
+                        comprobanteUrl = `/storage/${pagoConComprobante.comprobante}`;
+                    }
+                }
+
+                if (comprobanteUrl) {
                     extraBtns += `
-                        <a href="/storage/${row.comprobante_revision}" target="_blank" 
+                        <a href="${comprobanteUrl}" target="_blank" 
                            class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
                            title="Ver Boleta Cargada">
                             <i class="fas fa-file-invoice mr-1"></i>Boleta
                         </a>`;
+                } else {
+                    // Botón para subir boleta si NO existe (para cualquier tipo de pago)
+                    // Se usa la misma lógica de modal de pago pero solo para subir comprobante
+                    extraBtns += `
+                        <button class="btn-subir-boleta bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                data-venta="${row.venta_id}"
+                                title="Adjuntar Boleta">
+                            <i class="fas fa-upload mr-1"></i>Adjuntar
+                        </button>`;
+                }
+
+                // Botón para definir método de pago (si fue anulado o está pendiente sin método definido)
+                // Se muestra si hay saldo pendiente y el estado es PENDIENTE (lo que ocurre tras anular)
+                if (Number(row.pendiente) > 0 && row.estado_pago === 'PENDIENTE') {
+                    extraBtns += `
+                        <button class="btn-cambiar-cuotas bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                data-venta="${row.venta_id}"
+                                title="Definir Método de Pago">
+                            <i class="fas fa-credit-card mr-1"></i>Método
+                        </button>`;
                 }
 
                 if (Number(row.pendiente) > 0) {
@@ -205,11 +278,13 @@ const datatable = new DataTable('#tablaFacturas', {
                     const disponibles = Number(row.cuotas_disponibles ?? (totalPend - bloquearSolo));
                     const canPay = disponibles > 0;
 
-                    const dis = canPay ? '' : 'disabled opacity-50 cursor-not-allowed';
-                    const btnClass = canPay ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 text-gray-600';
-                    const title = canPay
-                        ? `Pagar (${disponibles}/${totalPend} disponibles)`
-                        : 'No hay cuotas disponibles (algunas en revisión)';
+                    // FIX: Siempre habilitar si hay saldo pendiente, el modal manejará la disponibilidad
+                    const dis = '';
+                    const btnClass = 'bg-blue-600 hover:bg-blue-700 text-white';
+                    const title = `Pagar (${disponibles}/${totalPend} cuotas disponibles)`;
+
+                    const situacion = (row.ven_situacion || '').toUpperCase();
+                    console.log('Venta:', row.venta_id, 'Situacion:', situacion);
 
                     return `
                         <div class="flex gap-2 items-center">
@@ -220,18 +295,44 @@ const datatable = new DataTable('#tablaFacturas', {
                                   title="${title}">
                             <i class="fas fa-money-bill-wave mr-1"></i>Pagar
                           </button>
+                          ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(situacion) ? `
+                            <button onclick="abrirModalEditarVenta(${row.venta_id})" 
+                               class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                               title="Editar Venta">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </button>
+                            <button class="btn-eliminar bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                    data-venta="${row.venta_id}"
+                                    title="Eliminar Venta">
+                                <i class="fas fa-trash mr-1"></i>
+                            </button>` : ''}
                           <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                                   data-venta="${row.venta_id}">
                             <i class="fas fa-eye mr-1"></i>Ver
                           </button>
                         </div>`;
                 }
+
+                const situacion = (row.ven_situacion || '').toUpperCase();
+                console.log('Venta (Pagada):', row.venta_id, 'Situacion:', situacion);
+
                 return `
                     <div class="flex gap-2">
                       <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">
                         <i class="fas fa-check-circle mr-1"></i>PAGADA
                       </span>
                       ${extraBtns}
+                      ${['EDITABLE', 'PENDIENTE', 'RESERVADA'].includes(situacion) ? `
+                            <button onclick="abrirModalEditarVenta(${row.venta_id})" 
+                               class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                               title="Editar Venta">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </button>
+                            <button class="btn-eliminar bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm transition-colors flex items-center"
+                                    data-venta="${row.venta_id}"
+                                    title="Eliminar Venta">
+                                <i class="fas fa-trash mr-1"></i>
+                            </button>` : ''}
                       <button class="btn-detalle bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-1 rounded text-sm" 
                               data-venta="${row.venta_id}">
                         <i class="fas fa-eye mr-1"></i>Ver
@@ -271,6 +372,8 @@ const mostrarDetalleVenta = async (ventaId) => {
     const pagosRealizados = venta.pagos_realizados || [];
     const cuotasPendientes = venta.cuotas_pendientes || [];
 
+    const pagosEnRevision = venta.pagos_en_revision_detalles || [];
+
     let cuotasHTML = '';
     if (cuotasPendientes.length > 0) {
         cuotasHTML = `
@@ -282,6 +385,32 @@ const mostrarDetalleVenta = async (ventaId) => {
                             <span class="text-sm">Cuota #${c.numero} ${c.en_revision ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800">En revisión</span>' : ''}</span>
                             <span class="font-semibold">${fmtQ(c.monto)}</span>
                             <span class="text-xs text-gray-600">${c.vence}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    let revisionHTML = '';
+    if (pagosEnRevision.length > 0) {
+        revisionHTML = `
+            <div class="mt-4">
+                <h4 class="font-semibold text-amber-800 mb-2">Pagos en Revisión:</h4>
+                <div class="space-y-2">
+                    ${pagosEnRevision.map(p => `
+                        <div class="flex justify-between items-center p-2 bg-amber-50 rounded border border-amber-100">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium">${p.fecha ? new Date(p.fecha).toLocaleDateString() : 'N/D'}</span>
+                                <span class="text-xs text-gray-600">${p.banco_nombre || 'Sin Banco'} - ${p.referencia}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-amber-700">${fmtQ(p.monto)}</span>
+                                <button class="btn-editar-pago bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs transition-colors"
+                                        data-pago='${JSON.stringify(p)}'>
+                                    <i class="fas fa-edit mr-1"></i>Editar
+                                </button>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -391,7 +520,18 @@ const mostrarDetalleVenta = async (ventaId) => {
                 </div>
 
                 ${cuotasHTML}
+                ${revisionHTML}
                 ${historialHTML}
+
+                <!-- Botón de Anular / Corregir -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <button id="btnAnularPago" class="w-full text-red-600 hover:text-red-800 text-sm font-medium transition-colors flex justify-center items-center">
+                        <i class="fas fa-undo-alt mr-2"></i>Solicitar Corrección / Cambiar Método de Pago
+                    </button>
+                    <p class="text-xs text-gray-500 text-center mt-1">
+                        Utilice esta opción si desea anular el pago registrado para cambiar el método (ej. Transferencia a Cuotas) o corregir errores mayores.
+                    </p>
+                </div>
             </div>
         `,
         width: '600px',
@@ -399,8 +539,166 @@ const mostrarDetalleVenta = async (ventaId) => {
         confirmButtonColor: '#3B82F6',
         customClass: {
             popup: 'rounded-lg'
+        },
+        didOpen: () => {
+            // Listener para editar pago
+            const popup = Swal.getPopup();
+            popup.querySelectorAll('.btn-editar-pago').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pago = JSON.parse(btn.dataset.pago);
+                    editarPagoSubido(pago, ventaId);
+                });
+            });
+
+            // Listener para anular pago
+            const btnAnular = popup.querySelector('#btnAnularPago');
+            if (btnAnular) {
+                btnAnular.addEventListener('click', () => anularPago(ventaId));
+            }
         }
     });
+};
+
+const anularPago = async (ventaId) => {
+    const { isConfirmed } = await Swal.fire({
+        title: '¿Anular/Corregir Pago?',
+        text: "Si existen pagos ya validados, estos SE MANTENDRÁN y solo se anulará el saldo pendiente para que pueda elegir otro método de pago. Si no hay pagos validados, se anulará todo el registro.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Sí, Corregir',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (isConfirmed) {
+        const { value: motivo } = await Swal.fire({
+            title: 'Motivo de la corrección',
+            input: 'text',
+            inputLabel: 'Ingrese el motivo (ej. Error en método de pago)',
+            inputPlaceholder: 'Motivo...',
+            showCancelButton: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Debe ingresar un motivo';
+                }
+            }
+        });
+
+        if (motivo) {
+            try {
+                showLoading('Anulando pago...');
+                const res = await fetch('/pagos/anular', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ venta_id: ventaId, motivo })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Anulado',
+                        text: data.message,
+                        showCancelButton: true,
+                        confirmButtonText: 'Definir Nuevo Método Ahora',
+                        cancelButtonText: 'Cerrar'
+                    }).then((result) => {
+                        GetFacturas(); // Recargar tabla siempre
+                        if (result.isConfirmed) {
+                            // Buscar el botón de cambiar cuotas de esta venta y hacer click
+                            // Necesitamos esperar a que se renderice la tabla
+                            setTimeout(() => {
+                                const btn = document.querySelector(`.btn-cambiar-cuotas[data-venta="${ventaId}"]`);
+                                if (btn) btn.click();
+                            }, 1000);
+                        }
+                    });
+                } else {
+                    showError('Error', data.message || 'No se pudo anular el pago');
+                }
+            } catch (e) {
+                console.error(e);
+                showError('Error', 'Ocurrió un error al conectar con el servidor');
+            }
+        }
+    }
+};
+
+const editarPagoSubido = async (pago, ventaId) => {
+    // Generar opciones de bancos
+    let bancosOpts = '<option value="">Seleccione un banco...</option>';
+    BANKS_LIST.forEach(b => {
+        const sel = String(b.banco_id) === String(pago.banco_id) ? 'selected' : '';
+        bancosOpts += `<option value="${b.banco_id}" ${sel}>${b.banco_nombre}</option>`;
+    });
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Editar Pago en Revisión',
+        html: `
+            <div class="text-left space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Banco</label>
+                    <select id="edit_banco" class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        ${bancosOpts}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Referencia / Boleta</label>
+                    <input id="edit_referencia" type="text" class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="${pago.referencia || ''}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Concepto / Nota</label>
+                    <input id="edit_concepto" type="text" class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value="${pago.concepto || ''}">
+                </div>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar Cambios',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return {
+                ps_id: pago.id,
+                banco_id: document.getElementById('edit_banco').value,
+                referencia: document.getElementById('edit_referencia').value,
+                concepto: document.getElementById('edit_concepto').value
+            };
+        }
+    });
+
+    if (formValues) {
+        try {
+            showLoading('Actualizando pago...');
+            const res = await fetch('/pagos/actualizar-subido', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(formValues)
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                await Swal.fire('Actualizado', 'El pago ha sido actualizado correctamente.', 'success');
+                // Recargar datos
+                GetFacturas();
+                // Reabrir detalle si es necesario, o dejar que el usuario lo abra
+                mostrarDetalleVenta(ventaId);
+            } else {
+                showError('Error', data.message || 'No se pudo actualizar el pago');
+            }
+        } catch (e) {
+            console.error(e);
+            showError('Error', 'Ocurrió un error al conectar con el servidor');
+        }
+    }
 };
 
 // Actualizar el event listener de la tabla
@@ -424,11 +722,87 @@ document.getElementById('tablaFacturas')?.addEventListener('click', (ev) => {
         openModal();
     }
 
+    if (btn.classList.contains('btn-subir-boleta')) {
+        const ventaId = btn.dataset.venta;
+        const venta = ventaIndex.get(Number(ventaId));
+        if (!venta) return;
+
+        // Find the payment to attach proof to (latest payment)
+        let targetPagoId = null;
+        if (venta.pagos_realizados && venta.pagos_realizados.length > 0) {
+            const lastPayment = venta.pagos_realizados[venta.pagos_realizados.length - 1];
+            targetPagoId = lastPayment.id;
+        }
+
+        // Limpiar lista de cuotas porque es subida directa
+        listDiv.innerHTML = '';
+        totalSel.textContent = 'Q 0.00';
+        selectedCuotas = [];
+
+        // Configurar modal para solo subida
+        btnSubir && (btnSubir.dataset.venta = ventaId);
+        btnSubir && (btnSubir.dataset.modo = 'solo_boleta'); // Flag para saber que es solo boleta
+
+        if (targetPagoId) {
+            btnSubir.dataset.detalle_pago_id = targetPagoId;
+        } else {
+            delete btnSubir.dataset.detalle_pago_id;
+        }
+
+        openModal();
+        // Saltar directamente al paso 2 (subir foto)
+        showStep(2);
+    }
+
     if (btn.classList.contains('btn-detalle')) {
         const ventaId = btn.dataset.venta;
         mostrarDetalleVenta(ventaId);
     }
+
+    if (btn.classList.contains('btn-eliminar')) {
+        const ventaId = btn.dataset.venta;
+        eliminarVenta(ventaId);
+    }
 });
+
+const eliminarVenta = async (venId) => {
+    const { isConfirmed } = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción eliminará la venta y todos sus registros asociados (pagos, movimientos, etc). No se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (isConfirmed) {
+        try {
+            showLoading('Eliminando venta...');
+            const response = await fetch('/ventas/cancelar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ ven_id: venId, motivo: 'Eliminación desde Mis Pagos' })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await Swal.fire('Eliminado!', 'La venta ha sido eliminada.', 'success');
+                GetFacturas(); // Recargar tabla
+            } else {
+                showError('Error', data.message || 'No se pudo eliminar la venta');
+            }
+        } catch (error) {
+            console.error(error);
+            showError('Error', 'Ocurrió un error al conectar con el servidor');
+        }
+    }
+};
 
 const GetFacturas = async () => {
     try {
@@ -1076,13 +1450,23 @@ const renderCuotas = (venta) => {
         <div class="flex items-center space-x-4">
           <input type="checkbox" class="cuota-check w-5 h-5 accent-blue-600" ${enRev ? 'disabled' : ''} data-id="${c.cuota_id}" data-numero="${c.numero}" data-monto="${c.monto}" data-vence="${c.vence}">
           <div>
-            <div class="text-lg font-semibold text-gray-800">Cuota #${c.numero} ${enRev ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 align-middle">EN REVISIÓN</span>' : ''}</div>
+            <div class="text-lg font-semibold text-gray-800">
+                ${Number(c.cuota_id) < 0 ? 'Pago Único (Pendiente)' : `Cuota #${c.numero}`} 
+                ${enRev ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 align-middle">EN REVISIÓN</span>' : ''}
+            </div>
             <div class="text-sm text-gray-600">Vence: ${c.vence} • Estado: ${c.estado}</div>
           </div>
         </div>
         <div class="text-right">
           <div class="text-xl font-bold text-blue-600">${fmtQ(c.monto)}</div>
-          <button class="btn-pagar-una ${enRev ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'} px-4 py-2 rounded-lg text-sm font-medium mt-2" data-id="${c.cuota_id}" data-monto="${c.monto}" ${enRev ? 'disabled title="Comprobante en revisión"' : ''}>Pagar Solo Esta</button>
+          
+          ${Number(c.cuota_id) < 0 ? `
+            <button class="btn-cambiar-cuotas bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg text-sm font-medium mt-2 mr-2" data-venta="${venta.venta_id}">
+                <i class="fas fa-credit-card mr-1"></i>Definir Método de Pago
+            </button>
+          ` : ''}
+
+          <button class="btn-pagar-una ${enRev ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'} px-4 py-2 rounded-lg text-sm font-medium mt-2" data-id="${c.cuota_id}" data-monto="${c.monto}" ${enRev ? 'disabled title="Comprobante en revisión"' : ''}>Pagar</button>
         </div>
       </div>`;
 
@@ -1102,6 +1486,189 @@ const renderCuotas = (venta) => {
             });
         }
     });
+
+    // Listener para botón "Definir Método de Pago"
+    const btnCambiar = listDiv.querySelector('.btn-cambiar-cuotas');
+    if (btnCambiar) {
+        btnCambiar.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const ventaId = btnCambiar.dataset.venta;
+            const montoTotal = parseFloat(venta.total); // Asumimos que venta.total está disponible y es correcto
+
+            // Obtener template
+            const template = document.getElementById('payment-method-template');
+            if (!template) return;
+
+            const content = template.content.cloneNode(true); // Use .content for template
+            const wrapper = document.createElement('div'); // Create a wrapper to hold the cloned content
+            wrapper.appendChild(content); // Append the cloned content to the wrapper
+            wrapper.id = 'payment-method-modal-content'; // Set ID on the wrapper
+
+            // Mostrar Swal
+            const result = await Swal.fire({
+                title: 'Definir Método de Pago',
+                html: wrapper, // Pass the wrapper to Swal
+                width: '800px',
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar Método',
+                cancelButtonText: 'Cancelar',
+                didOpen: () => {
+                    const modal = Swal.getHtmlContainer();
+                    const radios = modal.querySelectorAll('input[name="metodoPago"]');
+                    const detallesContainer = modal.querySelector('#detallesMetodoContainer');
+                    const authContainer = modal.querySelector('#autorizacionContainer');
+                    const cuotasContainer = modal.querySelector('#cuotasContainer');
+                    const metodoAbono = modal.querySelector('#metodoAbono');
+                    const detallesAbonoContainer = modal.querySelector('#detallesAbonoContainer');
+                    const btnCalcular = modal.querySelector('#btnCalcularCuotas');
+
+                    // Populate Banks
+                    const populateBanks = (select) => {
+                        select.innerHTML = '<option value="">Seleccione un banco...</option>';
+                        BANKS_LIST.forEach(b => {
+                            select.innerHTML += `<option value="${b.banco_id}">${b.banco_nombre}</option>`;
+                        });
+                    };
+                    populateBanks(modal.querySelector('#selectBanco'));
+                    populateBanks(modal.querySelector('#bancoAbono'));
+
+                    // Inicializar estado
+                    detallesContainer.classList.add('hidden');
+                    authContainer.classList.add('hidden');
+                    cuotasContainer.classList.add('hidden');
+
+                    // Listener Radios
+                    radios.forEach(radio => {
+                        radio.addEventListener('change', (e) => {
+                            detallesContainer.classList.remove('hidden');
+                            authContainer.classList.add('hidden');
+                            cuotasContainer.classList.add('hidden');
+
+                            const val = e.target.value;
+                            // 1: Efectivo, 2-5: Bancos, 6: Cuotas
+                            if (val === '6') {
+                                cuotasContainer.classList.remove('hidden');
+                            } else if (val !== '1') { // 2,3,4,5
+                                authContainer.classList.remove('hidden');
+                            }
+                        });
+                    });
+
+                    // Listener Metodo Abono
+                    if (metodoAbono) {
+                        metodoAbono.addEventListener('change', (e) => {
+                            if (e.target.value === 'efectivo') {
+                                detallesAbonoContainer.classList.add('hidden');
+                            } else {
+                                detallesAbonoContainer.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    // Listener Calcular Cuotas
+                    if (btnCalcular) {
+                        btnCalcular.addEventListener('click', () => {
+                            const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
+                            const nCuotas = parseInt(modal.querySelector('#cuotasNumero').value) || 0;
+
+                            if (abono >= montoTotal) {
+                                Swal.showValidationMessage('El abono no puede ser mayor o igual al total');
+                                return;
+                            }
+
+                            const saldo = montoTotal - abono;
+                            const montoCuota = saldo / nCuotas;
+
+                            modal.querySelector('#lblMontoTotal').textContent = fmtQ(montoTotal);
+                            modal.querySelector('#lblAbono').textContent = '-' + fmtQ(abono);
+                            modal.querySelector('#lblSaldoFinanciar').textContent = fmtQ(saldo);
+                            modal.querySelector('#lblDetalleCuotas').textContent = `${nCuotas} cuotas de ${fmtQ(montoCuota)}`;
+                            modal.querySelector('#resumenCuotas').classList.remove('hidden');
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const modal = Swal.getHtmlContainer();
+                    const metodo = modal.querySelector('input[name="metodoPago"]:checked')?.value;
+
+                    if (!metodo) {
+                        Swal.showValidationMessage('Debe seleccionar un método de pago');
+                        return false;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('venta_id', ventaId);
+                    formData.append('metodo_pago', metodo);
+
+                    if (metodo === '6') { // Cuotas
+                        const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
+                        const nCuotas = parseInt(modal.querySelector('#cuotasNumero').value) || 0;
+
+                        if (nCuotas < 2) {
+                            Swal.showValidationMessage('El número de cuotas debe ser al menos 2');
+                            return false;
+                        }
+
+                        formData.append('cantidad_cuotas', nCuotas);
+                        formData.append('abono_inicial', abono);
+                        formData.append('metodo_abono', modal.querySelector('#metodoAbono').value);
+
+                        if (modal.querySelector('#metodoAbono').value !== 'efectivo') {
+                            const bancoAbono = modal.querySelector('#bancoAbono').value;
+                            if (!bancoAbono) {
+                                Swal.showValidationMessage('Seleccione el banco del abono');
+                                return false;
+                            }
+                            formData.append('banco_abono', bancoAbono);
+                            formData.append('auth_abono', modal.querySelector('#authAbono').value);
+                        }
+                    } else if (metodo !== '1') { // Bancos
+                        const bancoId = modal.querySelector('#selectBanco').value;
+                        if (!bancoId) {
+                            Swal.showValidationMessage('Seleccione un banco');
+                            return false;
+                        }
+                        formData.append('banco_id', bancoId);
+                        formData.append('fecha_pago', modal.querySelector('#fechaPago').value);
+                        formData.append('numero_autorizacion', modal.querySelector('#numeroAutorizacion').value);
+
+                        const fileInput = modal.querySelector('#comprobantePago');
+                        if (fileInput && fileInput.files[0]) {
+                            formData.append('comprobante', fileInput.files[0]);
+                        }
+                    }
+
+                    return formData;
+                }
+            });
+
+            if (result.isConfirmed && result.value) {
+                try {
+                    showLoading('Procesando...');
+                    const res = await fetch('/pagos/generar-cuotas', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            // No Content-Type header for FormData, browser sets it
+                        },
+                        body: result.value
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        await Swal.fire('Éxito', data.message, 'success');
+                        closeModal();
+                        GetFacturas(); // Recargar todo
+                    } else {
+                        showError('Error', data.message);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showError('Error', 'No se pudo conectar con el servidor');
+                }
+            }
+        });
+    }
 
     calcTotalSeleccionado();
 };
@@ -1393,9 +1960,15 @@ document.addEventListener('keydown', (e) => {
 
 /* ==== Envío final ==== */
 btnEnviarPago?.addEventListener('click', async () => {
-    if (!selectedCuotas.length) {
-        showError('Error', 'No hay cuotas seleccionadas');
-        return;
+    const detallePagoId = btnSubir?.dataset?.detalle_pago_id;
+
+    if (!selectedCuotas.length && !detallePagoId) {
+        // Relaxed validation: If no quotas selected, check if we have a valid amount (for general payments/uploads)
+        const tempFinalData = getFinalData();
+        if (!tempFinalData.monto || Number(tempFinalData.monto) <= 0) {
+            showError('Error', 'No hay cuotas seleccionadas y no se ha ingresado un monto válido.');
+            return;
+        }
     }
 
     const finalData = getFinalData();
@@ -1442,6 +2015,7 @@ btnEnviarPago?.addEventListener('click', async () => {
     fd.append('concepto', finalData.concepto || '');
     fd.append('banco_id', finalData.banco_id || '');
     fd.append('banco_nombre', finalData.banco_nombre || '');
+    fd.append('detalle_pago_id', detallePagoId || '');
 
     if (REQUIRE_COMPROBANTE && !currentBlob) {
         showError('Falta comprobante', 'Debes adjuntar el comprobante');
@@ -1564,3 +2138,284 @@ window.GetFacturas = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', addTooltips);
+
+// Función para abrir el modal de definición de método de pago
+const abrirModalDefinirMetodo = async (ventaId, montoTotal) => {
+    // Obtener template
+    const template = document.getElementById('payment-method-template');
+    if (!template) return;
+
+    const content = template.content.cloneNode(true);
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(content);
+    wrapper.id = 'payment-method-modal-content';
+
+    // Mostrar Swal
+    const result = await Swal.fire({
+        title: 'Definir Método de Pago',
+        html: wrapper,
+        width: '800px',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar Método',
+        cancelButtonText: 'Cancelar',
+        didOpen: () => {
+            const modal = Swal.getHtmlContainer();
+            const radios = modal.querySelectorAll('input[name="metodoPago"]');
+            const detallesContainer = modal.querySelector('#detallesMetodoContainer');
+            const authContainer = modal.querySelector('#autorizacionContainer');
+            const cuotasContainer = modal.querySelector('#cuotasContainer');
+            const metodoAbono = modal.querySelector('#metodoAbono');
+            const detallesAbonoContainer = modal.querySelector('#detallesAbonoContainer');
+            const btnCalcular = modal.querySelector('#btnCalcularCuotas');
+            const resumenCuotas = modal.querySelector('#resumenCuotas');
+
+            // Populate Banks
+            const populateBanks = (select) => {
+                if (!select) return;
+                select.innerHTML = '<option value="">Seleccione un banco...</option>';
+                BANKS_LIST.forEach(b => {
+                    select.innerHTML += `<option value="${b.banco_id}">${b.banco_nombre}</option>`;
+                });
+            };
+            populateBanks(modal.querySelector('#selectBanco'));
+            populateBanks(modal.querySelector('#bancoAbono'));
+
+            // Inicializar estado
+            detallesContainer.classList.add('hidden');
+            authContainer.classList.add('hidden');
+            cuotasContainer.classList.add('hidden');
+
+            // Listener Radios
+            radios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    detallesContainer.classList.remove('hidden');
+                    authContainer.classList.add('hidden');
+                    cuotasContainer.classList.add('hidden');
+
+                    const val = e.target.value;
+                    // 1: Efectivo, 2-5: Bancos, 6: Cuotas
+                    if (val === '6') {
+                        cuotasContainer.classList.remove('hidden');
+                    } else if (val !== '1') { // 2,3,4,5
+                        authContainer.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // Listener Metodo Abono
+            if (metodoAbono) {
+                metodoAbono.addEventListener('change', (e) => {
+                    if (e.target.value === 'efectivo') {
+                        detallesAbonoContainer.classList.add('hidden');
+                    } else {
+                        detallesAbonoContainer.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Listener Calcular Cuotas
+            if (btnCalcular) {
+                btnCalcular.addEventListener('click', () => {
+                    const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
+                    const nCuotas = parseInt(modal.querySelector('#cuotasNumero').value) || 0;
+
+                    if (abono >= montoTotal) {
+                        Swal.showValidationMessage('El abono no puede ser mayor o igual al total');
+                        return;
+                    }
+
+                    const saldo = montoTotal - abono;
+                    const montoCuota = saldo / nCuotas;
+
+                    modal.querySelector('#lblMontoTotal').textContent = fmtQ(montoTotal);
+                    modal.querySelector('#lblAbono').textContent = '-' + fmtQ(abono);
+                    modal.querySelector('#lblSaldoFinanciar').textContent = fmtQ(saldo);
+
+                    // Generar inputs para cuotas editables
+                    const detalleContainer = modal.querySelector('#lblDetalleCuotas').parentElement;
+                    detalleContainer.innerHTML = ''; // Limpiar contenido anterior
+                    detalleContainer.className = 'mt-2 bg-white p-2 rounded border border-blue-100 shadow-sm max-h-60 overflow-y-auto';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between text-xs font-bold text-gray-500 mb-2';
+                    header.innerHTML = '<span>#</span><span>Monto (Q)</span>';
+                    detalleContainer.appendChild(header);
+
+                    let totalEditado = 0;
+
+                    for (let i = 1; i <= nCuotas; i++) {
+                        let monto = montoCuota;
+                        // Ajuste simple para la última cuota en la visualización inicial
+                        if (i === nCuotas) {
+                            monto = saldo - (montoCuota * (nCuotas - 1));
+                        }
+                        // Redondear a 2 decimales
+                        monto = Math.round(monto * 100) / 100;
+                        totalEditado += monto;
+
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center gap-2 mb-2';
+                        row.innerHTML = `
+                            <span class="text-sm font-medium w-6">${i}</span>
+                            <input type="number" step="0.01" class="input-cuota-custom w-full px-2 py-1 border rounded text-right text-sm" value="${monto.toFixed(2)}">
+                        `;
+                        detalleContainer.appendChild(row);
+                    }
+
+                    // Agregar validador de suma
+                    const inputs = detalleContainer.querySelectorAll('.input-cuota-custom');
+                    const validationMsg = document.createElement('div');
+                    validationMsg.id = 'cuotasValidationMsg';
+                    validationMsg.className = 'text-xs mt-2 font-bold text-right';
+                    detalleContainer.appendChild(validationMsg);
+
+                    const validateSum = () => {
+                        let sum = 0;
+                        inputs.forEach(inp => sum += parseFloat(inp.value) || 0);
+                        const diff = Math.abs(sum - saldo);
+
+                        if (diff > 0.05) {
+                            validationMsg.textContent = `Suma: ${fmtQ(sum)} (Diferencia: ${fmtQ(sum - saldo)})`;
+                            validationMsg.className = 'text-xs mt-2 font-bold text-right text-red-600';
+                            return false;
+                        } else {
+                            validationMsg.textContent = `Suma Correcta: ${fmtQ(sum)}`;
+                            validationMsg.className = 'text-xs mt-2 font-bold text-right text-green-600';
+                            return true;
+                        }
+                    };
+
+                    inputs.forEach(inp => inp.addEventListener('input', validateSum));
+                    validateSum(); // Validar inicial
+
+                    resumenCuotas.classList.remove('hidden');
+                });
+            }
+        },
+        preConfirm: () => {
+            const modal = Swal.getHtmlContainer();
+            const metodo = modal.querySelector('input[name="metodoPago"]:checked')?.value;
+
+            if (!metodo) {
+                Swal.showValidationMessage('Debe seleccionar un método de pago');
+                return false;
+            }
+
+            const formData = new FormData();
+            formData.append('venta_id', ventaId);
+            formData.append('metodo_pago', metodo);
+
+            if (metodo === '6') { // Cuotas
+                const abono = parseFloat(modal.querySelector('#abonoInicial').value) || 0;
+                const nCuotas = parseInt(modal.querySelector('#cuotasNumero').value) || 0;
+
+                if (nCuotas < 2) {
+                    Swal.showValidationMessage('El número de cuotas debe ser al menos 2');
+                    return false;
+                }
+
+                // Validar suma de cuotas personalizadas
+                const inputs = modal.querySelectorAll('.input-cuota-custom');
+                let sum = 0;
+                let cuotasArr = [];
+                inputs.forEach(inp => {
+                    const val = parseFloat(inp.value) || 0;
+                    sum += val;
+                    cuotasArr.push(val);
+                });
+
+                // Calcular saldo esperado
+                const montoTotal = Number(ventaIndex.get(Number(ventaId))?.pendiente || 0) > 0
+                    ? Number(ventaIndex.get(Number(ventaId)).pendiente)
+                    : Number(ventaIndex.get(Number(ventaId)).monto_total);
+
+                // Usamos el montoTotal pasado a la función si es posible, o recalculamos
+                // Pero ojo, montoTotal venía como argumento. Usémoslo.
+                // Sin embargo, el argumento montoTotal es local a la función abrirModal...
+                // Necesitamos el saldo calculado en el momento del click 'Calcular'.
+                // Recalculemos:
+                const saldoEsperado = montoTotal - abono;
+
+                if (Math.abs(sum - saldoEsperado) > 0.05) {
+                    Swal.showValidationMessage(`La suma de las cuotas (${fmtQ(sum)}) no coincide con el saldo a financiar (${fmtQ(saldoEsperado)})`);
+                    return false;
+                }
+
+                formData.append('cantidad_cuotas', nCuotas);
+                formData.append('abono_inicial', abono);
+                formData.append('metodo_abono', modal.querySelector('#metodoAbono').value);
+
+                cuotasArr.forEach(m => formData.append('cuotas_custom[]', m));
+
+                if (modal.querySelector('#metodoAbono').value !== 'efectivo') {
+                    const bancoAbono = modal.querySelector('#bancoAbono').value;
+                    if (!bancoAbono) {
+                        Swal.showValidationMessage('Seleccione el banco del abono');
+                        return false;
+                    }
+                    formData.append('banco_abono', bancoAbono);
+                    formData.append('auth_abono', modal.querySelector('#authAbono').value);
+                }
+            } else if (metodo !== '1') { // Bancos
+                const bancoId = modal.querySelector('#selectBanco').value;
+                if (!bancoId) {
+                    Swal.showValidationMessage('Seleccione un banco');
+                    return false;
+                }
+                formData.append('banco_id', bancoId);
+                formData.append('fecha_pago', modal.querySelector('#fechaPago').value);
+                formData.append('numero_autorizacion', modal.querySelector('#numeroAutorizacion').value);
+
+                const fileInput = modal.querySelector('#comprobantePago');
+                if (fileInput && fileInput.files[0]) {
+                    formData.append('comprobante', fileInput.files[0]);
+                }
+            }
+
+            return formData;
+        }
+    });
+
+    if (result.isConfirmed && result.value) {
+        try {
+            showLoading('Procesando...');
+            const res = await fetch('/pagos/generar-cuotas', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: result.value
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                await Swal.fire('Éxito', data.message, 'success');
+                GetFacturas(); // Recargar todo
+            } else {
+                showError('Error', data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            showError('Error', 'No se pudo conectar con el servidor');
+        }
+    }
+};
+
+// Event Delegation para el botón de cambiar método (funciona para tabla y modales)
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-cambiar-cuotas');
+    if (btn) {
+        e.stopPropagation();
+        const ventaId = btn.dataset.venta;
+        const venta = ventaIndex.get(Number(ventaId));
+
+        if (venta) {
+            // Si hay pagos validados (es refinanciamiento), usamos el saldo pendiente como base
+            // Si no (es pago nuevo/anulación total), usamos el total
+            const montoBase = (Number(venta.pagado) > 0) ? Number(venta.pendiente) : Number(venta.monto_total);
+            abrirModalDefinirMetodo(ventaId, montoBase);
+        } else {
+            console.error('Venta no encontrada en índice:', ventaId);
+        }
+    }
+});

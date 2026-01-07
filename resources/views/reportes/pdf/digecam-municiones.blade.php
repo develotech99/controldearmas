@@ -127,7 +127,6 @@
         <thead>
             <tr>
                 <th style="width: 4%;">No.</th>
-                <th style="width: 10%;">AUTORIZACIÓN</th>
                 <th style="width: 10%;">DOCUMENTO</th>
                 <th style="width: 20%;">NOMBRE</th>
                 <th style="width: 10%;">FACTURA</th>
@@ -147,8 +146,21 @@
             @endphp
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $ventaObj->autorizacion ?? '' }}</td>
-                <td>{{ $ventaObj->documento ?? 'DOCUMENTO' }}</td>
+                <td>
+                    @php
+                        $tipo = strtoupper($ventaObj->documento_tipo ?? '');
+                        $num = $ventaObj->documento_numero ?? '';
+                        $sec = $ventaObj->documento_secundario ?? '';
+                    @endphp
+
+                    @if($tipo === 'TENENCIA')
+                        TENENCIA: {{ $num }} <br> PROP: {{ $sec }}
+                    @elseif($tipo === 'PORTACION')
+                        LICENCIA: {{ $num }} <br> COD1: {{ $sec }}
+                    @else
+                        {{ $tipo }} {{ $num }} {{ $sec }}
+                    @endif
+                </td>
                 <td style="text-align: left; padding-left: 5px;">
                     {{ strtoupper($ventaObj->nombre ?? 'CLIENTE GENERAL') }}
                 </td>

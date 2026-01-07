@@ -105,7 +105,7 @@ class ReportesController extends Controller
 public function getReporteVentas(Request $request): JsonResponse
 {
     try {
-        $query = ProVenta::with([
+        $query = ProVenta::withTrashed()->with([
             'vendedor:user_id,user_primer_nombre,user_primer_apellido',
             'detalleVentas.producto:producto_id,producto_nombre,pro_codigo_sku',
             'cliente:cliente_id,cliente_nombre1,cliente_apellido1,cliente_dpi',
@@ -124,6 +124,17 @@ public function getReporteVentas(Request $request): JsonResponse
         // Filtro por vendedor
         if ($request->filled('vendedor_id')) {
             $query->where('pro_ventas.ven_user', $request->vendedor_id);
+        }
+
+        // Filtro por cliente ID (desde el select)
+        if ($request->filled('cliente_id')) {
+            $clienteId = $request->cliente_id;
+            // Si viene compuesto "123_45", tomamos solo el 123
+            if (strpos($clienteId, '_') !== false) {
+                $parts = explode('_', $clienteId);
+                $clienteId = $parts[0];
+            }
+            $query->where('pro_ventas.ven_cliente', $clienteId);
         }
 
         // Filtro por cliente - CORREGIDO: búsqueda por nombre o DPI
@@ -201,85 +212,91 @@ public function getReporteVentas(Request $request): JsonResponse
 } 
 
 
-public function buscarClientes(Request $request): JsonResponse
-{
-    try {
-        $termino = $request->get('q', '');
-        
-        // 🔍 LOG para debug
-        \Log::info('Búsqueda de clientes', [
-            'termino' => $termino,
-            'request_all' => $request->all()
-        ]);
-        
-        // ✅ Construir query base
-        $query = ProCliente::select(
-                'cliente_id', 
-                'cliente_nombre1', 
-                'cliente_nombre2',
-                'cliente_apellido1', 
-                'cliente_apellido2',
-                'cliente_dpi'
-            )
-            ->where('cliente_situacion', 1);
-        
-        // Si hay término de búsqueda, filtrar
-        if (!empty($termino) && strlen($termino) >= 1) {
-            $query->where(function($q) use ($termino) {
-                $q->where('cliente_nombre1', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_nombre2', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_apellido1', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_apellido2', 'LIKE', "%{$termino}%")
-                  ->orWhere('cliente_dpi', 'LIKE', "%{$termino}%");
-            });
-        }
-        
-        // Obtener resultados
-        $clientes = $query->limit(10)
-            ->orderBy('cliente_nombre1', 'asc')
-            ->get()
-            ->map(function($cliente) {
-                $nombreCompleto = trim(
-                    implode(' ', array_filter([
-                        $cliente->cliente_nombre1,
-                        $cliente->cliente_nombre2,
-                        $cliente->cliente_apellido1,
-                        $cliente->cliente_apellido2
-                    ]))
-                );
+    public function buscarClientes(Request $request): JsonResponse
+    {
+        try {
+            $termino = $request->get('q', '');
+            
+            // Construir query con JOIN a empresas para mostrar variantes
+            $query = ProCliente::select(
+                    'pro_clientes.cliente_id', 
+                    'pro_clientes.cliente_nombre1', 
+                    'pro_clientes.cliente_nombre2',
+                    'pro_clientes.cliente_apellido1', 
+                    'pro_clientes.cliente_apellido2',
+                    'pro_clientes.cliente_dpi',
+                    'ce.emp_nombre as empresa_nombre',
+                    'ce.emp_id as empresa_id'
+                )
+                ->leftJoin('pro_clientes_empresas as ce', 'pro_clientes.cliente_id', '=', 'ce.emp_cliente_id')
+                ->where('pro_clientes.cliente_situacion', 1);
+            
+            // Si hay término de búsqueda, filtrar
+            if (!empty($termino) && strlen($termino) >= 1) {
+                $query->where(function($q) use ($termino) {
+                    $q->where('pro_clientes.cliente_nombre1', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_nombre2', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_apellido1', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_apellido2', 'LIKE', "%{$termino}%")
+                      ->orWhere('pro_clientes.cliente_dpi', 'LIKE', "%{$termino}%")
+                      ->orWhere('ce.emp_nombre', 'LIKE', "%{$termino}%");
+                });
+            }
+            
+            // Obtener resultados
+            $clientes = $query->limit(20)
+                ->orderBy('pro_clientes.cliente_nombre1', 'asc')
+                ->get()
+                ->map(function($cliente) {
+                    $nombreCompleto = trim(
+                        implode(' ', array_filter([
+                            $cliente->cliente_nombre1,
+                            $cliente->cliente_nombre2,
+                            $cliente->cliente_apellido1,
+                            $cliente->cliente_apellido2
+                        ]))
+                    );
+                    
+                    $texto = $nombreCompleto;
+                    
+                    // Agregar empresa si existe
+                    if (!empty($cliente->empresa_nombre)) {
+                        $texto .= " - " . $cliente->empresa_nombre;
+                    } else {
+                        $texto .= " (Personal)";
+                    }
+
+                    if ($cliente->cliente_dpi) {
+                        $texto .= " [DPI: {$cliente->cliente_dpi}]";
+                    }
+                    
+                    // ID compuesto para diferenciar opciones en el select
+                    // Formato: clienteId_empresaId (0 si no tiene)
+                    $empresaId = $cliente->empresa_id ?? 0;
+                    $idCompuesto = "{$cliente->cliente_id}_{$empresaId}";
+                    
+                    return [
+                        'id' => $idCompuesto,
+                        'text' => $texto
+                    ];
+                });
                 
-                return [
-                    'id' => $cliente->cliente_id,
-                    'text' => $nombreCompleto . 
-                             ($cliente->cliente_dpi ? " (DPI: {$cliente->cliente_dpi})" : '')
-                ];
-            });
-
-        // 🔍 LOG de resultados
-        \Log::info('Clientes encontrados', [
-            'cantidad' => $clientes->count(),
-            'resultados' => $clientes->toArray()
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'results' => $clientes,
-            'total' => $clientes->count()
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Error buscando clientes', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Error buscando clientes: ' . $e->getMessage(),
-            'results' => []
-        ], 500);
+            return response()->json([
+                'success' => true,
+                'results' => $clientes
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en buscarClientes: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'results' => [],
+                'error' => $e->getMessage()
+            ]);
+        }
     }
-}
+
+
 
     /**
      * Reporte de productos más vendidos
@@ -301,8 +318,8 @@ public function buscarClientes(Request $request): JsonResponse
                 ->leftJoin('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_marcas as m', 'p.producto_marca_id', '=', 'm.marca_id')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
-                ->where('dv.det_situacion', 'ACTIVO')
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
+                ->whereIn('dv.det_situacion', ['ACTIVO', 'ACTIVA'])
                 ->select([
                     'p.producto_id',
                     'p.pro_codigo_sku',
@@ -379,6 +396,11 @@ public function buscarClientes(Request $request): JsonResponse
 
             if ($request->filled('vendedor_id')) {
                 $query->where('porc_vend_user_id', $request->vendedor_id);
+            }
+
+            // Enforce filter for sellers
+            if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+                $query->where('porc_vend_user_id', auth()->id());
             }
 
             if ($request->filled('estado')) {
@@ -564,7 +586,6 @@ public function buscarClientes(Request $request): JsonResponse
     {
         try {
             $vendedores = User::select('user_id', 'user_primer_nombre', 'user_primer_apellido')
-                ->where('user_situacion', 1)
                 ->orderBy('user_primer_nombre')
                 ->get();
 
@@ -608,20 +629,20 @@ public function buscarClientes(Request $request): JsonResponse
     {
         try {
             $ventasQuery = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('ven_situacion', 'ACTIVA');
-
-           $ventasQuery = DB::table('pro_ventas')
-    ->where('ven_situacion', 'ACTIVA');
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA']);
 
             $totalVentas = $ventasQuery->count();
 
-            $montoTotal = $ventasQuery->sum('ven_total_vendido') ?? 0;
+            // Re-instanciar o clonar para la siguiente consulta, ya que count() modifica el builder o ejecuta
+            $montoTotal = ProVenta::whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
+                ->sum('ven_total_vendido') ?? 0;
             $promedioVenta = $totalVentas > 0 ? round($montoTotal / $totalVentas, 2) : 0;
 
             $productosVendidos = ProDetalleVenta::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
                 $q->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                    ->where('ven_situacion', 'ACTIVA');
-            })->where('det_situacion', 'ACTIVO')
+                    ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA']);
+            })->whereIn('det_situacion', ['ACTIVO', 'ACTIVA'])
                 ->sum('det_cantidad') ?? 0;
 
             $comisionesPendientes = ProPorcentajeVendedor::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
@@ -654,7 +675,7 @@ public function buscarClientes(Request $request): JsonResponse
             $ventas = DB::table('pro_ventas')
                 ->selectRaw('DATE(ven_fecha) as fecha, COUNT(*) as total_ventas, COALESCE(SUM(ven_total_vendido), 0) as monto_total')
                 ->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('ven_situacion', 1)
+                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
                 ->groupBy(DB::raw('DATE(ven_fecha)'))
                 ->orderBy('fecha')
                 ->get();
@@ -690,8 +711,8 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(dv.det_cantidad * dv.det_precio), 0) as total_ingresos
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
-                ->where('dv.det_situacion', 'ACTIVO')
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
+                ->whereIn('dv.det_situacion', ['ACTIVO', 'ACTIVA'])
                 ->groupBy('p.producto_id', 'p.producto_nombre')
                 ->orderBy('total_vendido', 'desc')
                 ->limit($limit)
@@ -728,7 +749,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(v.ven_total_vendido), 0) as monto_total
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
                 ->groupBy('u.user_id', 'u.user_primer_nombre', 'u.user_primer_apellido')
                 ->orderBy('monto_total', 'desc')
                 ->get();
@@ -766,7 +787,7 @@ public function buscarClientes(Request $request): JsonResponse
                 COALESCE(SUM(dp.det_pago_monto), 0) as monto_total
             ')
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->where('v.ven_situacion', 1)
+                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'AUTORIZADA'])
                 ->where('dp.det_pago_estado', 'VALIDO')
                 ->groupBy('mp.metpago_id', 'mp.metpago_descripcion')
                 ->orderBy('monto_total', 'desc')
@@ -807,6 +828,11 @@ public function buscarClientes(Request $request): JsonResponse
 
         if ($request->filled('vendedor_id')) {
             $query->where('porc_vend_user_id', $request->vendedor_id);
+        }
+
+        // Enforce filter for sellers
+        if (auth()->user()->rol && strtolower(auth()->user()->rol->nombre) === 'vendedor') {
+            $query->where('porc_vend_user_id', auth()->id());
         }
 
         return [
@@ -958,6 +984,7 @@ public function buscarClientes(Request $request): JsonResponse
                 ->join('pro_modelo as mo', 'p.producto_modelo_id', '=', 'mo.modelo_id')
                 ->join('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
                 ->join('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
+                ->leftJoin('pro_clientes_empresas as ce', 'cl.cliente_id', '=', 'ce.emp_cliente_id')
                 ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') 
                 ->select([
                     'mov.mov_licencia_anterior AS pro_tenencia_anterior',
@@ -971,15 +998,15 @@ public function buscarClientes(Request $request): JsonResponse
                         COALESCE(cl.cliente_nombre1, ""), " ", 
                         COALESCE(cl.cliente_nombre2, ""), " ",
                         COALESCE(cl.cliente_apellido1, ""), " ",
-                        COALESCE(cl.cliente_apellido2, "")
+                        COALESCE(cl.cliente_apellido2, ""),
+                        CASE WHEN ce.emp_nombre IS NOT NULL AND ce.emp_nombre != "" THEN CONCAT(" - ", ce.emp_nombre) ELSE "" END
                     ) as comprador'),
-                    'v.ven_id as autorizacion',
                     'v.ven_fecha as fecha',
                     DB::raw('COALESCE(f.fac_numero, "PENDIENTE") as factura')
                 ])
                 ->whereYear('v.ven_fecha', $anio)
                 ->whereMonth('v.ven_fecha', $mes)
-                ->where('v.ven_situacion', 'ACTIVA')
+                ->whereIn('v.ven_situacion', ['COMPLETADA', 'FACTURADA'])
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%ARMA%')
                         ->orWhere('c.categoria_nombre', 'LIKE', '%PISTOLA%')
@@ -1002,7 +1029,6 @@ public function buscarClientes(Request $request): JsonResponse
                     'modelo' => $venta->modelo,
                     'calibre' => $venta->calibre,
                     'comprador' => trim($venta->comprador),
-                    'autorizacion' => $venta->autorizacion,
                     'fecha' => $venta->fecha,
                     'factura' => $venta->factura
                 ];
@@ -1057,13 +1083,23 @@ public function buscarClientes(Request $request): JsonResponse
                 ->join('pro_categorias as c', 'p.producto_categoria_id', '=', 'c.categoria_id')
                 ->leftJoin('pro_clientes as cl', 'v.ven_cliente', '=', 'cl.cliente_id')
                 ->leftJoin('pro_calibres as cal', 'p.producto_calibre_id', '=', 'cal.calibre_id')
-                ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ JOIN FACTURACION
+                ->leftJoin('pro_clientes_documentos as doc', 'v.ven_documento_id', '=', 'doc.id')
+                ->leftJoin('facturacion as f', 'v.ven_id', '=', 'f.fac_venta_id') // ✅ RE-AGREGAR JOIN FACTURACION
                 ->select([
-                    'v.ven_id as autorizacion',
                     DB::raw('CASE 
-                    WHEN cl.cliente_dpi IS NOT NULL THEN "DPI"
-                    ELSE "DOCUMENTO"
-                END as documento'),
+                        WHEN doc.id IS NOT NULL THEN doc.tipo
+                        WHEN cl.cliente_dpi IS NOT NULL THEN "DPI"
+                        ELSE "DOCUMENTO"
+                    END as documento_tipo'),
+                    DB::raw('CASE 
+                        WHEN doc.id IS NOT NULL THEN doc.numero_documento
+                        WHEN cl.cliente_dpi IS NOT NULL THEN cl.cliente_dpi
+                        ELSE ""
+                    END as documento_numero'),
+                    DB::raw('CASE 
+                        WHEN doc.id IS NOT NULL THEN doc.numero_secundario
+                        ELSE ""
+                    END as documento_secundario'),
                     DB::raw('CONCAT(
                     COALESCE(cl.cliente_nombre1, ""), " ",
                     COALESCE(cl.cliente_nombre2, ""), " ",
@@ -1079,7 +1115,7 @@ public function buscarClientes(Request $request): JsonResponse
                     'dv.det_cantidad as cantidad'
                 ])
                 ->whereBetween('v.ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('v.ven_situacion', ['ACTIVA', 'AUTORIZADA', 1, '1']) // ✅ FIX: Incluir todos los estados válidos
+                ->whereIn('v.ven_situacion', ['COMPLETADA', 'FACTURADA']) // ✅ FIX: Incluir todos los estados válidos
                 ->whereIn('dv.det_situacion', ['ACTIVO', 'AUTORIZADA', 1, '1'])
                 ->where(function ($query) {
                     $query->where('c.categoria_nombre', 'LIKE', '%MUNICION%')
@@ -1285,7 +1321,7 @@ public function buscarClientes(Request $request): JsonResponse
     public function getDetalleVenta($id)
     {
         try {
-            $venta = ProVenta::with([
+            $venta = ProVenta::withTrashed()->with([
                 'cliente',
                 'vendedor',
                 'detalleVentas.producto',

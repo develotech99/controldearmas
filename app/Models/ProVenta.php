@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ProVenta extends Model 
+class ProVenta extends Model implements Auditable
 {
+    use SoftDeletes;
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_ventas';
     protected $primaryKey = 'ven_id';
     public $timestamps = false;

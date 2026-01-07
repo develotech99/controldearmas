@@ -1,0 +1,1 @@
+{"version":2,"defects":{"Tests\\Feature\\HybridPaymentTest::test_hybrid_payment_logic":8,"Tests\\Feature\\PaymentAnnulmentTest::it_performs_full_reset_when_no_validated_payments_exist":8,"Tests\\Feature\\PaymentAnnulmentTest::it_performs_partial_reset_when_validated_payments_exist":8},"times":{"Tests\\Feature\\HybridPaymentTest::test_hybrid_payment_logic":1.867}}

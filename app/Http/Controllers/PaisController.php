@@ -24,12 +24,11 @@ class PaisController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'pais_descripcion' => 'required|string|max:50|unique:pro_paises,pais_descripcion',
+            'pais_descripcion' => 'required|string|max:50',
             'pais_situacion' => 'required|integer|in:0,1',
         ], [
             'pais_descripcion.required' => 'La descripción del país es obligatoria.',
             'pais_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'pais_descripcion.unique' => 'Este país ya existe.',
             'pais_situacion.required' => 'El estado es obligatorio.',
             'pais_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);
@@ -51,15 +50,24 @@ class PaisController extends Controller
                            ->with('success', 'País creado exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al crear el país.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un país con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al crear el país: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al crear el país.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }
@@ -76,13 +84,11 @@ class PaisController extends Controller
                 'required', 
                 'string', 
                 'max:50',
-                Rule::unique('pro_paises', 'pais_descripcion')->ignore($pais->pais_id, 'pais_id')
             ],
             'pais_situacion' => 'required|integer|in:0,1',
         ], [
             'pais_descripcion.required' => 'La descripción del país es obligatoria.',
             'pais_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'pais_descripcion.unique' => 'Este país ya existe.',
             'pais_situacion.required' => 'El estado es obligatorio.',
             'pais_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);
@@ -104,15 +110,24 @@ class PaisController extends Controller
                            ->with('success', 'País actualizado exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar el país.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un país con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al actualizar el país: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al actualizar el país.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }

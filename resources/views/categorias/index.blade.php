@@ -42,7 +42,35 @@
     </div>
 
     <!-- Alerts Container -->
-    <div id="alerts-container" class="mb-6"></div>
+    <div id="alerts-container" class="mb-6">
+        <!-- Alerta de Buenas Prácticas de Categorización -->
+        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded shadow-sm mb-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-lightbulb text-indigo-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-indigo-800">Consejo para un Inventario Limpio y Organizado</h3>
+                    <div class="mt-2 text-sm text-indigo-700">
+                        <p class="mb-2">
+                            Para mantener un orden lógico, te recomendamos estructurar tus productos de lo <strong>General</strong> a lo <strong>Específico</strong>:
+                        </p>
+                        <ul class="list-disc list-inside space-y-1 ml-2">
+                            <li>
+                                <strong>Categoría (General):</strong> Ej. <em>"Armas"</em>, <em>"Accesorios"</em>, <em>"Municiones"</em>.
+                            </li>
+                            <li>
+                                <strong>Subcategoría (Específico):</strong> Ej. Dentro de "Armas" &rightarrow; <em>"Pistolas"</em>, <em>"Carabinas"</em>. Dentro de "Accesorios" &rightarrow; <em>"Gorras"</em>, <em>"Fundas"</em>.
+                            </li>
+                        </ul>
+                        <p class="mt-2 font-medium">
+                            <i class="fas fa-times-circle text-red-500 mr-1"></i> Evita crear "Pistolas" o "Gorras" como Categorías principales. Úsalas como Subcategorías.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">

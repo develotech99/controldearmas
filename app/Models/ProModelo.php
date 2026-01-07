@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Marcas;
-class ProModelo extends Model
+use OwenIt\Auditing\Contracts\Auditable;
+
+class ProModelo extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
       protected $table = 'pro_modelo';     // o 'pro_modelos' si fuera plural
     protected $primaryKey = 'modelo_id';
     public $timestamps = false;

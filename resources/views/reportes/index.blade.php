@@ -144,11 +144,11 @@
                         <i class="fas fa-boxes mr-2"></i>
                         Productos Más Vendidos
                     </button>
-                    <!-- <button onclick="reportesManager.cambiarTab('comisiones')"
+                    <button onclick="reportesManager.cambiarTab('comisiones')"
                         class="tab-button border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                         <i class="fas fa-percent mr-2"></i>
                         Comisiones
-                    </button> -->
+                    </button>
                     <button onclick="reportesManager.cambiarTab('pagos')"
                         class="tab-button border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                         <i class="fas fa-credit-card mr-2"></i>
@@ -306,10 +306,10 @@
                                     Fecha</th>
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Cliente</th>
+                                    Venta #</th>
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Empresa</th>
+                                    Cliente/Empresa</th>
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                     Vendedor</th>
@@ -416,6 +416,7 @@
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Venta #</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendedor</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Productos</th>
@@ -776,9 +777,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Año</label>
                             <select id="filtro-anio-digecam-armas"
                                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
-                                <option value="2023">2023</option>
+                                <!-- Se llena dinámicamente con JS -->
                             </select>
                         </div>
                         <div></div>
@@ -826,7 +825,6 @@
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Modelo</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Calibre</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Comprador</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Autorización</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Fecha</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Factura</th>
                             </tr>
@@ -922,7 +920,6 @@
                         <thead class="bg-gray-800 dark:bg-gray-900">
                             <tr>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">No.</th>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Autorización</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Documento</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Nombre</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-white uppercase">Factura</th>
@@ -954,6 +951,7 @@
 
     @include('facturacion.modals.factura_cambiaria')
     @include('facturacion.modals.nueva_factura')
+    @include('ventas.partials.modal_editar_venta')
 
     <!-- Template para items (oculto) -->
     <template id="templateItem">

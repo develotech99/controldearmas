@@ -24,12 +24,11 @@ class MetodoPagoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'metpago_descripcion' => 'required|string|max:50|unique:pro_metodos_pago,metpago_descripcion',
+            'metpago_descripcion' => 'required|string|max:50',
             'metpago_situacion' => 'required|integer|in:0,1',
         ], [
             'metpago_descripcion.required' => 'La descripción es obligatoria.',
             'metpago_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'metpago_descripcion.unique' => 'Este método de pago ya existe.',
             'metpago_situacion.required' => 'El estado es obligatorio.',
             'metpago_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);
@@ -51,15 +50,24 @@ class MetodoPagoController extends Controller
                            ->with('success', 'Método de pago creado exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al crear el método de pago.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un método de pago con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al crear el método de pago: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al crear el método de pago.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }
@@ -76,13 +84,11 @@ class MetodoPagoController extends Controller
                 'required', 
                 'string', 
                 'max:50',
-                Rule::unique('pro_metodos_pago', 'metpago_descripcion')->ignore($metodoPago->metpago_id, 'metpago_id')
             ],
             'metpago_situacion' => 'required|integer|in:0,1',
         ], [
             'metpago_descripcion.required' => 'La descripción es obligatoria.',
             'metpago_descripcion.max' => 'La descripción no puede tener más de 50 caracteres.',
-            'metpago_descripcion.unique' => 'Este método de pago ya existe.',
             'metpago_situacion.required' => 'El estado es obligatorio.',
             'metpago_situacion.in' => 'El estado debe ser activo o inactivo.',
         ]);
@@ -104,15 +110,24 @@ class MetodoPagoController extends Controller
                            ->with('success', 'Método de pago actualizado exitosamente.');
 
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar el método de pago.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un método de pago con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al actualizar el método de pago: ' . $e->getMessage()
+                    'message' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                           ->with('error', 'Error al actualizar el método de pago.')
+                           ->with('error', $msg)
                            ->withInput();
         }
     }

@@ -16,6 +16,7 @@ use App\Http\Controllers\PagosController;
 use App\Http\Controllers\MarcasController;
 use App\Http\Controllers\VentasController;
 use App\Http\Controllers\ClientesController;
+use App\Http\Controllers\DeudasController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\TipoArmaController;
 use App\Http\Controllers\ProModeloController;
@@ -25,6 +26,8 @@ use App\Http\Controllers\PagoLicenciaController;
 use App\Http\Controllers\UsersUbicacionController;
 use App\Http\Controllers\ProEmpresaDeImportacionController;
 use App\Http\Controllers\ProLicenciaParaImportacionController;
+use App\Http\Controllers\PreventaController;
+use App\Http\Controllers\EstadoCuentaController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -145,6 +148,34 @@ Route::middleware('auth')->group(function () {
     Route::post('/marcas', [MarcasController::class, 'store'])->name('marcas.store');
     Route::put('/marcas/{id}', [MarcasController::class, 'update'])->name('marcas.update');
 
+    // Clientes y Deudas
+    Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
+    Route::post('/clientes', [ClientesController::class, 'store'])->name('clientes.store');
+    Route::put('/clientes/{cliente}', [ClientesController::class, 'update'])->name('clientes.update');
+    Route::delete('/clientes/{cliente}', [ClientesController::class, 'destroy'])->name('clientes.destroy');
+    Route::post('/clientes/{id}/toggle-status', [ClientesController::class, 'toggleStatus'])->name('clientes.toggle-status');
+    Route::get('/clientes/buscar', [ClientesController::class, 'buscarClientes'])->name('clientes.buscar');
+    Route::post('/clientes/{cliente}/empresas', [ClientesController::class, 'storeEmpresa'])->name('clientes.empresas.store');
+    Route::put('/clientes/empresas/{empresa}', [ClientesController::class, 'updateEmpresa'])->name('clientes.empresas.update');
+    Route::delete('/clientes/empresas/{empresa}', [ClientesController::class, 'destroyEmpresa'])->name('clientes.empresas.destroy');
+
+    Route::get('/clientes/deudas', [DeudasController::class, 'index'])->name('clientes.deudas');
+    Route::get('/clientes/deudas/buscar', [DeudasController::class, 'buscarDeudas'])->name('clientes.deudas.buscar');
+    Route::post('/clientes/deudas', [DeudasController::class, 'store'])->name('clientes.deudas.store');
+    Route::post('/clientes/deudas/{id}/pagar', [DeudasController::class, 'pagar'])->name('clientes.deudas.pagar');
+    Route::get('/clientes/deudas/{id}/historial', [DeudasController::class, 'historial'])->name('clientes.deudas.historial');
+    Route::get('/clientes/deudas/{id}/historial', [DeudasController::class, 'historial'])->name('clientes.deudas.historial');
+    
+    // Bancos API
+    Route::get('/api/bancos', [\App\Http\Controllers\BancoController::class, 'index'])->name('api.bancos.index');
+    Route::post('/api/bancos', [\App\Http\Controllers\BancoController::class, 'store'])->name('api.bancos.store');
+    Route::put('/api/bancos/{id}', [\App\Http\Controllers\BancoController::class, 'update'])->name('api.bancos.update');
+
+    // Preventas
+    Route::get('/preventas', [PreventaController::class, 'index'])->name('preventas.index');
+    Route::post('/preventas', [PreventaController::class, 'store'])->name('preventas.store');
+    Route::get('/preventas/pendientes', [PreventaController::class, 'getPendientes'])->name('preventas.pendientes');
+
     // Tipo de arma
     Route::get('/tipoarma', [TipoArmaController::class, 'index'])->name('tipoarma.index');
     Route::get('/tipoarma/search', [TipoArmaController::class, 'search'])->name('tipoarma.search');
@@ -233,6 +264,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ventas/calibres/{modeloId}', [VentasController::class, 'getCalibres'])->name('ventas.api.calibres');
     Route::get('/api/ventas/buscar-productos', [VentasController::class, 'buscarProductos'])->name('ventas.api.productos');
     Route::get('/api/ventas/buscar', [VentasController::class, 'buscarClientes'])->name('ventas.api.clientes.buscar');
+    Route::get('/api/ventas/{id}', [VentasController::class, 'show'])->name('ventas.api.show');
     Route::post('/api/clientes/guardar', [VentasController::class, 'guardarCliente'])->name('ventas.api.clientes.guardar');
     Route::post('/api/ventas/procesar-venta', [VentasController::class, 'procesarVenta'])->name('ventas.api.ventas.procesar');
 
@@ -268,8 +300,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PagosController::class, 'index'])->name('mis.pagos');
         Route::get('subir', [PagosController::class, 'index2'])->name('subir.pago');
         Route::get('admin', [PagosController::class, 'index3'])->name('admin.pagos');
+    Route::get('historial', [AdminPagosController::class, 'historial'])->name('admin.pagos.historial');
+        Route::get('movimientos', [AdminPagosController::class, 'movimientos'])->name('pagos.movimientos'); // New route
         Route::get('obtener/mispagos', [PagosController::class, 'MisFacturasPendientes'])->name('misfacturas.pendientes');
         Route::post('cuotas/pagar', [PagosController::class, 'pagarCuotas']);
+        Route::post('actualizar-subido', [PagosController::class, 'actualizarPagoSubido']);
+        Route::post('anular', [PagosController::class, 'anularPago']);
+        Route::post('generar-cuotas', [PagosController::class, 'generarCuotas']);
     });
 
 
@@ -314,11 +351,17 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/ventas/autorizar', [VentasController::class, 'autorizarVenta']);
     Route::post('/ventas/cancelar', [VentasController::class, 'cancelarVenta']);
-    Route::get('/ventas/pendientes', [VentasController::class, 'obtenerVentasPendientes']);
+    Route::get('ventas/{id}/editar', [VentasController::class, 'editar'])->name('ventas.editar');
+    Route::post('ventas/cambiar-serie', [VentasController::class, 'cambiarSerie'])->name('ventas.cambiarSerie');
+    Route::get('api/productos/{id}/series-disponibles', [VentasController::class, 'getSeriesDisponibles']);
+    Route::get('/api/ventas/{id}', [VentasController::class, 'getDetalleVenta']);
     Route::post('/ventas/actualizar-licencias', [VentasController::class, 'actualizarLicencias']);
     Route::post('/ventas/marcar-disponibles', [VentasController::class, 'marcarSeriesDisponibles'])
         ->name('ventas.marcar-disponibles');
     Route::post('/ventas/cancelarReserva', [VentasController::class, 'cancelarReserva'])->name('ventas.cancelar');
+    Route::get('/ventas/buscar-productos', [VentasController::class, 'buscarProductos'])->name('ventas.buscar-productos');
+    Route::post('/ventas/update-editable', [VentasController::class, 'updateEditableSale'])->name('ventas.update-editable');
+    Route::get('/ventas/{id}/detalles-editables', [VentasController::class, 'getDetallesEditables']);
 
 
     Route::post('/reservas/procesar', [VentasController::class, 'procesarReserva'])
@@ -350,7 +393,7 @@ Route::middleware('auth')->group(function () {
         Route::get('pendientes', [AdminPagosController::class, 'pendientes']);
         Route::post('aprobar', [AdminPagosController::class, 'aprobar']);
         Route::post('rechazar', [AdminPagosController::class, 'rechazar']);
-        Route::get('movimientos', [AdminPagosController::class, 'movimientos']);
+        // Route::get('movimientos', [AdminPagosController::class, 'movimientos']); // Moved to 'pagos' group
         Route::post('egresos', [AdminPagosController::class, 'registrarEgreso']);
         Route::post('conciliar', [AdminPagosController::class, 'conciliarAutomatico']);
         Route::post('movimientos/{id}/validar', [AdminPagosController::class, 'validarMovimiento']);
@@ -358,18 +401,20 @@ Route::middleware('auth')->group(function () {
         Route::post('ingresos', [AdminPagosController::class, 'registrarIngreso']);
     });
 
-    // Rutas CRUD de Clientes
-    Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
+    // Rutas CRUD de Clientes (Resto movido arriba)
     Route::get('/api/clientes/create', function () {
         return redirect()->route('clientes.index');
     });
     Route::post('/api/clientes/create', [VentasController::class, 'guardarCliente'])->name('ventas.api.clientes.guardar');
-    Route::put('/clientes/{cliente}', [ClientesController::class, 'update'])->name('clientes.update');
-    Route::delete('/clientes/{cliente}', [ClientesController::class, 'destroy'])->name('clientes.destroy');
 
     // Ruta para ver PDF de licencia
     Route::get('/clientes/{cliente}/ver-pdf-licencia', [ClientesController::class, 'verPdfLicencia'])
         ->name('clientes.ver-pdf-licencia');
+
+    // API Documentos Clientes (Licencias/Tenencias)
+    Route::get('/api/clientes/{id}/documentos', [ClientesController::class, 'getDocumentos']);
+    Route::post('/api/clientes/{id}/documentos', [ClientesController::class, 'storeDocumento']);
+    Route::delete('/api/clientes/documentos/{id}', [ClientesController::class, 'deleteDocumento']);
 
 
 
@@ -391,6 +436,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/vista-cambiaria', [FacturacionController::class, 'verFacturaCambiaria'])
             ->name('facturacion.vista.cambiaria');
     });
+    // Listado de Preventas
+    Route::get('/preventas/listado', [PreventaController::class, 'listado'])->name('preventas.listado');
+    Route::get('/api/preventas/listado', [PreventaController::class, 'apiListado']);
+    Route::delete('/api/preventas/{id}', [PreventaController::class, 'destroy']);
+    Route::get('/api/preventas/{id}', [PreventaController::class, 'show']);
+    Route::get('/preventas/{id}/imprimir', [PreventaController::class, 'imprimir'])->name('preventas.imprimir');
+
+    // Estado de Cuenta Clientes
+    Route::get('/clientes/estado-cuenta', [EstadoCuentaController::class, 'index'])->name('clientes.estado_cuenta');
+    Route::get('/api/clientes/estado-cuenta', [EstadoCuentaController::class, 'listar']);
+    Route::get('/api/clientes/estado-cuenta/{id}', [EstadoCuentaController::class, 'detalle']);
+
+    // Auditoría
+    Route::get('/audits', [App\Http\Controllers\AuditController::class, 'index'])->name('audits.index');
+    Route::get('/audits/{id}', [App\Http\Controllers\AuditController::class, 'show'])->name('audits.show');
+
 });
 
 require __DIR__ . '/auth.php';

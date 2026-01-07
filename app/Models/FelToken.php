@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class FelToken extends Model
+class FelToken extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'fel_tokens';
 
     protected $fillable = [

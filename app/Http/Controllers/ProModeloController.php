@@ -36,12 +36,11 @@ class ProModeloController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'modelo_descripcion' => 'required|string|max:50|unique:pro_modelo,modelo_descripcion',
+            'modelo_descripcion' => 'required|string|max:50',
             'modelo_marca_id' => 'required|exists:pro_marcas,marca_id'
         ], [
             'modelo_descripcion.required' => 'La descripción es obligatoria',
             'modelo_descripcion.max' => 'La descripción no puede tener más de 50 caracteres',
-            'modelo_descripcion.unique' => 'Ya existe un modelo con el mismo nombre',
             'modelo_marca_id.required' => 'La marca es obligatoria',
             'modelo_marca_id.exists' => 'La marca seleccionada no existe'
         ]);
@@ -64,15 +63,24 @@ class ProModeloController extends Controller
                 ->with('success', 'Modelo creado exitosamente');
                 
         } catch (\Exception $e) {
+            $msg = 'Error al crear el modelo.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un modelo con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'mensaje' => 'Error al crear el modelo: ' . $e->getMessage()
+                    'mensaje' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Error al crear el modelo')
+                ->with('error', $msg)
                 ->withInput();
         }
     }
@@ -90,15 +98,11 @@ class ProModeloController extends Controller
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('pro_modelo', 'modelo_descripcion')
-                    ->ignore($modelo->modelo_id, 'modelo_id')
-                    ->where(fn($q) => $q->where('modelo_situacion', 1))
             ],
             'modelo_marca_id' => 'required|exists:pro_marcas,marca_id'
         ], [
             'modelo_descripcion.required' => 'La descripción es obligatoria',
             'modelo_descripcion.max' => 'La descripción no puede tener más de 50 caracteres',
-            'modelo_descripcion.unique' => 'Ya existe un modelo con el mismo nombre',
             'modelo_marca_id.required' => 'La marca es obligatoria',
             'modelo_marca_id.exists' => 'La marca seleccionada no existe'
         ]);
@@ -120,15 +124,24 @@ class ProModeloController extends Controller
                 ->with('success', 'Modelo actualizado correctamente');
                 
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe un modelo con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'mensaje' => 'Error al actualizar: ' . $e->getMessage()
+                    'mensaje' => $msg
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Error al actualizar')
+                ->with('error', $msg)
                 ->withInput();
         }
     }

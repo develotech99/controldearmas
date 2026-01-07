@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
 // app/Models/ProLicencia.php
-class ProLicencia extends Model {
+class ProLicencia extends Model implements Auditable
+{
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_licencias_para_importacion';
     protected $primaryKey = 'lipaimp_id';
     public $timestamps = false;
@@ -22,7 +25,9 @@ class ProLicencia extends Model {
 
 ///
 // app/Models/ProPagoLicencia.php
-class ProPagoLicencia extends Model {
+class ProPagoLicencia extends Model implements Auditable
+{
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_pagos_licencias';
     protected $primaryKey = 'pago_lic_id';
 
@@ -36,7 +41,9 @@ class ProPagoLicencia extends Model {
 }
 
 // app/Models/ProPagoLicMetodo.php
-class ProPagoLicMetodo extends Model {
+class ProPagoLicMetodo extends Model implements Auditable
+{
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_pagos_lic_metodos';
     protected $primaryKey = 'pagomet_id';
 
@@ -46,7 +53,9 @@ class ProPagoLicMetodo extends Model {
 }
 
 // app/Models/ProLicenciaTotalPagado.php
-class ProLicenciaTotalPagado extends Model {
+class ProLicenciaTotalPagado extends Model implements Auditable
+{
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_licencias_total_pagado';
     protected $primaryKey = 'lic_id';
     public $incrementing = false;

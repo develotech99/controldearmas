@@ -5,11 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-class ProDetalleVenta extends Model
+use OwenIt\Auditing\Contracts\Auditable;
+
+class ProDetalleVenta extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_detalle_ventas';
     protected $primaryKey = 'det_id';
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $fillable = [
         'det_ven_id',
@@ -17,7 +20,8 @@ class ProDetalleVenta extends Model
         'det_cantidad',
         'det_precio',
         'det_descuento',
-        'det_situacion'
+        'det_situacion',
+        'det_cantidad_facturada'
     ];
 
     protected $casts = [

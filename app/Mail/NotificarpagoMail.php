@@ -13,21 +13,32 @@ class NotificarpagoMail extends Mailable
     use Queueable, SerializesModels;
 
     public array $payload;
-    protected ?UploadedFile $comprobante;
+    protected $comprobante;
+    protected $tipo;
 
-    public function __construct(array $payload, ?UploadedFile $comprobante = null)
+    public function __construct(array $payload, $comprobante = null, $tipo = 'VENTA')
     {
         $this->payload     = $payload;
         $this->comprobante = $comprobante;
+        $this->tipo        = $tipo;
     }
 
     public function build()
     {
+        $subject = 'Pago enviado - Venta #' . ($this->payload['venta_id'] ?? 'N/A');
 
-        $mail = $this->subject('Pago enviado - Venta #' . $this->payload['venta_id'])
+        if ($this->tipo === 'PREVENTA') {
+            $subject = 'Comprobante de Preventa - #' . ($this->payload['preventa_id'] ?? 'N/A');
+        } elseif ($this->tipo === 'DEUDA') {
+            $cliente = $this->payload['cliente']['nombre'] ?? 'Cliente';
+            $subject = 'Pago de Deuda - ' . $cliente;
+        }
+
+        $mail = $this->subject($subject)
             ->view('emails.NotificarPago')
             ->with(array_merge($this->payload, [
                 'logoCid' => 'cid:logo-proarmas',
+                'tipo'    => $this->tipo,
             ]));
 
         if ($this->comprobante instanceof UploadedFile) {
@@ -38,6 +49,19 @@ class NotificarpagoMail extends Mailable
                     'mime' => $this->comprobante->getClientMimeType(),
                 ]
             );
+        } elseif (is_string($this->comprobante)) {
+             // Check if it's a relative path in storage/app/public or absolute
+             $path = $this->comprobante;
+             if (!file_exists($path) && file_exists(storage_path('app/public/' . $path))) {
+                 $path = storage_path('app/public/' . $path);
+             }
+             
+             if (file_exists($path)) {
+                $mail->attach($path, [
+                    'as'   => 'comprobante_venta_' . $this->payload['venta_id'] . '.jpg',
+                    'mime' => 'image/jpeg',
+                ]);
+             }
         }
 
         $logoPath = public_path('images/pro_armas.png'); 

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ProPorcentajeVendedor extends Model
+class ProPorcentajeVendedor extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_porcentaje_vendedor';
     protected $primaryKey = 'porc_vend_id';
     public $timestamps = false;

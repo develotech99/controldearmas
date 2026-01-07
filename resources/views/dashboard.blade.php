@@ -19,7 +19,102 @@
     </div>
 </header>
 
-<div class="space-y-6">
+    <!-- Quick Actions (Moved to Top) -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Acciones Rápidas</h3>
+            <button id="btn-abrir-manual" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center gap-2">
+                <i class="fas fa-book-open"></i>
+                <span>Manual de Sistema</span>
+            </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Nueva Venta -->
+            <button data-href="{{ route('ventas.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-green-300 dark:hover:border-green-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
+                    <i class="fas fa-shopping-cart text-green-600 dark:text-green-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Nueva Venta</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Registrar venta</p>
+                </div>
+            </button>
+
+            <!-- Realizar Preventa -->
+            <button data-href="{{ route('preventas.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/50 transition-colors">
+                    <i class="fas fa-clipboard-list text-indigo-600 dark:text-indigo-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Preventa</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Cotizar / Reservar</p>
+                </div>
+            </button>
+
+            <!-- Autorizar Ventas -->
+            <button data-href="{{ route('reportes.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-amber-300 dark:hover:border-amber-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 transition-colors">
+                    <i class="fas fa-check-circle text-amber-600 dark:text-amber-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Autorizar</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Revisar pendientes</p>
+                </div>
+            </button>
+
+            <!-- Facturar -->
+            <button data-href="{{ route('facturacion.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-teal-300 dark:hover:border-teal-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center group-hover:bg-teal-200 dark:group-hover:bg-teal-900/50 transition-colors">
+                    <i class="fas fa-file-invoice text-teal-600 dark:text-teal-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Facturar</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Emitir DTE</p>
+                </div>
+            </button>
+
+             <!-- Agregar Arma -->
+             <button data-href="{{ route('inventario.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-blue-300 dark:hover:border-blue-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
+                    <i class="fas fa-box-open text-blue-600 dark:text-blue-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Inventario</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Agregar / Editar</p>
+                </div>
+            </button>
+
+            <!-- Nuevo Cliente -->
+            <button data-href="{{ route('clientes.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-purple-300 dark:hover:border-purple-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
+                    <i class="fas fa-user-plus text-purple-600 dark:text-purple-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Clientes</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Gestionar cartera</p>
+                </div>
+            </button>
+
+            <!-- Generar Reporte -->
+            <button data-href="{{ route('reportes.index') }}" 
+                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-orange-300 dark:hover:border-orange-500 transition-all text-left group">
+                <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
+                    <i class="fas fa-chart-line text-orange-600 dark:text-orange-400 text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-white">Reportes</p>
+                    <p class="text-xs text-slate-500 dark:text-gray-400">Ventas y stock</p>
+                </div>
+            </button>
+        </div>
+    </div>
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Total Armas -->
@@ -121,69 +216,8 @@
             </div>
         </div>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 p-6">
-        <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-4">Acciones Rápidas</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- Nueva Venta -->
-            <button data-accion="nueva-venta" 
-                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-green-300 dark:hover:border-green-500 transition-all text-left group">
-                <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
-                    <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="font-medium text-slate-800 dark:text-white">Nueva Venta</p>
-                    <p class="text-sm text-slate-500 dark:text-gray-400">Registrar venta</p>
-                </div>
-            </button>
-
-            <!-- Agregar Arma -->
-            <button data-accion="agregar-arma" 
-                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-blue-300 dark:hover:border-blue-500 transition-all text-left group">
-                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="font-medium text-slate-800 dark:text-white">Agregar Arma</p>
-                    <p class="text-sm text-slate-500 dark:text-gray-400">Nuevo inventario</p>
-                </div>
-            </button>
-
-            <!-- Nuevo Cliente -->
-            <button data-accion="nuevo-cliente" 
-                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-purple-300 dark:hover:border-purple-500 transition-all text-left group">
-                <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
-                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="font-medium text-slate-800 dark:text-white">Nuevo Cliente</p>
-                    <p class="text-sm text-slate-500 dark:text-gray-400">Registrar cliente</p>
-                </div>
-            </button>
-
-            <!-- Generar Reporte -->
-            <button data-accion="generar-reporte" 
-                    class="flex items-center space-x-3 p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-orange-300 dark:hover:border-orange-500 transition-all text-left group">
-                <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
-                    <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="font-medium text-slate-800 dark:text-white">Generar Reporte</p>
-                    <p class="text-sm text-slate-500 dark:text-gray-400">Reportes legales</p>
-                </div>
-            </button>
-        </div>
-    </div>
 </div>
+
 
 
 @endsection

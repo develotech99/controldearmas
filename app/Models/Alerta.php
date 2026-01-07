@@ -6,14 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modelo para el sistema de alertas del inventario
  * Maneja notificaciones para stock bajo, vencimientos, etc.
  */
-class Alerta extends Model
+class Alerta extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $table = 'pro_alertas';
     protected $primaryKey = 'alerta_id';

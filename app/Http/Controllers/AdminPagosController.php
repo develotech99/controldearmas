@@ -14,6 +14,11 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class AdminPagosController extends Controller
 {
+    public function historial()
+    {
+        return view('pagos.historial');
+    }
+
     public function stats(Request $request)
     {
         try {
@@ -45,11 +50,27 @@ class AdminPagosController extends Controller
 
             $ultimaCarga = DB::table('pro_estados_cuenta')->max('created_at');
 
+            // Calcular Dinero en Tienda (Efectivo sin depósito subido)
+            // Pagos en efectivo (metodo=1) que están VALIDOS en detalle_pagos
+            // Pero que NO tienen un registro en pro_pagos_subidos para esa venta.
+            $dineroEnTienda = DB::table('pro_detalle_pagos as dp')
+                ->join('pro_pagos as p', 'p.pago_id', '=', 'dp.det_pago_pago_id')
+                ->join('pro_ventas as v', 'v.ven_id', '=', 'p.pago_venta_id')
+                ->where('dp.det_pago_metodo_pago', 1) // 1 = Efectivo
+                ->where('dp.det_pago_estado', 'VALIDO')
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                          ->from('pro_pagos_subidos as ps')
+                          ->whereColumn('ps.ps_venta_id', 'v.ven_id');
+                })
+                ->sum('dp.det_pago_monto');
+
             return response()->json([
                 'codigo' => 1,
                 'mensaje' => 'Estadísticas obtenidas exitosamente',
                 'data' => [
                     'saldo_total_gtq' => $totalGTQ,
+                    'dinero_en_tienda' => (float) $dineroEnTienda, // Nuevo campo
                     'saldos'          => $saldos,
                     'pendientes'      => $pendientes,
                     'ultima_carga'    => $ultimaCarga,
@@ -75,14 +96,19 @@ class AdminPagosController extends Controller
             $estado = (string) $request->query('estado', '');
 
             $rows = DB::table('pro_pagos_subidos as ps')
-                ->join('pro_ventas as v', 'v.ven_id', '=', 'ps.ps_venta_id')
-                ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
-                // tu esquema usa users.user_id en varios FKs
+                ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'ps.ps_venta_id')
+                ->leftJoin('pro_preventas as prev', 'prev.prev_id', '=', 'ps.ps_preventa_id')
+                ->leftJoin('pro_deudas_clientes as deuda', 'deuda.deuda_id', '=', 'ps.ps_deuda_id') // Join Deudas
+                ->leftJoin('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
                 ->leftJoin('users as u', 'u.user_id', '=', 'ps.ps_cliente_user_id')
                 ->leftJoin('pro_clientes as c', 'c.cliente_user_id', '=', 'ps.ps_cliente_user_id')
+                ->leftJoin('pro_clientes as c_deuda', 'c_deuda.cliente_id', '=', 'deuda.cliente_id') // Join Client from Deuda
+                ->leftJoin('pro_bancos as b', 'b.banco_id', '=', 'ps.ps_banco_id')
                 ->select([
                     'ps.ps_id',
                     'ps.ps_venta_id',
+                    'ps.ps_preventa_id',
+                    'ps.ps_deuda_id', // Add Deuda ID
                     'ps.ps_estado',
                     'ps.ps_referencia',
                     'ps.ps_concepto',
@@ -91,11 +117,22 @@ class AdminPagosController extends Controller
                     'ps.ps_monto_total_cuotas_front',
                     'ps.ps_cuotas_json',
                     'ps.created_at',
+                    'b.banco_nombre',
 
                     'v.ven_id',
                     'v.ven_fecha',
                     'v.ven_total_vendido',
                     'v.ven_observaciones',
+
+                    'prev.prev_id',
+                    'prev.prev_fecha',
+                    'prev.prev_total',
+                    'prev.prev_observaciones',
+
+                    'deuda.deuda_id', // Deuda fields
+                    'deuda.descripcion as deuda_descripcion',
+                    'deuda.monto as deuda_monto',
+                    'deuda.saldo_pendiente as deuda_saldo',
 
                     'pg.pago_id',
                     'pg.pago_monto_total',
@@ -105,15 +142,8 @@ class AdminPagosController extends Controller
 
                     DB::raw("
                     COALESCE(
-                        NULLIF(
-                            TRIM(CONCAT_WS(' ',
-                                c.cliente_nombre1,
-                                c.cliente_nombre2,
-                                c.cliente_apellido1,
-                                c.cliente_apellido2
-                            )),
-                            ''
-                        ),
+                        NULLIF(TRIM(CONCAT_WS(' ', c_deuda.cliente_nombre1, c_deuda.cliente_apellido1)), ''),
+                        NULLIF(TRIM(CONCAT_WS(' ', c.cliente_nombre1, c.cliente_nombre2, c.cliente_apellido1, c.cliente_apellido2)), ''),
                         u.email,
                         CONCAT('Usuario ', ps.ps_cliente_user_id),
                         'Cliente'
@@ -133,7 +163,10 @@ class AdminPagosController extends Controller
                         $w->where('ps.ps_referencia', 'like', "%{$q}%")
                             ->orWhere('ps.ps_concepto', 'like', "%{$q}%")
                             ->orWhere('v.ven_observaciones', 'like', "%{$q}%")
-                            ->orWhere('v.ven_id', 'like', "%{$q}%");
+                            ->orWhere('v.ven_id', 'like', "%{$q}%")
+                            ->orWhere('prev.prev_id', 'like', "%{$q}%")
+                            ->orWhere('deuda.deuda_id', 'like', "%{$q}%")
+                            ->orWhere('deuda.descripcion', 'like', "%{$q}%");
                     });
                 })
                 ->orderByDesc('ps.created_at')
@@ -180,14 +213,26 @@ class AdminPagosController extends Controller
                 ->keyBy('cuota_control_id');
 
             $data = $rows->map(function ($r) use ($conceptoSub, $cuotasAgg) {
-                $c = $conceptoSub[$r->ven_id] ?? null;
+                // Determine context (Venta or Preventa)
+                $isPreventa = !empty($r->ps_preventa_id);
+                $ventaId = $r->ven_id ?? null;
+                $preventaId = $r->prev_id ?? null;
+
+                $c = ($ventaId && isset($conceptoSub[$ventaId])) ? $conceptoSub[$ventaId] : null;
 
                 // Debía para ESTE envío (lo que el cliente seleccionó)
                 $debiaEnvio = (float) ($r->ps_monto_total_cuotas_front ?? 0);
 
                 // Pendiente global de la venta (contexto)
-                $pendienteVenta = (float) ($r->pago_monto_pendiente
-                    ?? max(($r->pago_monto_total ?? 0) - ($r->pago_monto_pagado ?? 0), 0));
+                $pendienteVenta = 0;
+                if (!$isPreventa) {
+                    $pendienteVenta = (float) ($r->pago_monto_pendiente
+                        ?? max(($r->pago_monto_total ?? 0) - ($r->pago_monto_pagado ?? 0), 0));
+                } else {
+                    // For Preventa, pending is Total - Paid (assuming prev_monto_pagado is updated)
+                    // But here we might just show the total preventa amount as context
+                    $pendienteVenta = (float) ($r->prev_total ?? 0); 
+                }
 
                 // Qué mostrar en la columna "Debía" de la bandeja:
                 $debiaMostrado = $debiaEnvio > 0 ? $debiaEnvio : $pendienteVenta;
@@ -207,15 +252,16 @@ class AdminPagosController extends Controller
                 }
 
                 // Agregados de cuotas de la venta (si tienes tabla de cuotas)
-                $cuAgg = $cuotasAgg[$r->pago_id] ?? null;
+                $cuAgg = ($r->pago_id && isset($cuotasAgg[$r->pago_id])) ? $cuotasAgg[$r->pago_id] : null;
 
                 return [
                     'ps_id'           => (int) $r->ps_id,
-                    'venta_id'        => (int) $r->ven_id,
-                    'fecha'           => $r->ven_fecha,
+                    'venta_id'        => $ventaId ? (int) $ventaId : null,
+                    'preventa_id'     => $preventaId ? (int) $preventaId : null, // Add preventa ID
+                    'fecha'           => $r->ven_fecha ?? $r->prev_fecha, // Use preventa date if venta date is null
                     'cliente'         => $r->cliente,
 
-                    'concepto'        => $c->concepto_resumen ?? '—',
+                    'concepto'        => $isPreventa ? 'PREVENTA #' . $preventaId : ($c->concepto_resumen ?? '—'),
                     'items_count'     => (int) ($c->items_count ?? 0),
 
                     // Lo que verás en la tabla:
@@ -226,7 +272,7 @@ class AdminPagosController extends Controller
                     // Contexto adicional (por si quieres mostrarlo en tooltip o columnas nuevas)
                     'debia_envio'         => round($debiaEnvio, 2),
                     'pendiente_venta'     => round($pendienteVenta, 2),
-                    'venta_total'         => round((float) ($r->ven_total_vendido ?? 0), 2),
+                    'venta_total'         => round((float) ($r->ven_total_vendido ?? $r->prev_total ?? 0), 2),
 
                     'estado'          => $r->ps_estado,
                     'referencia'      => $r->ps_referencia,
@@ -238,8 +284,9 @@ class AdminPagosController extends Controller
                     'cuotas_pendientes'      => $cuAgg->cuotas_pendientes ?? null,
                     'monto_cuotas_pendiente' => isset($cuAgg) ? round((float) $cuAgg->monto_cuotas_pendiente, 2) : null,
 
-                    'observaciones_venta' => $r->ven_observaciones,
+                    'observaciones_venta' => $r->ven_observaciones ?? $r->prev_observaciones,
                     'created_at'       => $r->created_at,
+                    'is_preventa'      => $isPreventa, // Flag for frontend
                 ];
             })->values();
 
@@ -280,6 +327,88 @@ class AdminPagosController extends Controller
                 return response()->json(['codigo' => 0, 'mensaje' => 'El registro no está pendiente'], 422);
             }
 
+            $monto = (float) ($ps->ps_monto_comprobante ?? 0);
+            $fecha = $ps->ps_fecha_comprobante ?: now();
+            $observaciones = $data['observaciones'] ?? $ps->ps_concepto;
+
+            DB::beginTransaction();
+
+            // --- LÓGICA PREVENTA ---
+            if ($ps->ps_preventa_id) {
+                $preventa = DB::table('pro_preventas')->where('prev_id', $ps->ps_preventa_id)->first();
+                if (!$preventa) throw new Exception("Preventa no encontrada");
+
+                // 1. Actualizar Saldo a Favor del Cliente
+                $clienteId = $preventa->prev_cliente_id;
+                
+                // Ensure saldo row exists
+                $saldoRow = DB::table('pro_clientes_saldo')->where('saldo_cliente_id', $clienteId)->first();
+                if (!$saldoRow) {
+                    DB::table('pro_clientes_saldo')->insert([
+                        'saldo_cliente_id' => $clienteId,
+                        'saldo_monto' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+
+                // Increment Saldo
+                DB::table('pro_clientes_saldo')
+                    ->where('saldo_cliente_id', $clienteId)
+                    ->increment('saldo_monto', $monto);
+
+                // Get new saldo for history
+                $nuevoSaldo = DB::table('pro_clientes_saldo')->where('saldo_cliente_id', $clienteId)->value('saldo_monto');
+
+                // 2. Historial Saldo
+                DB::table('pro_clientes_saldo_historial')->insert([
+                    'hist_cliente_id' => $clienteId,
+                    'hist_tipo' => 'ABONO',
+                    'hist_monto' => $monto,
+                    'hist_saldo_anterior' => $nuevoSaldo - $monto,
+                    'hist_saldo_nuevo' => $nuevoSaldo,
+                    'hist_referencia' => 'PRE-' . $preventa->prev_id,
+                    'hist_observaciones' => 'Abono validado de Preventa #' . $preventa->prev_id,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // 3. Caja
+                DB::table('cja_historial')->insert([
+                    'cja_tipo'          => 'DEPOSITO', // Use DEPOSITO for pre-sales/abonos
+                    'cja_id_venta'      => null, // No venta yet
+                    'cja_usuario'       => auth()->id(),
+                    'cja_monto'         => $monto,
+                    'cja_fecha'         => now(),
+                    'cja_metodo_pago'   => $metodoEfectivoId,
+                    'cja_no_referencia' => $ps->ps_referencia ?? null,
+                    'cja_situacion'     => 'ACTIVO',
+                    'cja_observaciones' => 'Abono Preventa #' . $preventa->prev_id . '. ' . $observaciones,
+                    'created_at'        => now(),
+                ]);
+
+                // 4. Saldos Caja
+                CajaSaldo::ensureRow($metodoEfectivoId, 'GTQ')->addAmount($monto);
+
+                // 5. PS -> APROBADO
+                DB::table('pro_pagos_subidos')->where('ps_id', $ps->ps_id)->update([
+                    'ps_estado'         => 'APROBADO',
+                    'ps_notas_revision' => $observaciones,
+                    'ps_revisado_por'   => auth()->id(),
+                    'ps_revisado_en'    => now(),
+                    'updated_at'        => now(),
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'codigo'  => 1,
+                    'mensaje' => 'Pago de preventa aprobado exitosamente',
+                    'data'    => []
+                ], 200);
+            }
+
+            // --- LÓGICA VENTA NORMAL (EXISTENTE) ---
             $venta = DB::table('pro_ventas as v')
                 ->join('pro_pagos as pg', 'pg.pago_venta_id', '=', 'v.ven_id')
                 ->select(
@@ -306,28 +435,44 @@ class AdminPagosController extends Controller
                     ->all();
             }
 
-            $monto = (float) ($ps->ps_monto_comprobante ?? 0);
-            $fecha = $ps->ps_fecha_comprobante ?: now();
-
-            DB::beginTransaction();
-
             // 2) Detalle de pago (1 registro por comprobante)
-            $detId = DB::table('pro_detalle_pagos')->insertGetId([
-                'det_pago_pago_id'             => $venta->pago_id,
-                'det_pago_cuota_id'            => null,
-                'det_pago_fecha'               => $fecha,
-                'det_pago_monto'               => $monto,
-                'det_pago_metodo_pago'         => $metodoEfectivoId,
-                'det_pago_banco_id'            => $ps->ps_banco_id ?? null,
-                'det_pago_numero_autorizacion' => $ps->ps_referencia ?? null,
-                'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
-                'det_pago_tipo_pago'           => 'PAGO_UNICO',
-                'det_pago_estado'              => 'VALIDO',
-                'det_pago_observaciones'       => $data['observaciones'] ?? $ps->ps_concepto,
-                'det_pago_usuario_registro'    => auth()->id(),
-                'created_at'                   => now(),
-                'updated_at'                   => now(),
-            ]);
+            if ($ps->ps_detalle_pago_id) {
+                // 🔥 UPDATE existing payment
+                DB::table('pro_detalle_pagos')
+                    ->where('det_pago_id', $ps->ps_detalle_pago_id)
+                    ->update([
+                        'det_pago_fecha'               => $fecha,
+                        'det_pago_monto'               => $monto, // Update amount if changed? Maybe user corrected it.
+                        'det_pago_metodo_pago'         => $metodoEfectivoId,
+                        'det_pago_banco_id'            => $ps->ps_banco_id ?? null,
+                        'det_pago_numero_autorizacion' => $ps->ps_referencia ?? null,
+                        'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
+                        'det_pago_estado'              => 'VALIDO', // Ensure it's valid
+                        'det_pago_observaciones'       => $observaciones,
+                        'updated_at'                   => now(),
+                    ]);
+                
+                $detId = $ps->ps_detalle_pago_id;
+                
+            } else {
+                // 🔥 INSERT new payment
+                $detId = DB::table('pro_detalle_pagos')->insertGetId([
+                    'det_pago_pago_id'             => $venta->pago_id,
+                    'det_pago_cuota_id'            => null,
+                    'det_pago_fecha'               => $fecha,
+                    'det_pago_monto'               => $monto,
+                    'det_pago_metodo_pago'         => $metodoEfectivoId,
+                    'det_pago_banco_id'            => $ps->ps_banco_id ?? null,
+                    'det_pago_numero_autorizacion' => $ps->ps_referencia ?? null,
+                    'det_pago_imagen_boucher'      => $ps->ps_imagen_path ?? null,
+                    'det_pago_tipo_pago'           => 'PAGO_UNICO',
+                    'det_pago_estado'              => 'VALIDO',
+                    'det_pago_observaciones'       => $observaciones,
+                    'det_pago_usuario_registro'    => auth()->id(),
+                    'created_at'                   => now(),
+                    'updated_at'                   => now(),
+                ]);
+            }
 
             // 3) Master de pagos
             $nuevoPagado    = (float)$venta->pago_monto_pagado + $monto;
@@ -373,7 +518,7 @@ class AdminPagosController extends Controller
             // 7) PS -> APROBADO (usando tus columnas reales)
             DB::table('pro_pagos_subidos')->where('ps_id', $ps->ps_id)->update([
                 'ps_estado'         => 'APROBADO',
-                'ps_notas_revision' => $data['observaciones'] ?? null,
+                'ps_notas_revision' => $observaciones,
                 'ps_revisado_por'   => auth()->id(),
                 'ps_revisado_en'    => now(),
                 'updated_at'        => now(),
@@ -472,84 +617,214 @@ class AdminPagosController extends Controller
      public function movimientos(Request $request)
      {
          try {
-             $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
-             $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
-             $metodoId = $request->query('metodo_id');
-     
-             $q = DB::table('cja_historial as h')
-                 ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
-                 ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'h.cja_id_venta')
-                 ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
-                 ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
-                 ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'h.cja_usuario')
-                 ->select(
-                     'h.cja_id',
-                     'h.cja_fecha',
-                     'h.cja_tipo',
-                     'h.cja_no_referencia',
-                     'h.cja_observaciones',
-                     'h.cja_monto',
-                     'h.cja_situacion',
-                     'h.cja_id_venta',
-                     'm.metpago_descripcion as metodo',
-                     
-                     // ⭐ Cliente
-                     DB::raw("
-                         CASE 
-                             WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
-                                 CONCAT(
-                                     c.cliente_nom_empresa, 
-                                     ' | ', 
-                                     TRIM(CONCAT_WS(' ', 
-                                         COALESCE(c.cliente_nombre1, ''), 
-                                         COALESCE(c.cliente_apellido1, '')
-                                     ))
-                                 )
-                             WHEN c.cliente_id IS NOT NULL THEN 
-                                 TRIM(CONCAT_WS(' ', 
-                                     COALESCE(c.cliente_nombre1, ''),
-                                     COALESCE(c.cliente_nombre2, ''),
-                                     COALESCE(c.cliente_apellido1, ''),
-                                     COALESCE(c.cliente_apellido2, '')
-                                 ))
-                             ELSE NULL
-                         END as cliente_nombre
-                     "),
-                     DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
-                     'c.cliente_tipo',
-                     'c.cliente_nit',
-                     
-                     // ⭐ Vendedor
-                     DB::raw("
-                         TRIM(CONCAT_WS(' ',
-                             COALESCE(vendedor.user_primer_nombre, ''),
-                             COALESCE(vendedor.user_segundo_nombre, ''),
-                             COALESCE(vendedor.user_primer_apellido, ''),
-                             COALESCE(vendedor.user_segundo_apellido, '')
-                         )) as vendedor_nombre
-                     "),
-                     'v.ven_user as vendedor_id',
-                     
-                     // ⭐ Usuario que registró el movimiento
-                     DB::raw("
-                         TRIM(CONCAT_WS(' ',
-                             COALESCE(usuario_registro.user_primer_nombre, ''),
-                             COALESCE(usuario_registro.user_segundo_nombre, ''),
-                             COALESCE(usuario_registro.user_primer_apellido, ''),
-                             COALESCE(usuario_registro.user_segundo_apellido, '')
-                         )) as usuario_registro_nombre
-                     "),
-                     'h.cja_usuario as usuario_registro_id',
-                     
-                     // ⭐ Total de la venta (si aplica)
-                     'v.ven_total_vendido as venta_total'
-                 )
-                 ->whereDate('h.cja_fecha', '>=', $from)
-                 ->whereDate('h.cja_fecha', '<=', $to)
-                 ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
-                 ->orderBy('h.cja_fecha', 'desc');
-     
-             $rows = $q->get();
+            $from = $request->query('from') ?: Carbon::now()->startOfMonth()->toDateString();
+            $to   = $request->query('to')   ?: Carbon::now()->endOfMonth()->toDateString();
+            $metodoId = $request->query('metodo_id');
+            $tipo = $request->query('tipo');
+            $situacion = $request->query('situacion');
+            $qParam = trim($request->query('q', ''));
+
+            $q = DB::table('cja_historial as h')
+                ->leftJoin('pro_metodos_pago as m', 'm.metpago_id', '=', 'h.cja_metodo_pago')
+                ->leftJoin('pro_ventas as v', 'v.ven_id', '=', 'h.cja_id_venta')
+                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+                // Joins for Debt Payments (using cja_id_import as deuda_id)
+                ->leftJoin('pro_deudas_clientes as dc', 'dc.deuda_id', '=', 'h.cja_id_import')
+                ->leftJoin('pro_clientes as dc_c', 'dc_c.cliente_id', '=', 'dc.cliente_id')
+                ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
+                ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'h.cja_usuario')
+                ->select(
+                    'h.cja_id',
+                    'h.cja_fecha',
+                    'h.cja_tipo',
+                    'h.cja_no_referencia',
+                    'h.cja_observaciones',
+                    'h.cja_monto',
+                    'h.cja_situacion',
+                    'h.cja_id_venta',
+                    'm.metpago_descripcion as metodo',
+                    
+                    // ⭐ Cliente
+                    DB::raw("
+                       CASE
+                           WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
+                               CONCAT(
+                                   c.cliente_nom_empresa, 
+                                   ' | ', 
+                                   TRIM(CONCAT_WS(' ', 
+                                       COALESCE(c.cliente_nombre1, ''), 
+                                       COALESCE(c.cliente_apellido1, '')
+                                   ))
+                               )
+                           WHEN c.cliente_id IS NOT NULL THEN 
+                               TRIM(CONCAT_WS(' ', 
+                                   COALESCE(c.cliente_nombre1, ''),
+                                   COALESCE(c.cliente_nombre2, ''),
+                                   COALESCE(c.cliente_apellido1, ''),
+                                   COALESCE(c.cliente_apellido2, '')
+                               ))
+                           -- Logic for PAGO_DEUDA using cja_id_import as deuda_id
+                           WHEN h.cja_tipo = 'PAGO_DEUDA' AND dc.cliente_id IS NOT NULL THEN
+                               TRIM(CONCAT_WS(' ', 
+                                   COALESCE(dc_c.cliente_nombre1, ''),
+                                   COALESCE(dc_c.cliente_nombre2, ''),
+                                   COALESCE(dc_c.cliente_apellido1, ''),
+                                   COALESCE(dc_c.cliente_apellido2, '')
+                               ))
+                           ELSE NULL
+                       END as cliente_nombre
+                    "),
+                    DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
+                    'c.cliente_tipo',
+                    'c.cliente_nit',
+                    
+                    // ⭐ Vendedor
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(vendedor.user_primer_nombre, ''),
+                            COALESCE(vendedor.user_segundo_nombre, ''),
+                            COALESCE(vendedor.user_primer_apellido, ''),
+                            COALESCE(vendedor.user_segundo_apellido, '')
+                        )) as vendedor_nombre
+                    "),
+                    'v.ven_user as vendedor_id',
+                    
+                    // ⭐ Usuario que registró el movimiento
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(usuario_registro.user_primer_nombre, ''),
+                            COALESCE(usuario_registro.user_segundo_nombre, ''),
+                            COALESCE(usuario_registro.user_primer_apellido, ''),
+                            COALESCE(usuario_registro.user_segundo_apellido, '')
+                        )) as usuario_registro_nombre
+                    "),
+                    'h.cja_usuario as usuario_registro_id',
+                    
+                    // ⭐ Total de la venta (si aplica)
+                    'v.ven_total_vendido as venta_total'
+                )
+                ->whereDate('h.cja_fecha', '>=', $from)
+                ->whereDate('h.cja_fecha', '<=', $to)
+                ->when($metodoId, fn($qq) => $qq->where('h.cja_metodo_pago', $metodoId))
+                ->when($tipo, fn($qq) => $qq->where('h.cja_tipo', $tipo))
+                ->when($situacion, fn($qq) => $qq->where('h.cja_situacion', $situacion))
+                ->when($qParam, function ($qq) use ($qParam) {
+                    $qq->where(function ($sub) use ($qParam) {
+                        $sub->where('h.cja_no_referencia', 'like', "%{$qParam}%")
+                            ->orWhere('h.cja_observaciones', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nombre1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_apellido1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nom_empresa', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nit', 'like', "%{$qParam}%");
+                    });
+                });
+
+            // --- QUERY PARA PAGOS EN TIENDA (EFECTIVO SIN DEPÓSITO) ---
+            // Solo si no se está filtrando por situación o si se busca explícitamente 'EN_TIENDA' (aunque no existe en DB)
+            // O si el usuario quiere ver todo.
+            // Para simplificar, lo agregamos siempre y dejamos que los filtros de fecha apliquen.
+            
+            $qEnTienda = DB::table('pro_detalle_pagos as dp')
+                ->join('pro_pagos as p', 'p.pago_id', '=', 'dp.det_pago_pago_id')
+                ->join('pro_ventas as v', 'v.ven_id', '=', 'p.pago_venta_id')
+                ->leftJoin('pro_clientes as c', 'c.cliente_id', '=', 'v.ven_cliente')
+                ->leftJoin('users as vendedor', 'vendedor.user_id', '=', 'v.ven_user')
+                ->leftJoin('users as usuario_registro', 'usuario_registro.user_id', '=', 'dp.det_pago_usuario_registro')
+                ->select(
+                    'dp.det_pago_id as cja_id', // Usamos ID de detalle pago
+                    'dp.det_pago_fecha as cja_fecha',
+                    DB::raw("'VENTA' as cja_tipo"),
+                    'dp.det_pago_numero_autorizacion as cja_no_referencia',
+                    'dp.det_pago_observaciones as cja_observaciones',
+                    'dp.det_pago_monto as cja_monto',
+                    DB::raw("'EN_TIENDA' as cja_situacion"), // Estado virtual
+                    'v.ven_id as cja_id_venta',
+                    DB::raw("'Efectivo' as metodo"), // Hardcoded o join con metodos
+                    
+                    // Cliente (misma lógica)
+                    DB::raw("
+                       CASE
+                           WHEN c.cliente_tipo = 3 AND c.cliente_nom_empresa IS NOT NULL THEN 
+                               CONCAT(
+                                   c.cliente_nom_empresa, 
+                                   ' | ', 
+                                   TRIM(CONCAT_WS(' ', 
+                                       COALESCE(c.cliente_nombre1, ''), 
+                                       COALESCE(c.cliente_apellido1, '')
+                                   ))
+                               )
+                           WHEN c.cliente_id IS NOT NULL THEN 
+                               TRIM(CONCAT_WS(' ', 
+                                   COALESCE(c.cliente_nombre1, ''),
+                                   COALESCE(c.cliente_nombre2, ''),
+                                   COALESCE(c.cliente_apellido1, ''),
+                                   COALESCE(c.cliente_apellido2, '')
+                               ))
+                           ELSE NULL
+                       END as cliente_nombre
+                    "),
+                    DB::raw("COALESCE(c.cliente_nom_empresa, NULL) as cliente_empresa"),
+                    'c.cliente_tipo',
+                    'c.cliente_nit',
+                    
+                    // Vendedor
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(vendedor.user_primer_nombre, ''),
+                            COALESCE(vendedor.user_segundo_nombre, ''),
+                            COALESCE(vendedor.user_primer_apellido, ''),
+                            COALESCE(vendedor.user_segundo_apellido, '')
+                        )) as vendedor_nombre
+                    "),
+                    'v.ven_user as vendedor_id',
+                    
+                    // Usuario Registro
+                    DB::raw("
+                        TRIM(CONCAT_WS(' ',
+                            COALESCE(usuario_registro.user_primer_nombre, ''),
+                            COALESCE(usuario_registro.user_segundo_nombre, ''),
+                            COALESCE(usuario_registro.user_primer_apellido, ''),
+                            COALESCE(usuario_registro.user_segundo_apellido, '')
+                        )) as usuario_registro_nombre
+                    "),
+                    'dp.det_pago_usuario_registro as usuario_registro_id',
+                    'v.ven_total_vendido as venta_total'
+                )
+                ->where('dp.det_pago_metodo_pago', 1) // Efectivo
+                ->where('dp.det_pago_estado', 'VALIDO')
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                          ->from('pro_pagos_subidos as ps')
+                          ->whereColumn('ps.ps_venta_id', 'v.ven_id');
+                })
+                ->whereDate('dp.det_pago_fecha', '>=', $from)
+                ->whereDate('dp.det_pago_fecha', '<=', $to)
+                // Filtros adicionales si aplican
+                ->when($metodoId, function($qq) use ($metodoId) {
+                    // Si filtran por metodo != 1, esto no devuelve nada
+                    if ($metodoId != 1) return $qq->whereRaw('1 = 0');
+                })
+                ->when($situacion, function($qq) use ($situacion) {
+                    // Si filtran por situacion != EN_TIENDA, esto no devuelve nada?
+                    // O si filtran por ACTIVO, esto no debería salir.
+                    // Asumimos que si filtran por situacion, quieren ver solo esa situacion.
+                    // Como 'EN_TIENDA' no es standard, solo si no hay filtro o si el filtro es especial lo mostramos.
+                    // Pero el filtro viene del front. Si el front no tiene opcion 'EN_TIENDA', y filtra por 'ACTIVO', esto no debe salir.
+                    if ($situacion && $situacion !== 'EN_TIENDA') return $qq->whereRaw('1 = 0');
+                })
+                ->when($qParam, function ($qq) use ($qParam) {
+                     $qq->where(function ($sub) use ($qParam) {
+                        $sub->where('dp.det_pago_numero_autorizacion', 'like', "%{$qParam}%")
+                            ->orWhere('dp.det_pago_observaciones', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nombre1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_apellido1', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nom_empresa', 'like', "%{$qParam}%")
+                            ->orWhere('c.cliente_nit', 'like', "%{$qParam}%");
+                    });
+                });
+
+            // Unir consultas
+            $rows = $q->unionAll($qEnTienda)->orderBy('cja_fecha', 'desc')->get();
      
              // ⭐ Obtener productos vendidos por venta
              $ventaIds = $rows->pluck('cja_id_venta')->filter()->unique()->values()->all();

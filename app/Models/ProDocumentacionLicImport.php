@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ProDocumentacionLicImport extends Model
+class ProDocumentacionLicImport extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_documentacion_lic_import';
     protected $primaryKey = 'doclicimport_id';
 

@@ -95,15 +95,18 @@
             </button>
 
             @if (session('status') === 'password-updated')
-                <p
-                    x-data="{ show: true }"
-                    x-show="show"
-                    x-transition
-                    x-init="setTimeout(() => show = false, 2000)"
-                    class="text-sm font-medium text-green-600"
-                >
-                    Contraseña actualizada correctamente
-                </p>
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Contraseña actualizada correctamente',
+                            timer: 3000,
+                            timerProgressBar: true,
+                            showConfirmButton: false
+                        });
+                    });
+                </script>
             @endif
         </div>
     </form>

@@ -6,7 +6,30 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
-        /* REEMPLAZA SOLO TU SECCIÓN <style> CON ESTO */
+        /* Alerta Informativa de Pagos */
+        .payment-alert {
+            background-color: #eff6ff; /* blue-50 */
+            border-left: 4px solid #3b82f6; /* blue-500 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+        .payment-alert-content {
+            display: flex;
+        }
+        .payment-alert-icon {
+            flex-shrink: 0;
+            color: #3b82f6; /* blue-500 */
+        }
+        .payment-alert-text {
+            margin-left: 0.75rem;
+            font-size: 0.875rem; /* text-sm */
+            color: #1d4ed8; /* blue-700 */
+        }
+
+        /* Animaciones suaves */
+
 
         /* Animaciones suaves */
         @keyframes slideInUp {
@@ -209,9 +232,8 @@
     <!-- Encabezado -->
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Control de Pagos</h2>
-            <p class="text-gray-600 dark:text-gray-400">Aquí puedes ver todos los pagos, su estado y subir la transferencia del pago si
-                corresponde.</p>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Control de Pagos y Edición de Ventas</h2>
+            <p class="text-gray-600 dark:text-gray-400">Aquí puedes ver todos los pagos, su estado, subir transferencias y editar ventas pendientes.</p>
         </div>
         <div class="w-full md:w-64">
             <label for="filtroCliente" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtrar por Cliente</label>
@@ -398,6 +420,9 @@
                                 <option value="">— Selecciona el banco —</option>
                                 <option value="1">Banrural</option>
                                 <option value="2">Banco Industrial</option>
+                                <option value="3">G&T Continental</option>
+                                <option value="4">BAM</option>
+                                <option value="5">Interbanco</option>
                             </select>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Este banco se usará para validar el comprobante.</p>
                         </div>
@@ -480,8 +505,55 @@
                     <div id="formWrap" class="hidden">
                         <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-6">
                             <div class="flex items-center mb-4">
-                                <div class="bg-violet-500 p-2 rounded-lg mr-3">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Alerta Informativa: Corrección de Pagos -->
+        <div class="payment-alert">
+            <div class="payment-alert-content">
+                <div class="payment-alert-icon">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="payment-alert-text">
+                    <p><strong>¿Necesitas cambiar un método de pago?</strong></p>
+                    <p class="mt-1">
+                        Si te equivocaste al subir un pago, sigue estos pasos:
+                        <br>
+                        1. Haz clic en <strong>"Ver Detalles"</strong> del pago incorrecto.
+                        <br>
+                        2. Selecciona la opción <strong>"Corregir / Eliminar"</strong> para borrar el método de pago actual.
+                        <br>
+                        3. Una vez eliminado, podrás seleccionar y subir el <strong>nuevo método de pago</strong> correcto.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerta Informativa: Anulación de Ventas -->
+        <div class="payment-alert" style="background-color: #fef2f2; border-left-color: #ef4444;">
+            <div class="payment-alert-content">
+                <div class="payment-alert-icon" style="color: #ef4444;">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div class="payment-alert-text" style="color: #b91c1c;">
+                    <p><strong>¿Necesitas Anular una Venta?</strong></p>
+                    <p class="mt-1">
+                        Para anular una venta, deben cumplirse estas condiciones:
+                        <br>
+                        • La venta <strong>NO</strong> debe estar facturada.
+                        <br>
+                        • El pago <strong>NO</strong> debe haber sido validado aún.
+                        <br>
+                        • Si ya existe un método de pago registrado, debes <strong>eliminarlo primero</strong> aquí antes de poder anular la venta.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->                          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
                                         </path>
@@ -584,5 +656,136 @@
             <button id="btnSubirPago" type="button" class="hidden"></button>
         </div>
     </div>
+
+    <!-- Template para Selección de Método de Pago (Estilo Ventas) -->
+    <template id="payment-method-template">
+        <div class="text-left">
+            <div class="grid gap-2" id="listaMetodosPago">
+                @if(isset($metodopago))
+                    @foreach ($metodopago as $metodo)
+                        @if(strtolower($metodo->metpago_descripcion) !== 'saldo a favor')
+                        <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="radio" name="metodoPago" value="{{ $metodo->metpago_id }}" class="mr-3 w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <i class="fas fa-credit-card mr-3 text-blue-600 text-lg"></i>
+                            <span class="text-base font-medium text-gray-700">{{ $metodo->metpago_descripcion }}</span>
+                        </label>
+                        @endif
+                    @endforeach
+                @endif
+            </div>
+
+            <!-- Contenedor dinámico para detalles del método -->
+            <div id="detallesMetodoContainer" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hidden">
+                
+                <!-- Autorización (para métodos 1–5 excepto efectivo) -->
+                <div id="autorizacionContainer" class="hidden space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 border-b pb-2 mb-2">Detalles del Pago</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Banco</label>
+                            <select id="selectBanco" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="">Seleccione un banco</option>
+                                <option value="banrural">Banrural</option>
+                                <option value="banco_industrial">Banco Industrial</option>
+                                <option value="banco_bam">Banco BAM</option>
+                                <option value="banco_gyt">Banco GYT</option>
+                                <option value="interbanco">Interbanco</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+                            <input type="datetime-local" id="fechaPago" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">No. Autorización / Cheque</label>
+                            <input type="text" id="numeroAutorizacion" placeholder="Ej: 123456" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Comprobante (Opcional)</label>
+                            <input type="file" id="comprobantePago" accept="image/*,application/pdf" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagos en cuotas (para método 6) -->
+                <div id="cuotasContainer" class="hidden space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 border-b pb-2 mb-2">Configuración de Cuotas</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Abono -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Abono Inicial (Opcional)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-500 text-sm">Q</span>
+                                <input type="number" id="abonoInicial" step="0.01" min="0" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 text-right" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <!-- Método de Abono -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Método de Abono</label>
+                            <select id="metodoAbono" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Detalles extra para abono (si no es efectivo) -->
+                    <div id="detallesAbonoContainer" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-white rounded border border-gray-200">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Banco (Abono)</label>
+                            <select id="bancoAbono" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                <option value="">Seleccione...</option>
+                                <option value="banrural">Banrural</option>
+                                <option value="banco_industrial">Banco Industrial</option>
+                                <option value="banco_bam">Banco BAM</option>
+                                <option value="banco_gyt">Banco GYT</option>
+                                <option value="interbanco">Interbanco</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">No. Autorización</label>
+                            <input type="text" id="authAbono" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-2 pt-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Cantidad de Cuotas</label>
+                            <input type="number" id="cuotasNumero" min="2" max="48" value="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button type="button" id="btnCalcularCuotas" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors h-[38px]">
+                            <i class="fas fa-calculator mr-1"></i> Calcular
+                        </button>
+                    </div>
+
+                    <!-- Resumen de Cuotas -->
+                    <div id="resumenCuotas" class="hidden mt-3 p-3 bg-blue-50 rounded border border-blue-100 text-sm text-blue-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <span>Monto Total:</span>
+                            <span class="font-bold" id="lblMontoTotal">Q0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span>Abono Inicial:</span>
+                            <span class="font-bold text-green-600" id="lblAbono">-Q0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-blue-200 pt-1 mt-1">
+                            <span>Saldo a Financiar:</span>
+                            <span class="font-bold" id="lblSaldoFinanciar">Q0.00</span>
+                        </div>
+                        <div class="mt-2 text-center font-medium bg-white p-2 rounded border border-blue-100 shadow-sm">
+                            <span id="lblDetalleCuotas">3 cuotas de Q0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    @include('ventas.partials.modal_editar_venta')
 @endsection
-@vite('resources/js/pagos/mispagos.js')
+
+@section('scripts')
+    @vite('resources/js/pagos/mispagos.js')
+@endsection

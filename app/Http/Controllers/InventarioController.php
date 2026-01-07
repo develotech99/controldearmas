@@ -375,9 +375,17 @@ public function egresar(Request $request): JsonResponse
 
     } catch (\Exception $e) {
         DB::rollBack();
+        
+        $msg = 'Error al procesar egreso.';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ' ' . $e->getMessage();
+        }
+        
         return response()->json([
             'success' => false,
-            'message' => 'Error al procesar egreso: ' . $e->getMessage()
+            'message' => $msg
         ], 500);
     }
 }
@@ -610,7 +618,7 @@ public function getPaisesActivos(): JsonResponse
              'producto_es_importado' => 'boolean',
              'producto_stock_minimo' => 'nullable|integer|min:0',
              'producto_stock_maximo' => 'nullable|integer|min:0',
-             'fotos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+             'fotos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,heic,heif|max:2048',
      
              // VALIDACIONES DE PRECIOS (OPCIONALES EN REGISTRO)
              'agregar_precios' => 'nullable|boolean',
@@ -690,12 +698,20 @@ public function getPaisesActivos(): JsonResponse
              ]);
      
          } catch (\Exception $e) {
-             DB::rollback();
-             return response()->json([
-                 'success' => false,
-                 'message' => 'Error al registrar producto: ' . $e->getMessage()
-             ], 500);
-         }
+            DB::rollback();
+            
+            $msg = 'Error al registrar producto.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => $msg
+            ], 500);
+        }
      }
      
     /**
@@ -814,23 +830,40 @@ public function getPaisesActivos(): JsonResponse
                     ], 422);
                 }
     
-                // CORRECCIÓN: Verificar series duplicadas SOLO EN EL MISMO PRODUCTO
-                $seriesExistentes = SerieProducto::whereIn('serie_numero_serie', $series)
-                    ->where('serie_producto_id', $producto->producto_id) // ← LÍNEA CRÍTICA AGREGADA
-                    ->where('serie_situacion', 1) // Solo series activas
-                    ->select('serie_numero_serie')
-                    ->get();
-                
-                if ($seriesExistentes->isNotEmpty()) {
-                    $seriesDuplicadas = $seriesExistentes->pluck('serie_numero_serie');
+            // CORRECCIÓN: Verificar series duplicadas SOLO EN EL MISMO PRODUCTO
+            $seriesExistentes = SerieProducto::with(['movimientos.usuario'])
+                ->whereIn('serie_numero_serie', $series)
+                ->where('serie_producto_id', $producto->producto_id)
+                ->where('serie_situacion', 1)
+                ->get();
+            
+            if ($seriesExistentes->isNotEmpty()) {
+                $detallesDuplicados = $seriesExistentes->map(function ($serie) {
+                    // Buscar el primer movimiento (ingreso)
+                    $primerMovimiento = $serie->movimientos->sortBy('mov_fecha')->first();
+                    $usuarioNombre = $primerMovimiento && $primerMovimiento->usuario 
+                        ? $primerMovimiento->usuario->name . ' ' . $primerMovimiento->usuario->apellido 
+                        : 'Usuario desconocido';
                     
-                    DB::rollback();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Las siguientes series ya existen en este producto: ' . $seriesDuplicadas->implode(', '),
-                        'series_duplicadas' => $seriesDuplicadas->toArray()
-                    ], 422);
-                }
+                    return [
+                        'serie' => $serie->serie_numero_serie,
+                        'fecha_ingreso' => $serie->serie_fecha_ingreso ? $serie->serie_fecha_ingreso->format('d/m/Y H:i') : 'N/A',
+                        'usuario' => $usuarioNombre,
+                        'estado' => $serie->serie_estado,
+                        'observaciones' => $serie->serie_observaciones ?? 'Sin observaciones'
+                    ];
+                });
+
+                $seriesDuplicadas = $seriesExistentes->pluck('serie_numero_serie');
+                
+                DB::rollback();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Una o más series ya existen para este producto.',
+                    'series_duplicadas' => $seriesDuplicadas->toArray(),
+                    'detalles_duplicados' => $detallesDuplicados->toArray()
+                ], 422);
+            }
     
                 // CREAR UN MOVIMIENTO POR CADA SERIE
                 foreach ($series as $numeroSerie) {
@@ -974,11 +1007,52 @@ public function getPaisesActivos(): JsonResponse
                 ]
             ]);
     
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Database\QueryException $e) {
             DB::rollback();
+            
+            if ($e->getCode() == 23000) {
+                // Duplicate entry error
+                if (str_contains($e->getMessage(), 'unique_serie_per_product')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error: Una o más series ya existen para este producto. Verifique los números de serie.'
+                    ], 422);
+                }
+                if (str_contains($e->getMessage(), 'pro_lotes_lote_codigo_unique')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error: El código de lote ya existe. Intente con otro código.'
+                    ], 422);
+                }
+                 if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                     // Generic duplicate entry fallback
+                      preg_match("/Duplicate entry '(.*)' for key/", $e->getMessage(), $matches);
+                      $value = $matches[1] ?? 'valor duplicado';
+                      return response()->json([
+                        'success' => false,
+                        'message' => "Error: Registro duplicado detectado ($value). Verifique que no esté ingresando datos ya existentes."
+                    ], 422);
+                 }
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar ingreso: ' . $e->getMessage()
+                'message' => 'Error de base de datos: ' . $e->getMessage()
+            ], 500);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            $msg = 'Error al procesar ingreso.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => $msg
             ], 500);
         }
     }
@@ -1386,7 +1460,7 @@ private function procesarPreciosIngreso(Request $request, $productoId, $movimien
 public function subirFotos(Request $request, $productoId): JsonResponse
 {
     $validator = Validator::make($request->all(), [
-        'fotos.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'fotos.*' => 'required|image|mimes:jpg,jpeg,png,webp,heic,heif|max:2048',
     ]);
 
     if ($validator->fails()) {
@@ -1826,12 +1900,14 @@ public function buscarLicencias(Request $request): JsonResponse
         $licencias = DB::table('pro_licencias_para_importacion')
             // ->where('lipaimp_situacion', 2) // Solo autorizadas
             ->where(function($q) use ($query) {
-                $q->where('lipaimp_poliza', 'LIKE', "%{$query}%")
+                $q->where('lipaimp_numero', 'LIKE', "%{$query}%")
+                  ->orWhere('lipaimp_poliza', 'LIKE', "%{$query}%")
                   ->orWhere('lipaimp_descripcion', 'LIKE', "%{$query}%");
             })
             ->whereDate('lipaimp_fecha_vencimiento', '>=', now()) // No vencidas
             ->select([
                 'lipaimp_id',
+                'lipaimp_numero',
                 'lipaimp_poliza', 
                 'lipaimp_descripcion',
                 'lipaimp_fecha_vencimiento'

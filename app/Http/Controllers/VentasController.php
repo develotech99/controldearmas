@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\MetodoPago;
 use App\Models\Clientes;
 use App\Models\ProCliente;
-
+use Carbon\Carbon; 
 use App\Models\Producto;
 use App\Models\SerieProducto;
 use App\Models\Lote;
@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Models\Ventas;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NotificarpagoMail;
 
 
 
@@ -51,10 +54,15 @@ class VentasController extends Controller
         $nit = trim($request->query('nit', ''));
         $dpi = trim($request->query('dpi', ''));
 
-        $clientes = DB::table('pro_clientes')
+        $clientes = Clientes::with(['empresas', 'saldo'])
             ->where('cliente_situacion', 1)
             ->when($nit, function ($q) use ($nit) {
-                $q->where('cliente_nit', $nit);
+                $q->where(function ($query) use ($nit) {
+                    $query->where('cliente_nit', $nit)
+                          ->orWhereHas('empresas', function ($q2) use ($nit) {
+                              $q2->where('emp_nit', $nit);
+                          });
+                });
             })
             ->when($dpi, function ($q) use ($dpi) {
                 $q->where('cliente_dpi', $dpi);
@@ -75,6 +83,8 @@ class VentasController extends Controller
 
         return response()->json($clientes);
     }
+
+
 
 
     public function getSubcategorias($categoria_id)
@@ -144,59 +154,75 @@ class VentasController extends Controller
         $calibre_id = trim($request->query('calibre_id', ''));
         $busqueda = trim($request->query('busqueda', ''));
 
+        // Subquery para obtener el ÚLTIMO precio activo por producto
+        $latestPrices = DB::table('pro_precios')
+            ->select('precio_producto_id', DB::raw('MAX(precio_id) as max_id'))
+            ->where('precio_situacion', 1)
+            ->groupBy('precio_producto_id');
+
         $productos = DB::table('pro_productos')
-            ->leftJoin('pro_precios', 'producto_id', '=', 'precio_producto_id')
-            ->Join('pro_categorias', 'producto_categoria_id', '=', 'categoria_id')
-            ->Join('pro_subcategorias', 'producto_subcategoria_id', '=', 'subcategoria_id')
-            ->leftJoin('pro_marcas', 'producto_marca_id', '=', 'marca_id')
-            ->leftJoin('pro_modelo', 'producto_modelo_id', '=', 'modelo_id')
-            ->leftJoin('pro_calibres', 'producto_calibre_id', '=', 'calibre_id')
-            ->leftJoin('pro_paises', 'producto_madein', '=', 'pais_id')
-            ->leftJoin('pro_stock_actual', 'stock_producto_id', '=', 'producto_id')
-            ->leftJoin('pro_productos_fotos', function ($join) {
-                $join->on('producto_id', '=', 'foto_producto_id')
-                    ->where('foto_principal', 1);
+            // Join con la subquery para obtener el ID del precio más reciente
+            ->leftJoinSub($latestPrices, 'lp', function ($join) {
+                $join->on('pro_productos.producto_id', '=', 'lp.precio_producto_id');
             })
-            ->where('producto_situacion', 1)
-            ->when($categoria_id, fn($q) => $q->where('categoria_id', $categoria_id))
-            ->when($subcategoria_id, fn($q) => $q->where('subcategoria_id', $subcategoria_id))
-            ->when($marca_id, fn($q) => $q->where('marca_id', $marca_id))
-            ->when($modelo_id, fn($q) => $q->where('modelo_id', $modelo_id))
-            ->when($calibre_id, fn($q) => $q->where('calibre_id', $calibre_id))
-            ->when($busqueda, function ($q) use ($busqueda) {
-                $q->where(function ($query) use ($busqueda) {
-                    $query->where('producto_nombre', 'like', "%{$busqueda}%")
-                        ->orWhere('marca_descripcion', 'like', "%{$busqueda}%")
-                        ->orWhere('modelo_descripcion', 'like', "%{$busqueda}%")
-                        ->orWhere('calibre_nombre', 'like', "%{$busqueda}%");
-                });
+            // Join con la tabla de precios usando ese ID específico
+            ->leftJoin('pro_precios', 'pro_precios.precio_id', '=', 'lp.max_id')
+            
+            ->join('pro_categorias', 'pro_productos.producto_categoria_id', '=', 'pro_categorias.categoria_id')
+            ->join('pro_subcategorias', 'pro_productos.producto_subcategoria_id', '=', 'pro_subcategorias.subcategoria_id')
+            ->leftJoin('pro_marcas', 'pro_productos.producto_marca_id', '=', 'pro_marcas.marca_id')
+            ->leftJoin('pro_modelo', 'pro_productos.producto_modelo_id', '=', 'pro_modelo.modelo_id')
+            ->leftJoin('pro_calibres', 'pro_productos.producto_calibre_id', '=', 'pro_calibres.calibre_id')
+            ->leftJoin('pro_stock_actual', 'pro_stock_actual.stock_producto_id', '=', 'pro_productos.producto_id')
+            ->leftJoin('pro_productos_fotos', function ($join) {
+                $join->on('pro_productos.producto_id', '=', 'pro_productos_fotos.foto_producto_id')
+                    ->where('pro_productos_fotos.foto_principal', '=', 1);
             })
             ->select(
-                'producto_id',
-                'producto_nombre',
-                'producto_descripcion',
-                'producto_categoria_id',
-                'categoria_nombre',
-                'producto_subcategoria_id',
-                'subcategoria_nombre',
-                'producto_marca_id',
-                'marca_descripcion',
-                'producto_modelo_id',
-                'modelo_descripcion',
-                'producto_calibre_id',
-                'calibre_nombre',
-                'pais_descripcion',
-                'producto_situacion',
-                'producto_requiere_serie',
-                'precio_venta',
-                'precio_venta_empresa',
-                'foto_url',
-                'stock_cantidad_total',
-                'stock_cantidad_reservada',
-                'stock_cantidad_reservada2',
-                'producto_requiere_stock'
+                'pro_productos.producto_id',
+                'pro_productos.producto_nombre',
+                'pro_productos.pro_codigo_sku',
+                'pro_productos.producto_codigo_barra',
+                'pro_productos.producto_requiere_serie',
+                'pro_productos.producto_requiere_stock',
+                'pro_categorias.categoria_nombre',
+                'pro_subcategorias.subcategoria_nombre',
+                'pro_marcas.marca_descripcion',
+                'pro_modelo.modelo_descripcion',
+                'pro_calibres.calibre_nombre',
+                'pro_precios.precio_venta',
+                'pro_precios.precio_venta_empresa',
+                'pro_stock_actual.stock_cantidad_total',
+                'pro_stock_actual.stock_cantidad_disponible',
+                'pro_productos_fotos.foto_url'
             )
-            ->orderBy('producto_nombre')
+            ->where('pro_productos.producto_situacion', 1);
+
+        if ($categoria_id) {
+            $productos->where('pro_productos.producto_categoria_id', $categoria_id);
+        }
+        if ($subcategoria_id) {
+            $productos->where('pro_productos.producto_subcategoria_id', $subcategoria_id);
+        }
+        if ($marca_id) {
+            $productos->where('pro_productos.producto_marca_id', $marca_id);
+        }
+        if ($modelo_id) {
+            $productos->where('pro_productos.producto_modelo_id', $modelo_id);
+        }
+        if ($calibre_id) {
+            $productos->where('pro_productos.producto_calibre_id', $calibre_id);
+        }
+        if ($busqueda) {
+            $productos->where(function ($q) use ($busqueda) {
+                $q->where('pro_productos.producto_nombre', 'like', '%' . $busqueda . '%')
+                    ->orWhere('pro_productos.pro_codigo_sku', 'like', '%' . $busqueda . '%')
+                    ->orWhere('pro_productos.producto_codigo_barra', 'like', '%' . $busqueda . '%');
+            });
+        }
+
+        $productos = $productos->orderBy('pro_productos.producto_nombre', 'asc')
+            ->limit(50)
             ->get();
 
         // Series + LOTES (igual que series, pero para pro_lotes)
@@ -344,380 +370,453 @@ public function guardarCliente(Request $request)
             'data' => $request->except('cliente_pdf_licencia')
         ]);
 
+        $msg = 'Error al guardar el cliente';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ': ' . $e->getMessage();
+        }
+
         return response()->json([
             'codigo' => 0,
-            'mensaje' => 'Error al guardar el cliente',
-            'detalle' => $e->getMessage()
+            'mensaje' => $msg,
+            'detalle' => config('app.debug') ? $e->getMessage() : null
         ], 500);
     }
 }
 
 
+    public function obtenerVentasPendientes(Request $request)
+    {
+        try {
+            $fechaDesde = $request->query('fecha_desde');
+            $fechaHasta = $request->query('fecha_hasta');
+            $vendedorId = $request->query('vendedor_id');
+            $clienteId = $request->query('cliente_id');
 
+            $query = DB::table('pro_ventas as v')
+                ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->whereIn('v.ven_situacion', ['PENDIENTE', 'EDITABLE', 'AUTORIZADA', 'CANCELADA'])
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_total_vendido',
+                    'v.ven_situacion',
+                    'c.cliente_nombre1',
+                    'c.cliente_apellido1',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre',
+                    'u.user_primer_apellido'
+                );
 
+            if ($fechaDesde) {
+                $query->whereDate('v.ven_fecha', '>=', $fechaDesde);
+            }
 
-    ///hecho por morales batz 
+            if ($fechaHasta) {
+                $query->whereDate('v.ven_fecha', '<=', $fechaHasta);
+            }
 
-public function obtenerVentasPendientes(Request $request): JsonResponse
-{
-    try {
-        $clienteId = $request->input('cliente_id');
-        $vendedorId = $request->input('vendedor_id');
+            if ($vendedorId) {
+                $query->where('v.ven_user', $vendedorId);
+            }
 
-        $query = "
-        SELECT 
-            v.ven_id,
-            precio.precio_venta,
-            precio.precio_venta_empresa,
-            v.ven_user,
-            d.det_producto_id,
-            d.det_ven_id,
-            v.ven_fecha,
-            
-            TRIM(
-                CONCAT_WS(' ',
-                    TRIM(c.cliente_nombre1),
-                    TRIM(c.cliente_nombre2),
-                    TRIM(c.cliente_apellido1),
-                    TRIM(c.cliente_apellido2)
-                )
-            ) AS cliente,
-            CASE 
-                WHEN c.cliente_nom_empresa IS NULL OR c.cliente_nom_empresa = ''
-                    THEN 'Cliente Individual'
-                ELSE c.cliente_nom_empresa
-            END AS empresa,
-            TRIM(
-                CONCAT_WS(' ',
-                    TRIM(u.user_primer_nombre),
-                    TRIM(u.user_segundo_nombre),
-                    TRIM(u.user_primer_apellido),
-                    TRIM(u.user_segundo_apellido)
-                )
-            ) AS vendedor,
-            GROUP_CONCAT(DISTINCT p.producto_nombre SEPARATOR ', ') AS productos,
-                        
-            GROUP_CONCAT(DISTINCT mov.mov_serie_id ORDER BY mov.mov_serie_id SEPARATOR ',') AS series_ids,
-            GROUP_CONCAT(DISTINCT serie.serie_numero_serie ORDER BY serie.serie_numero_serie SEPARATOR ',') AS series_numeros,
-            GROUP_CONCAT(DISTINCT mov.mov_lote_id ORDER BY mov.mov_lote_id SEPARATOR ',') AS lotes_ids,
-            
-            GROUP_CONCAT(
-                DISTINCT CONCAT(mov.mov_lote_id, ' (', mov.mov_cantidad, ')')
-                ORDER BY mov.mov_lote_id SEPARATOR ', '
-            ) AS lotes_display,
-            
-            GROUP_CONCAT(
-                DISTINCT CONCAT(mov.mov_serie_id, ' (', mov.mov_cantidad, ')')
-                ORDER BY mov.mov_serie_id SEPARATOR ', '
-            ) AS series_display,
-            
-            v.ven_total_vendido,
-            v.ven_situacion
-        FROM pro_detalle_ventas d
-        INNER JOIN pro_ventas v ON v.ven_id = d.det_ven_id
-        INNER JOIN users u ON u.user_id = v.ven_user
-        INNER JOIN pro_clientes c ON c.cliente_id = v.ven_cliente
-        INNER JOIN pro_productos p ON d.det_producto_id = p.producto_id
-        inner join pro_precios precio on precio.precio_producto_id = p.producto_id
-        LEFT JOIN pro_movimientos mov ON mov.mov_producto_id = d.det_producto_id
-            AND mov.mov_situacion = 3
-            AND mov.mov_documento_referencia = CONCAT('VENTA-', v.ven_id)
-        LEFT JOIN pro_series_productos serie ON serie.serie_id = mov.mov_serie_id
-        WHERE d.det_situacion = 'PENDIENTE'
-            AND v.ven_situacion = 'PENDIENTE'
-        ";
+            if ($clienteId) {
+                $query->where('v.ven_cliente', $clienteId);
+            }
 
-        $bindings = [];
+            $ventas = $query->groupBy('v.ven_id')->orderBy('v.ven_fecha', 'desc')->get();
 
-        if ($clienteId) {
-            $query .= " AND v.ven_cliente = ?";
-            $bindings[] = $clienteId;
+            // Transform data for frontend
+            $data = $ventas->map(function ($venta) {
+                $detalles = DB::table('pro_detalle_ventas as d')
+                    ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                    ->where('d.det_ven_id', $venta->ven_id)
+                    ->select('d.det_id', 'd.det_producto_id', 'p.producto_nombre', 'd.det_cantidad')
+                    ->get();
+
+                // Fetch series/lotes if needed
+                $detalles->transform(function ($det) use ($venta) {
+                    $det->series = DB::table('pro_movimientos as m')
+                        ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                        ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                        ->where('m.mov_producto_id', $det->det_producto_id)
+                        ->pluck('s.serie_numero_serie')
+                        ->toArray();
+                    
+                    $det->lotes = []; 
+
+                    return $det;
+                });
+
+                $clienteNombre = trim("{$venta->cliente_nombre1} {$venta->cliente_apellido1}");
+                $vendedorNombre = trim("{$venta->user_primer_nombre} {$venta->user_primer_apellido}");
+
+                return [
+                    'ven_id' => $venta->ven_id,
+                    'ven_fecha' => $venta->ven_fecha,
+                    'cliente' => $clienteNombre,
+                    'empresa' => $venta->cliente_nom_empresa,
+                    'vendedor' => $vendedorNombre ?: 'Sin asignar',
+                    'ven_total_vendido' => $venta->ven_total_vendido,
+                    'ven_situacion' => $venta->ven_situacion,
+                    'total_items' => $detalles->sum('det_cantidad'),
+                    'productos_resumen' => $detalles->pluck('producto_nombre')->join(', '),
+                    'detalles' => $detalles
+                ];
+            });
+
+            return response()->json(['success' => true, 'data' => $data]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching pending sales: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        if ($vendedorId) {
-            $query .= " AND v.ven_user = ?";
-            $bindings[] = $vendedorId;
-        }
-
-        $query .= "
-        GROUP BY 
-            v.ven_id,
-            v.ven_fecha,
-            v.ven_user,
-            d.det_producto_id,
-            d.det_ven_id,
-            v.ven_total_vendido,
-            v.ven_situacion,
-            c.cliente_nombre1,
-            c.cliente_nombre2,
-            c.cliente_apellido1,
-            c.cliente_apellido2,
-            c.cliente_nom_empresa,
-            u.user_primer_nombre,
-            u.user_segundo_nombre,
-            u.user_primer_apellido,
-            u.user_segundo_apellido,
-            precio.precio_venta,
-            precio.precio_venta_empresa
-        ORDER BY v.ven_fecha DESC
-        ";
-
-        $ventas = DB::select($query, $bindings);
-
-        $ventasProcesadas = array_map(function ($venta) {
-            return [
-                'precio_venta' => $venta->precio_venta,
-                'precio_venta_empresa' => $venta->precio_venta_empresa,
-                'ven_id' => $venta->ven_id,
-                'ven_user' => $venta->ven_user,
-                'det_producto_id' => $venta->det_producto_id,
-                'det_ven_id' => $venta->det_ven_id,
-                'ven_fecha' => $venta->ven_fecha,
-                'cliente' => $venta->cliente,
-                'empresa' => $venta->empresa,
-                'vendedor' => $venta->vendedor,
-                'productos' => $venta->productos,
-                'lotes_ids' => $venta->lotes_ids ?? '',
-                'series_ids' => $venta->series_ids ?? '',
-                'series_numeros' => $venta->series_numeros ?? '', // 👈 nuevo campo
-                'lotes_display' => $venta->lotes_display ?? '',
-                'series_display' => $venta->series_display ?? '',
-                'ven_total_vendido' => $venta->ven_total_vendido,
-                'ven_situacion' => $venta->ven_situacion
-            ];
-        }, $ventas);
-
-        return response()->json([
-            'success' => true,
-            'total' => count($ventasProcesadas),
-            'data' => $ventasProcesadas,
-            'filtros_aplicados' => [
-                'cliente_id' => $clienteId,
-                'vendedor_id' => $vendedorId
-            ]
-        ]);
-
-    } catch (QueryException $e) {
-        Log::error('Pendientes SQL', [
-            'sql' => $e->getSql(),
-            'bindings' => $e->getBindings(),
-            'info' => $e->errorInfo
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Error SQL en pendientes: ' . $e->getMessage(),
-        ], 500);
-
-    } catch (\Throwable $e) {
-        Log::error('Pendientes error', ['err' => $e]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Error en pendientes: ' . $e->getMessage(),
-        ], 500);
     }
-}
-
 
     public function autorizarVenta(Request $request): JsonResponse
     {
-
-
         $venId = (int) $request->input('ven_id');
-        $venUser = (int) $request->input('ven_user');
-        $detProductoId = (int) $request->input('det_producto_id');
-        $productoId = (int) $request->input('producto_id', $detProductoId);
-
-        $seriesIds = collect($request->input('series_ids', []))
-            ->map(fn($v) => (int) $v)->filter()->unique()->values();
-
-        $lotesIds = collect($request->input('lotes_ids', []))
-            ->map(fn($v) => (int) $v)->filter()->unique()->values();
-
-        $tipo = $request->input('tipo', 'finalizar'); // 'finalizar' (default) o 'solo_autorizar'
-
-        $qtyTotal = 0;
-        $detallesProcesados = [];
+        $tipo = $request->input('tipo', 'facturar'); // 'facturar' or 'sin_facturar'
 
         try {
-            DB::transaction(function () use ($venId, $venUser, $productoId, $seriesIds, $lotesIds, &$qtyTotal, &$detallesProcesados, $tipo) {
-                
-                // Si es SOLO AUTORIZAR
-                if ($tipo === 'solo_autorizar') {
-                    // Solo cambiamos estado a AUTORIZADA
-                    // NO descontamos stock (sigue reservado)
-                    // NO cambiamos estado de series/lotes (siguen reservados)
-                    
-                    $affected = DB::table('pro_ventas')
-                        ->where('ven_id', $venId)
-                        ->where('ven_user', $venUser)
-                        ->update(['ven_situacion' => 'AUTORIZADA']);
+            DB::transaction(function () use ($venId, $tipo) {
+                $venta = \App\Models\ProVenta::with('detalleVentas.producto')->findOrFail($venId);
 
-                    if ($affected === 0) {
-                        // Verificar si ya estaba autorizada o no existe
-                        $venta = DB::table('pro_ventas')->where('ven_id', $venId)->first();
-                        if (!$venta) throw new \RuntimeException('Venta no encontrada.');
-                        if ($venta->ven_situacion === 'AUTORIZADA') {
-                            // Ya estaba autorizada, no es error critico
-                        } else {
-                            throw new \RuntimeException('No se pudo autorizar la venta (estado actual: ' . $venta->ven_situacion . ').');
+                if (!in_array($venta->ven_situacion, ['PENDIENTE', 'EDITABLE'])) {
+                    throw new \Exception('La venta no está en estado PENDIENTE ni EDITABLE.');
+                }
+
+                // Determine new status
+                // 'sin_facturar' -> 'COMPLETADA' (Finalizada sin factura)
+                // 'facturar' -> 'AUTORIZADA' (Lista para facturar)
+                
+                $nuevoEstado = ($tipo === 'sin_facturar') ? 'COMPLETADA' : 'AUTORIZADA'; 
+
+                // Update Sale Status
+                $venta->ven_situacion = $nuevoEstado;
+                // Si es sin facturar, tal vez queramos guardar una nota
+                if ($tipo === 'sin_facturar') {
+                    $venta->ven_observaciones .= " [Autorizada sin facturar por " . auth()->user()->name . "]";
+                }
+                $venta->save();
+
+                // Update Details Status
+                foreach ($venta->detalleVentas as $detalle) {
+                    $detalle->det_situacion = 'ACTIVO';
+                    $detalle->save();
+
+                    // Stock Deduction Logic
+                    // SOLO SI ES 'sin_facturar'. Si es 'facturar', el descuento se hace al facturar.
+                    if ($tipo === 'sin_facturar' && $detalle->producto && $detalle->producto->producto_requiere_stock) {
+                        
+                        // Find reserved movements for this product in this sale
+                        $movimientos = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', "VENTA-{$venId}")
+                            ->where('mov_producto_id', $detalle->det_producto_id)
+                            ->where('mov_situacion', 3) // 3 = Reservado
+                            ->get();
+
+                        foreach ($movimientos as $mov) {
+                            // Update movement to finalized sale
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $mov->mov_id)
+                                ->update([
+                                    'mov_tipo' => 'venta',
+                                    'mov_situacion' => 1, // 1 = Active/Finalized
+                                    'mov_destino' => 'cliente',
+                                    'updated_at' => now()
+                                ]);
+
+                            // Update stock table
+                            $stock = DB::table('pro_stock_actual')
+                                ->where('stock_producto_id', $detalle->det_producto_id)
+                                ->first();
+
+                            if ($stock) {
+                                // Decrement reserved (release reservation)
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                                
+                                // Decrement physical stock (actual deduction)
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_total', $mov->mov_cantidad); // Corrected column
+
+                                DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_disponible', $mov->mov_cantidad); // Also decrement available if needed? 
+                                    // Wait, available was already decremented when reserved?
+                                    // Let's check logic:
+                                    // Reserve: Available -= X, Reserved += X
+                                    // Finalize: Reserved -= X, Total -= X. (Available stays same)
+                                    // BUT, if we are just releasing reservation and confirming sale:
+                                    // Total = Available + Reserved (Usually)
+                                    // If we reduce Reserved, we must reduce Total. Available is untouched because it was already reduced during reservation.
+                                    
+                                    // Let's verify StockActual model logic:
+                                    // reservar: disponible -= cant, reservada += cant.
+                                    // liberarReserva: reservada -= cant, disponible += cant.
+                                    // decrementar: total -= cant, disponible -= cant.
+                                    
+                                    // So here we are confirming a reservation.
+                                    // We need to:
+                                    // 1. Reduce Reserved (it's no longer reserved, it's sold).
+                                    // 2. Reduce Total (it left the building).
+                                    // 3. Available? It was already reduced when reserved. So we don't touch it.
+                                    
+                                    // HOWEVER, FacturacionController does:
+                                    // decrement('stock_cantidad_reservada', $mov->mov_cantidad);
+                                    // decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                                    // decrement('stock_cantidad_total', $mov->mov_cantidad);
+                                    
+                                    // This implies FacturacionController assumes the reservation didn't touch available? Or it's double counting?
+                                    // Let's look at procesarVenta again.
+                                    // procesarVenta:
+                                    // decrement('stock_cantidad_reservada2', $seriesCount); ??
+                                    // increment('stock_cantidad_reservada', $seriesCount);
+                                    // It does NOT touch available or total.
+                                    
+                                    // Wait, if procesarVenta only touches 'reservada', then 'disponible' is still high?
+                                    // No, usually 'disponible' is calculated or updated.
+                                    
+                                    // Let's check StockActual::actualizarDesdeMovimientos
+                                    // $this->stock_cantidad_disponible = max(0, $resumen['stock_calculado'] - $this->stock_cantidad_reservada);
+                                    
+                                    // So if we increase 'reservada', 'disponible' should decrease if we recalculate.
+                                    // But procesarVenta does manual increment.
+                                    
+                                    // If `procesarVenta` ONLY increments `reservada`, then `disponible` is WRONG until recalculated?
+                                    // Or does `disponible` column exist? Yes.
+                                    
+                                    // If `procesarVenta` does NOT decrement `disponible`, then `disponible` is wrong.
+                                    // Let's check `procesarVenta` again.
+                                    // It inserts a movement with `mov_situacion = 3` (Reserved).
+                                    // It increments `stock_cantidad_reservada`.
+                                    // It does NOT decrement `stock_cantidad_disponible`.
+                                    
+                                    // So, `disponible` currently includes the reserved amount?
+                                    // If `disponible` = `total` - `reservada`, then increasing `reservada` effectively decreases `disponible` IF calculated.
+                                    // But here we have physical columns.
+                                    
+                                    // If `FacturacionController` decrements ALL THREE, it means:
+                                    // Reserved -= X
+                                    // Available -= X
+                                    // Total -= X
+                                    
+                                    // This implies that BEFORE this:
+                                    // Reserved had X.
+                                    // Available had X (it was not deducted yet?).
+                                    // Total had X.
+                                    
+                                    // If `procesarVenta` only increments `reservada`, then `disponible` still has the stock.
+                                    // So `FacturacionController` is correct to decrement `disponible`.
+                                    
+                                    // So I should follow `FacturacionController` pattern:
+                                    // Decrement Reserved.
+                                    // Decrement Available.
+                                    // Decrement Total.
+                                    
+                                    DB::table('pro_stock_actual')
+                                    ->where('stock_producto_id', $detalle->det_producto_id)
+                                    ->decrement('stock_cantidad_disponible', $mov->mov_cantidad);
+                            }
+                            
+                            // Update Series/Lotes status
+                            if ($mov->mov_serie_id) {
+                                DB::table('pro_series_productos')
+                                    ->where('serie_id', $mov->mov_serie_id)
+                                    ->update([
+                                        'serie_estado' => 'vendido',
+                                        'serie_situacion' => 1,
+                                        'updated_at' => now()
+                                    ]);
+                            }
+                            
+                            if ($mov->mov_lote_id) {
+                                 // Lotes are already deducted from available in procesarVenta?
+                                 // Let's check procesarVenta for Lotes.
+                                 // decrement('lote_cantidad_disponible')
+                                 // decrement('lote_cantidad_total')
+                                 // increment('stock_cantidad_reservada')
+                                 
+                                 // So for Lotes, the LOTE table is updated.
+                                 // But the STOCK table only has 'reservada' incremented.
+                                 // So 'stock_cantidad_total' and 'stock_cantidad_disponible' in STOCK table are NOT updated in procesarVenta for lotes?
+                                 // Wait, `procesarVenta` for lotes:
+                                 // It does NOT touch `pro_stock_actual` total/disponible.
+                                 
+                                 // So yes, I must decrement them here too.
+                                 
+                                 // But wait, if I decrement `lote_cantidad_disponible` in `procesarVenta`, 
+                                 // and then I decrement `stock_cantidad_disponible` here...
+                                 // It seems consistent.
+                                 
+                                 // However, `FacturacionController` decrements `pro_lotes`?
+                                 // No, `FacturacionController` logic for lotes:
+                                 // It updates `pro_movimientos`.
+                                 // It decrements `pro_stock_actual` (reservada, disponible, total).
+                                 // It does NOT touch `pro_lotes`.
+                                 
+                                 // This means `procesarVenta` already handled `pro_lotes` deduction?
+                                 // Yes: `decrement('lote_cantidad_disponible')` in `procesarVenta`.
+                                 
+                                 // So here I just need to update `pro_stock_actual`.
+                            }
                         }
                     }
-                    
-                    // Detalles también a AUTORIZADA? O se quedan PENDIENTE? 
-                    // Mejor dejarlos PENDIENTE o AUTORIZADA para consistencia.
-                    // Usemos AUTORIZADA para indicar que ya pasó revisión.
-                    DB::table('pro_detalle_ventas')
-                        ->where('det_ven_id', $venId)
-                        ->update(['det_situacion' => 'AUTORIZADA']);
-
-                    $detallesProcesados[] = 'Venta marcada como AUTORIZADA. Stock permanece reservado.';
-                    return; 
                 }
-
-                // ==========================================
-                // FLUJO ORIGINAL (FINALIZAR / DESCONTAR STOCK)
-                // ==========================================
-
-                // Paso 1: Activar venta
-                $affected = DB::table('pro_ventas')
-                    ->where('ven_id', $venId)
-                    ->where('ven_user', $venUser)
-                    ->update(['ven_situacion' => 'ACTIVA']);
-
-                if ($affected === 0) {
-                    throw new \RuntimeException('No se pudo activar la venta (pro_ventas).');
-                }
-
-                // Paso 2: Activar detalles
-                DB::table('pro_detalle_ventas')
-                    ->where('det_ven_id', $venId)
-                    ->update(['det_situacion' => 'ACTIVO']);
-
-                $ref = 'VENTA-' . $venId;
-
-                // Paso 3: SERIES
-                if ($seriesIds->isNotEmpty()) {
-                    $seriesCantidades = DB::table('pro_movimientos')
-                        ->select('mov_serie_id', DB::raw('SUM(mov_cantidad) as qty'))
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 3)
-                        ->whereIn('mov_serie_id', $seriesIds)
-                        ->groupBy('mov_serie_id')
-                        ->pluck('qty', 'mov_serie_id');
-
-                    if ($seriesCantidades->isEmpty()) {
-                        throw new \RuntimeException('No se encontraron movimientos reservados para las series seleccionadas. La venta no puede finalizarse.');
-                    }
-
-                    if ($seriesCantidades->isNotEmpty()) {
-                        DB::table('pro_series_productos')
-                            ->whereIn('serie_id', $seriesCantidades->keys())
-                            ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
-
-                        DB::table('pro_movimientos')
-                            ->whereIn('mov_serie_id', $seriesCantidades->keys())
-                            ->where('mov_documento_referencia', $ref)
-                            ->where('mov_situacion', 3)
-                            ->update(['mov_situacion' => 1]);
-
-                        $sumaSeries = $seriesCantidades->sum();
-                        $qtyTotal += $sumaSeries;
-
-                        $detallesProcesados[] = 'Series procesadas: ' . $seriesCantidades
-                            ->map(fn($qty, $id) => "$id ($qty)")
-                            ->implode(', ');
-                    }
-                    
-                }
-                
-
-                // Paso 4: LOTES
-                if ($lotesIds->isNotEmpty()) {
-                    $lotesCantidades = DB::table('pro_movimientos')
-                        ->select('mov_lote_id', DB::raw('SUM(mov_cantidad) as qty'))
-                        ->where('mov_documento_referencia', $ref)
-                        ->where('mov_situacion', 3)
-                        ->whereIn('mov_lote_id', $lotesIds)
-                        ->groupBy('mov_lote_id')
-                        ->pluck('qty', 'mov_lote_id');
-
-                    if ($lotesCantidades->isNotEmpty()) {
-                        DB::table('pro_movimientos')
-                            ->whereIn('mov_lote_id', $lotesCantidades->keys())
-                            ->where('mov_documento_referencia', $ref)
-                            ->where('mov_situacion', 3)
-                            ->update(['mov_situacion' => 1]);
-
-                        $sumaLotes = $lotesCantidades->sum();
-                        $qtyTotal += $sumaLotes;
-
-                        $detallesProcesados[] = 'Lotes procesados: ' . $lotesCantidades
-                            ->map(fn($qty, $id) => "$id ($qty)")
-                            ->implode(', ');
-                    }
-                }
-
-                // ✅ FIX: Paso 4.5: STOCK GENERAL (Sin serie ni lote)
-                // Buscar movimientos reservados que NO tengan serie NI lote
-                $generalStockMovs = DB::table('pro_movimientos')
-                    ->where('mov_documento_referencia', $ref)
-                    ->where('mov_situacion', 3) // Reservado
-                    ->whereNull('mov_serie_id')
-                    ->whereNull('mov_lote_id')
-                    ->get();
-
-                foreach ($generalStockMovs as $mov) {
-                    // Confirmar movimiento
-                    DB::table('pro_movimientos')
-                        ->where('mov_id', $mov->mov_id)
-                        ->update(['mov_situacion' => 1]);
-
-                    // Sumar a qtyTotal para descontar de stock
-                    $qtyTotal += $mov->mov_cantidad;
-
-                    $detallesProcesados[] = "Stock general procesado: {$mov->mov_cantidad}";
-                }
-
-                // Paso 5: Actualizar stock
-                if ($qtyTotal > 0) {
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                         ->where('stock_cantidad_reservada', '>', 0)
-                        ->decrement('stock_cantidad_reservada', $qtyTotal);
-                    
-                
-
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                        ->decrement('stock_cantidad_disponible', $qtyTotal);
-
-                    DB::table('pro_stock_actual')
-                        ->where('stock_producto_id', $productoId)
-                        ->decrement('stock_cantidad_total', $qtyTotal);
-                }
-            }, 3);
+            });
 
             return response()->json([
-                'codigo' => 1,
-                'mensaje' => 'Venta autorizada exitosamente',
-                'meta' => [
-                        'qty_total' => $qtyTotal,
-                        'detalles' => $detallesProcesados,
-                        'ven_id' => $venId
-                    ],
+                'success' => true,
+                'message' => ($tipo === 'sin_facturar') 
+                    ? 'Venta autorizada sin facturación. Inventario actualizado.' 
+                    : 'Venta autorizada y lista para facturar. Inventario actualizado.'
             ]);
-        } catch (\Throwable $e) {
-            report($e);
+
+        } catch (\Exception $e) {
+            Log::error('Error autorizando venta: ' . $e->getMessage());
             return response()->json([
-                'codigo' => 0,
-                'mensaje' => 'No se pudo autorizar la venta.',
-                'detalle' => $e->getMessage(),
+                'success' => false,
+                'message' => 'Error al autorizar venta: ' . $e->getMessage()
             ], 500);
         }
     }
-public function actualizarLicencias(Request $request): JsonResponse
-{
-    try {
+    public function updateEditableSale(Request $request)
+    {
+        $venId = $request->input('ven_id');
+        $cambios = $request->input('cambios', []); // Array of { det_id, producto_id, old_serie_id, new_serie_id }
+
+        try {
+            DB::transaction(function () use ($venId, $cambios) {
+                $venta = ProVenta::findOrFail($venId);
+                
+                if ($venta->ven_situacion !== 'EDITABLE') {
+                    // throw new \Exception('La venta no está en estado EDITABLE.');
+                }
+
+                // 1. Validar Factura
+                $factura = DB::table('facturacion')
+                    ->where('fac_venta_id', $venId)
+                    ->where('fac_estado', '!=', 'ANULADO')
+                    ->first();
+
+                if ($factura) {
+                    throw new \Exception('No se puede editar una venta facturada. Debe anular la factura primero.');
+                }
+
+                // 2. Validar Pagos
+                $pago = DB::table('pro_pagos')->where('pago_venta_id', $venId)->first();
+                if ($pago) {
+                    $pagosValidados = DB::table('pro_detalle_pagos')
+                        ->where('det_pago_pago_id', $pago->pago_id)
+                        ->where('det_pago_estado', 'VALIDO')
+                        ->exists();
+                    
+                    if ($pagosValidados) {
+                        throw new \Exception('No se puede editar porque hay pagos validados. Primero debe eliminar el método de pago en la sección de Subir Pagos.');
+                    }
+                }
+
+                foreach ($cambios as $cambio) {
+                    // 1. Manejo de SERIES
+                    if (isset($cambio['old_serie_id']) && isset($cambio['new_serie_id'])) {
+                        // Validar que la nueva serie esté disponible
+                        $nuevaSerie = DB::table('pro_series_productos')
+                            ->where('serie_id', $cambio['new_serie_id'])
+                            ->where('serie_estado', 'disponible')
+                            ->first();
+                            
+                        if (!$nuevaSerie) {
+                            throw new \Exception("La serie seleccionada no está disponible.");
+                        }
+
+                        // Buscar el movimiento asociado a la serie anterior
+                        $movimiento = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', 'VENTA-' . $venId)
+                            ->where('mov_producto_id', $cambio['producto_id'])
+                            ->where('mov_serie_id', $cambio['old_serie_id'])
+                            ->first();
+
+                        if ($movimiento) {
+                            // Liberar serie anterior
+                            DB::table('pro_series_productos')
+                                ->where('serie_id', $cambio['old_serie_id'])
+                                ->update(['serie_estado' => 'disponible', 'serie_situacion' => 1]);
+
+                            // Ocupar nueva serie
+                            DB::table('pro_series_productos')
+                                ->where('serie_id', $cambio['new_serie_id'])
+                                ->update(['serie_estado' => 'vendido', 'serie_situacion' => 1]);
+
+                            // Actualizar movimiento
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $movimiento->mov_id)
+                                ->update([
+                                    'mov_serie_id' => $cambio['new_serie_id'],
+                                    'updated_at' => now()
+                                ]);
+                        }
+                    }
+
+                    // 2. Manejo de LOTES
+                    if (isset($cambio['old_lote_id']) && isset($cambio['new_lote_id'])) {
+                        // Validar nuevo lote
+                        $nuevoLote = DB::table('pro_lotes')
+                            ->where('lote_id', $cambio['new_lote_id'])
+                            ->first();
+
+                        if (!$nuevoLote || $nuevoLote->lote_cantidad_disponible < 1) {
+                            throw new \Exception("El lote seleccionado no tiene stock disponible.");
+                        }
+
+                        // Buscar movimiento asociado al lote anterior
+                        $movimiento = DB::table('pro_movimientos')
+                            ->where('mov_documento_referencia', 'VENTA-' . $venId)
+                            ->where('mov_producto_id', $cambio['producto_id'])
+                            ->where('mov_lote_id', $cambio['old_lote_id'])
+                            ->first();
+
+                        if ($movimiento) {
+                            // Revertir stock lote anterior (+1)
+                            DB::table('pro_lotes')
+                                ->where('lote_id', $cambio['old_lote_id'])
+                                ->increment('lote_cantidad_disponible');
+
+                            // Descontar stock nuevo lote (-1)
+                            DB::table('pro_lotes')
+                                ->where('lote_id', $cambio['new_lote_id'])
+                                ->decrement('lote_cantidad_disponible');
+
+                            // Actualizar movimiento
+                            DB::table('pro_movimientos')
+                                ->where('mov_id', $movimiento->mov_id)
+                                ->update([
+                                    'mov_lote_id' => $cambio['new_lote_id'],
+                                    'updated_at' => now()
+                                ]);
+                        }
+                    }
+                }
+                
+                // Opcional: Si se completaron todos los cambios, ¿se cambia el estado?
+                // No, el usuario debe dar click en "Autorizar" de nuevo para confirmar todo.
+            });
+
+            return response()->json(['success' => true, 'message' => 'Cambios aplicados correctamente.']);
+
+        } catch (\Exception $e) {
+            Log::error('Error actualizando venta editable: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function actualizarLicencias(Request $request): JsonResponse
+    {
+        try {
         // Log para ver qué está llegando
         Log::info('🟢 Payload recibido en actualizarLicencias:', $request->all());
 
@@ -1184,6 +1283,7 @@ public function procesarReserva(Request $request): JsonResponse
     try {
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
+            'empresa_id' => 'required|exists:pro_clientes_empresas,emp_id',
             'fecha_reserva' => 'required|date',
             'subtotal' => 'required|numeric|min:0',
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
@@ -1215,6 +1315,7 @@ public function procesarReserva(Request $request): JsonResponse
             'ven_user' => auth()->id(),
             'ven_fecha' => $request->fecha_reserva,
             'ven_cliente' => $request->cliente_id,
+            'ven_empresa_id' => $request->empresa_id,
             'ven_total_vendido' => $request->total,
             'ven_descuento' => isset($request->descuento_monto) ? $request->descuento_monto : 0,
             'ven_observaciones' => isset($request->observaciones) ? $request->observaciones : 'Reserva - Vigente por ' . (isset($request->dias_vigencia) ? $request->dias_vigencia : 30) . ' días',
@@ -1448,6 +1549,8 @@ public function procesarReserva(Request $request): JsonResponse
             }
         }
 
+
+
         DB::commit();
 
         return response()->json([
@@ -1470,9 +1573,16 @@ public function procesarReserva(Request $request): JsonResponse
         DB::rollBack();
         \Log::error('Error procesando reserva: ' . $e->getMessage());
 
+        $msg = 'Error al procesar la reserva.';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ' ' . $e->getMessage();
+        }
+
         return response()->json([
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => $msg
         ], 500);
     }
 }
@@ -1498,8 +1608,18 @@ public function procesarReserva(Request $request): JsonResponse
             }
 
             // Permitir cancelar PENDIENTE o ACTIVA (si fue autorizada pero aún no entregada)
-            if (!in_array($venta->ven_situacion, ['PENDIENTE', 'ACTIVA','RESERVADA'])) {
-                throw new \RuntimeException('Solo se pueden cancelar ventas en estado PENDIENTE o ACTIVA.');
+            if (!in_array($venta->ven_situacion, ['PENDIENTE', 'ACTIVA','RESERVADA', 'EDITABLE'])) {
+                throw new \RuntimeException('Solo se pueden cancelar ventas en estado PENDIENTE, ACTIVA o EDITABLE.');
+            }
+
+            // Validar que no tenga factura activa
+            $factura = DB::table('facturacion')
+                ->where('fac_venta_id', $venId)
+                ->where('fac_estado', '!=', 'ANULADO')
+                ->first();
+
+            if ($factura) {
+                throw new \RuntimeException('No se puede eliminar la venta porque tiene una factura activa. Debe anular la factura primero.');
             }
 
             $ref = 'VENTA-' . $venId;
@@ -1684,22 +1804,62 @@ public function procesarReserva(Request $request): JsonResponse
             }
 
             // ========================================
-            // 5. CANCELAR DETALLES DE VENTA
+            // 3. ELIMINAR PAGOS Y CAJA (NUEVO)
             // ========================================
-            DB::table('pro_detalle_ventas')
-                ->where('det_ven_id', $venId)
-                ->update(['det_situacion' => 'ANULADO']);
+            
+            // 3.1 Eliminar Pagos
+            $pago = DB::table('pro_pagos')->where('pago_venta_id', $venId)->first();
+            if ($pago) {
+                // Eliminar detalles de pago
+                DB::table('pro_detalle_pagos')->where('det_pago_pago_id', $pago->pago_id)->delete();
+                // Eliminar cuotas
+                DB::table('pro_cuotas')->where('cuota_control_id', $pago->pago_id)->delete();
+                // Eliminar pago maestro
+                DB::table('pro_pagos')->where('pago_id', $pago->pago_id)->delete();
+            }
+            // Eliminar pagos subidos pendientes
+            DB::table('pro_pagos_subidos')->where('ps_venta_id', $venId)->delete();
+
+            // 3.2 Eliminar/Anular Caja
+            // Opción A: Eliminar físicamente el registro de caja para que no sume
+            DB::table('cja_historial')
+                ->where('cja_id_venta', $venId)
+                ->where('cja_tipo', 'VENTA')
+                ->delete();
+            
+            // Opción B (Si se prefiere historial en caja):
+            /*
+            DB::table('cja_historial')
+                ->where('cja_id_venta', $venId)
+                ->where('cja_tipo', 'VENTA')
+                ->update([
+                    'cja_situacion' => 'ANULADA',
+                    'cja_observaciones' => DB::raw("CONCAT(cja_observaciones, ' - VENTA ELIMINADA')")
+                ]);
+            */
 
             // ========================================
-            // 6. CANCELAR VENTA
+            // 4. ACTUALIZAR ESTADO Y SOFT DELETE
             // ========================================
+            
+            // Primero marcamos como CANCELADA/ELIMINADA para que quede el registro del estado final
             DB::table('pro_ventas')
                 ->where('ven_id', $venId)
                 ->update([
-                    'ven_situacion' => 'ANULADA',
-                    'ven_observaciones' => $motivoCancelacion,
-                    'updated_at' => now()
+                    'ven_situacion' => 'ANULADA', // O 'CANCELADA'
+                    'ven_observaciones' => DB::raw("CONCAT(COALESCE(ven_observaciones,''), ' - Eliminada por: $motivoCancelacion')")
                 ]);
+            
+            // Soft Delete (requiere que el modelo use SoftDeletes)
+            $ventaModel = Ventas::find($venId);
+            if ($ventaModel) {
+                $ventaModel->delete();
+            }
+
+            // Actualizar detalles a CANCELADO (aunque la venta esté soft deleted, los detalles quedan ahí pero marcados)
+            DB::table('pro_detalle_ventas')
+                ->where('det_ven_id', $venId)
+                ->update(['det_situacion' => 'ANULADA']);
 
             // ========================================
             // 7. CANCELAR COMISIÓN DEL VENDEDOR
@@ -1712,15 +1872,7 @@ public function procesarReserva(Request $request): JsonResponse
                     'updated_at' => now()
                 ]);
 
-            // ========================================
-            // 8. ACTUALIZAR HISTORIAL DE CAJA
-            // ========================================
-            DB::table('cja_historial')
-                ->where('cja_id_venta', $venId)
-                ->update([
-                    'cja_situacion' => 'ANULADA',
-                    'cja_observaciones' => $motivoCancelacion
-                ]);
+
 
         }, 3);
 
@@ -2381,18 +2533,29 @@ public function procesarReserva(Request $request): JsonResponse
 // }
 
 
+
+
 public function procesarVenta(Request $request): JsonResponse
 {
     try {
+        // Decodificar JSON si viene como string (FormData)
+        if (is_string($request->productos)) {
+            $request->merge(['productos' => json_decode($request->productos, true)]);
+        }
+        if (is_string($request->pago)) {
+            $request->merge(['pago' => json_decode($request->pago, true)]);
+        }
+
         // 0. VALIDACIÓN
         $request->validate([
             'cliente_id' => 'required|exists:pro_clientes,cliente_id',
+            // 'empresa_id' => 'required|exists:pro_clientes_empresas,emp_id', no se tiene que validar empresa id por clientes individuales 
             'fecha_venta' => 'required|date',
             'subtotal' => 'required|numeric|min:0',
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
             'descuento_monto' => 'nullable|numeric|min:0',
             'total' => 'required|numeric|min:0',
-            'metodo_pago' => 'required|in:1,2,3,4,5,6',
+            // 'metodo_pago' => 'required|in:1,2,3,4,5,6', // SE VALIDA MANUALMENTE
             'productos' => 'required|array|min:1',
             'productos.*.producto_id' => 'required|exists:pro_productos,producto_id',
             'productos.*.cantidad' => 'required|integer|min:1',
@@ -2405,12 +2568,34 @@ public function procesarVenta(Request $request): JsonResponse
             'productos.*.lotes_seleccionados' => 'nullable|array',
             'productos.*.lotes_seleccionados.*.lote_id' => 'nullable|exists:pro_lotes,lote_id',
             'productos.*.lotes_seleccionados.*.cantidad' => 'nullable|integer|min:1',
-            'pago' => 'required|array',
+            // 'pago' => 'required|array', // SE VALIDA MANUALMENTE
             'reserva_id' => 'nullable|exists:pro_ventas,ven_id',
+            'documento_id' => 'nullable|exists:pro_clientes_documentos,id',
         ]);
 
         DB::beginTransaction();
 
+        // VALIDACIÓN MANUAL DE PAGO (Soporte Saldo a Favor)
+        $saldoFavorUsado = floatval($request->saldo_favor_usado ?? 0);
+        $totalVenta = floatval($request->total);
+        $montoRestante = round($totalVenta - $saldoFavorUsado, 2);
+
+        if ($montoRestante > 0.01) {
+            if (!$request->metodo_pago || !in_array($request->metodo_pago, [1, 2, 3, 4, 5, 6])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe seleccionar un método de pago válido para el saldo restante.',
+                    'errors' => ['metodo_pago' => ['Requerido']]
+                ], 422);
+            }
+            if (!$request->pago || !is_array($request->pago)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Faltan los detalles del pago.',
+                    'errors' => ['pago' => ['Requerido']]
+                ], 422);
+            }
+        }
       
         
         $productosValidados = [];
@@ -2540,6 +2725,8 @@ public function procesarVenta(Request $request): JsonResponse
                     'ven_descuento'     => $request->descuento_monto ?? 0,
                     'ven_observaciones' => 'Venta Pendiente de autorizar por digecam (desde reserva)',
                     'ven_situacion'     => 'PENDIENTE',
+                    'ven_empresa_id'    => $request->empresa_id,
+                    'ven_documento_id'  => $request->documento_id, // ✅ Nuevo campo
                     'updated_at'        => now(),
                 ]);
                 
@@ -2549,10 +2736,12 @@ public function procesarVenta(Request $request): JsonResponse
                 'ven_user'          => auth()->id(),
                 'ven_fecha'         => $request->fecha_venta,
                 'ven_cliente'       => $request->cliente_id,
+                'ven_empresa_id'    => $request->empresa_id,
                 'ven_total_vendido' => $request->total,
                 'ven_descuento'     => $request->descuento_monto ?? 0,
                 'ven_observaciones' => 'Venta Pendiente de autorizar por digecam',
                 'ven_situacion'     => 'PENDIENTE',
+                'ven_documento_id'  => $request->documento_id, // ✅ Nuevo campo
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
@@ -2808,53 +2997,182 @@ public function procesarVenta(Request $request): JsonResponse
         }
 
     
+        $totalVenta = $request->total;
         $totalPagado = 0;
         $cantidadPagos = 0;
         $metodoPago = $request->metodo_pago;
-        $totalVenta = $request->total;
+        // 3. DATOS ESPECÍFICOS SEGÚN MÉTODO DE PAGO
+        $saldoFavorUsado = floatval($request->saldo_favor_usado ?? 0);
+        $metodoPagoPrincipal = $request->metodo_pago;
+        $montoPrincipal = $totalVenta - $saldoFavorUsado;
 
-        if ($metodoPago == '6') {
-            // Cuotas
-            $abonoInicial = $request->pago['abono_inicial'] ?? 0;
-            $cuotas = $request->pago['cuotas'] ?? [];
+        // Validar saldo a favor si se usa
+        if ($saldoFavorUsado > 0) {
+            $clienteSaldo = DB::table('pro_clientes_saldo')
+                ->where('saldo_cliente_id', $request->cliente_id)
+                ->first();
 
+            if (!$clienteSaldo || $clienteSaldo->saldo_monto < $saldoFavorUsado) {
+                throw new \Exception("El cliente no tiene suficiente saldo a favor. Disponible: Q" . ($clienteSaldo->saldo_monto ?? 0));
+            }
+
+            // Descontar saldo
+            $saldoAnterior = $clienteSaldo->saldo_monto;
+            $saldoNuevo = $saldoAnterior - $saldoFavorUsado;
+
+            DB::table('pro_clientes_saldo')
+                ->where('saldo_cliente_id', $request->cliente_id)
+                ->decrement('saldo_monto', $saldoFavorUsado);
+
+            // Registrar historial
+            DB::table('pro_clientes_saldo_historial')->insert([
+                'hist_cliente_id' => $request->cliente_id,
+                'hist_monto' => -$saldoFavorUsado,
+                'hist_tipo' => 'CARGO',
+                'hist_referencia' => "VENTA-{$ventaId}",
+                'hist_saldo_anterior' => $saldoAnterior,
+                'hist_saldo_nuevo' => $saldoNuevo,
+                'hist_observaciones' => 'Pago con Saldo a Favor',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Manejo del Comprobante (Boleta)
+        $comprobantePath = null;
+        if ($request->hasFile('comprobante')) {
+            $file = $request->file('comprobante');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('comprobantes', $filename, 'public');
+            $comprobantePath = $path;
+        }
+
+        if ($metodoPagoPrincipal == "6") { // Pagos/Cuotas
+            // Normalizar pagoData (tomar el primer elemento si es array de arrays)
+            $rawPago = $request->pago;
+            $pagoData = isset($rawPago[0]) && is_array($rawPago[0]) ? $rawPago[0] : $rawPago;
+
+            $abonoInicial = floatval($pagoData['abono_inicial'] ?? 0);
+            $cantidadCuotas = intval($pagoData['cantidad_cuotas'] ?? 0);
+            $cuotas = $pagoData['cuotas'] ?? [];
+
+            // El monto total del pago es el total de la venta
+            // El abono inicial REAL es lo que paga en efectivo/transferencia + lo que cubre con saldo a favor
+            // PERO para efectos de cuotas, el saldo a favor reduce el monto a financiar.
+            
+            // Ajuste: Si usa saldo a favor, el "abono inicial" que viene del front es solo la parte pagada en el momento.
+            // El saldo a favor se considera un pago inicial adicional.
+            
             $pagoId = DB::table('pro_pagos')->insertGetId([
                 'pago_venta_id'        => $ventaId,
                 'pago_monto_total'     => $totalVenta,
-                'pago_monto_pagado'    => $abonoInicial,
-                'pago_monto_pendiente' => $totalVenta - $abonoInicial,
+                'pago_monto_pagado'    => $abonoInicial + $saldoFavorUsado, // Sumamos saldo a favor al pagado
+                'pago_monto_pendiente' => $totalVenta - ($abonoInicial + $saldoFavorUsado),
                 'pago_tipo_pago'       => 'CUOTAS',
-                'pago_cantidad_cuotas' => $request->pago['cantidad_cuotas'],
-                'pago_abono_inicial'   => $abonoInicial,
+                'pago_cantidad_cuotas' => $cantidadCuotas,
+                'pago_abono_inicial'   => $abonoInicial, // Guardamos lo que pagó "en el acto"
                 'pago_estado'          => 'PENDIENTE',
                 'pago_fecha_inicio'    => now(),
-                'pago_fecha_completado'=> $abonoInicial >= $totalVenta ? now() : null,
+                'pago_fecha_completado'=> null,
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
 
+            // Detalle del abono inicial (si hubo)
             if ($abonoInicial > 0) {
-                $metodoAbonoId = $request->pago['metodo_abono'] === 'transferencia' ? 4 : 1;
+                $fechaAbono = !empty($pagoData['fecha_pago_abono']) ? \Carbon\Carbon::parse($pagoData['fecha_pago_abono']) : now();
+
+                // Mapeo de método de abono (string a ID)
+                $metodoAbonoInput = $pagoData['metodo_abono'] ?? 'efectivo';
+                $metodoAbonoId = 1; // Default Efectivo
+
+                if (is_numeric($metodoAbonoInput)) {
+                    $metodoAbonoId = (int)$metodoAbonoInput;
+                } else {
+                    switch (strtolower($metodoAbonoInput)) {
+                        case 'efectivo': $metodoAbonoId = 1; break;
+                        case 'tarjeta': $metodoAbonoId = 2; break;
+                        case 'cheque': $metodoAbonoId = 3; break;
+                        case 'transferencia': $metodoAbonoId = 4; break;
+                        case 'deposito': 
+                        case 'depósito': $metodoAbonoId = 5; break;
+                        default: $metodoAbonoId = 1; break;
+                    }
+                }
 
                 DB::table('pro_detalle_pagos')->insert([
                     'det_pago_pago_id'          => $pagoId,
                     'det_pago_cuota_id'         => null,
-                    'det_pago_fecha'            => now(),
+                    'det_pago_fecha'            => $fechaAbono,
                     'det_pago_monto'            => $abonoInicial,
                     'det_pago_metodo_pago'      => $metodoAbonoId,
-                    'det_pago_banco_id'         => 1,
-                    'det_pago_numero_autorizacion' => $request->pago['numero_autorizacion_abono'] ?? null,
+                    'det_pago_banco_id'         => $pagoData['banco_abono'] ?? null, // Note: front sends banco_abono
+                    'det_pago_numero_autorizacion' => $pagoData['autorizacion_abono'] ?? null, // Note: front sends autorizacion_abono
                     'det_pago_tipo_pago'        => 'ABONO_INICIAL',
                     'det_pago_estado'           => 'VALIDO',
-                    'det_pago_observaciones'    => 'Abono inicial de la venta',
+                    'det_pago_observaciones'    => 'Abono inicial de venta a cuotas',
+                    'det_pago_imagen_boucher'   => $comprobantePath, // Guardar comprobante
                     'det_pago_usuario_registro' => auth()->id(),
                     'created_at'                => now(),
                     'updated_at'                => now(),
                 ]);
 
-                $totalPagado += $abonoInicial;
-                $cantidadPagos++;
+                // Notificar al administrador si hay comprobante (Abono Inicial Cuotas)
+                if ($comprobantePath) {
+                    try {
+                        $admins = \App\Models\User::whereHas('rol', function($q){
+                            $q->where('nombre', 'administrador');
+                        })->get();
+
+                        $payload = [
+                            'venta_id' => $ventaId,
+                            'vendedor' => auth()->user()->name,
+                            'cliente' => [
+                                'nombre' => $request->cliente_nombre ?? 'Cliente',
+                                'email' => $request->cliente_email ?? 'No registrado'
+                            ],
+                            'fecha' => now()->format('d/m/Y H:i'),
+                            'monto' => $abonoInicial,
+                            'banco_nombre' => isset($pagoData['banco_abono']) ? DB::table('pro_bancos')->where('banco_id', $pagoData['banco_abono'])->value('banco_nombre') : 'No especificado',
+                            'banco_id' => $pagoData['banco_abono'] ?? null,
+                            'referencia' => $pagoData['autorizacion_abono'] ?? 'No especificada',
+                            'concepto' => 'Abono Inicial (Cuotas) - Venta #' . $ventaId,
+                            'cuotas' => 1, // Se considera 1 pago
+                            'monto_total' => $totalVenta
+                        ];
+
+                        foreach ($admins as $admin) {
+                            if ($admin->email) {
+                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error enviando notificación de abono inicial en venta: ' . $e->getMessage());
+                    }
+                }
             }
+
+            // Detalle del Saldo a Favor (si hubo)
+            if ($saldoFavorUsado > 0) {
+                DB::table('pro_detalle_pagos')->insert([
+                    'det_pago_pago_id'          => $pagoId,
+                    'det_pago_cuota_id'         => null,
+                    'det_pago_fecha'            => now(),
+                    'det_pago_monto'            => $saldoFavorUsado,
+                    'det_pago_metodo_pago'      => 7, // ID 7 = Saldo a Favor
+                    'det_pago_banco_id'         => null,
+                    'det_pago_numero_autorizacion' => null,
+                    'det_pago_tipo_pago'        => 'ABONO_INICIAL',
+                    'det_pago_estado'           => 'VALIDO',
+                    'det_pago_observaciones'    => 'Pago con saldo a favor',
+                    'det_pago_usuario_registro' => auth()->id(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
+
+            $totalPagado = $abonoInicial + $saldoFavorUsado;
+            $cantidadPagos = ($abonoInicial > 0 ? 1 : 0) + ($saldoFavorUsado > 0 ? 1 : 0);
 
             $fechaBase = now();
             foreach ($cuotas as $index => $cuotaData) {
@@ -2874,40 +3192,107 @@ public function procesarVenta(Request $request): JsonResponse
             }
 
         } else {
-            // Pago único
+            // Pago único (o split con saldo a favor)
             $pagoId = DB::table('pro_pagos')->insertGetId([
                 'pago_venta_id'        => $ventaId,
                 'pago_monto_total'     => $totalVenta,
-                'pago_monto_pagado'    => $totalVenta,
+                'pago_monto_pagado'    => $totalVenta, // Se asume pagado completo
                 'pago_monto_pendiente' => 0,
                 'pago_tipo_pago'       => 'UNICO',
                 'pago_cantidad_cuotas' => 1,
                 'pago_abono_inicial'   => $totalVenta,
-                'pago_estado'          => 'PENDIENTE',
+                'pago_estado'          => 'PENDIENTE', // Pendiente de autorización
                 'pago_fecha_inicio'    => now(),
-                'pago_fecha_completado'=> now(),
+                'pago_fecha_completado'=> null,
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
 
-            DB::table('pro_detalle_pagos')->insert([
-                'det_pago_pago_id'          => $pagoId,
-                'det_pago_cuota_id'         => null,
-                'det_pago_fecha'            => now(),
-                'det_pago_monto'            => $totalVenta,
-                'det_pago_metodo_pago'      => $metodoPago,
-                'det_pago_banco_id'         => 1,
-                'det_pago_numero_autorizacion' => $request->numero_autorizacion ?? null,
-                'det_pago_tipo_pago'        => 'PAGO_UNICO',
-                'det_pago_estado'           => 'VALIDO',
-                'det_pago_observaciones'    => 'Pago completo de la venta',
-                'det_pago_usuario_registro' => auth()->id(),
-                'created_at'                => now(),
-                'updated_at'                => now(),
-            ]);
+
+
+            // 1. Registrar pago principal (si queda monto por pagar)
+            if ($montoPrincipal > 0) {
+                // Normalizar pagoData
+                $rawPago = $request->pago;
+                $pagoData = isset($rawPago[0]) && is_array($rawPago[0]) ? $rawPago[0] : $rawPago;
+                
+                $fechaPago = !empty($pagoData['fecha_pago']) ? \Carbon\Carbon::parse($pagoData['fecha_pago']) : now();
+
+                DB::table('pro_detalle_pagos')->insert([
+                    'det_pago_pago_id'          => $pagoId,
+                    'det_pago_cuota_id'         => null,
+                    'det_pago_fecha'            => $fechaPago,
+                    'det_pago_monto'            => $montoPrincipal,
+                    'det_pago_metodo_pago'      => $metodoPagoPrincipal,
+                    'det_pago_banco_id'         => $pagoData['banco_id'] ?? null,
+                    'det_pago_numero_autorizacion' => $pagoData['numero_autorizacion'] ?? null,
+                    'det_pago_tipo_pago'        => 'PAGO_UNICO',
+                    'det_pago_estado'           => 'PENDIENTE_VALIDACION',
+                    'det_pago_observaciones'    => 'Pago principal de la venta (Pendiente de autorización)',
+                    'det_pago_imagen_boucher'   => $comprobantePath, // Guardar comprobante
+                    'det_pago_usuario_registro' => auth()->id(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+
+                // Notificar al administrador si hay comprobante
+                if ($comprobantePath) {
+                    try {
+                        $admins = \App\Models\User::whereHas('rol', function($q){
+                            $q->whereIn('nombre', ['administrador', 'contador']);
+                        })
+                        ->where('user_situacion', 1)
+                        ->get();
+
+                        $payload = [
+                            'venta_id' => $ventaId,
+                            'vendedor' => auth()->user()->name,
+                            'cliente' => [
+                                'nombre' => $request->cliente_nombre ?? 'Cliente',
+                                'email' => $request->cliente_email ?? 'No registrado'
+                            ],
+                            'fecha' => now()->format('d/m/Y H:i'),
+                            'monto' => $montoPrincipal,
+                            'banco_nombre' => $pagoData['banco_id'] ? DB::table('pro_bancos')->where('banco_id', $pagoData['banco_id'])->value('banco_nombre') : 'No especificado',
+                            'banco_id' => $pagoData['banco_id'] ?? null,
+                            'referencia' => $pagoData['numero_autorizacion'] ?? 'No especificada',
+                            'concepto' => 'Pago Inicial - Venta #' . $ventaId,
+                            'cuotas' => 1,
+                            'monto_total' => $totalVenta
+                        ];
+
+                        foreach ($admins as $admin) {
+                            if ($admin->email) {
+                                Mail::to($admin->email)->send(new NotificarpagoMail($payload, $comprobantePath, 'VENTA'));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error enviando notificación de pago en venta: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // 2. Registrar pago con saldo a favor (si hubo)
+            if ($saldoFavorUsado > 0) {
+                DB::table('pro_detalle_pagos')->insert([
+                    'det_pago_pago_id'          => $pagoId,
+                    'det_pago_cuota_id'         => null,
+                    'det_pago_fecha'            => now(),
+                    'det_pago_monto'            => $saldoFavorUsado,
+                    'det_pago_metodo_pago'      => 7, // ID 7 = Saldo a Favor
+                    'det_pago_banco_id'         => null,
+                    'det_pago_numero_autorizacion' => null,
+                    'det_pago_tipo_pago'        => 'ABONO_INICIAL',
+                    'det_pago_estado'           => 'VALIDO',
+                    'det_pago_observaciones'    => 'Pago con saldo a favor',
+                    'det_pago_usuario_registro' => auth()->id(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
 
             $totalPagado = $totalVenta;
-            $cantidadPagos = 1;
+            $cantidadPagos = ($montoPrincipal > 0 ? 1 : 0) + ($saldoFavorUsado > 0 ? 1 : 0);
         }
 
 
@@ -2953,6 +3338,64 @@ public function procesarVenta(Request $request): JsonResponse
 
         DB::commit();
 
+        // ✅ Notificar Nueva Venta (siempre)
+        try {
+            $admins = \App\Models\User::whereHas('rol', function($q){
+                $q->where('nombre', 'administrador');
+            })
+            ->where('user_situacion', 1)
+            ->get();
+
+            $empresaNombre = null;
+            if ($request->empresa_id) {
+                $empresaNombre = DB::table('pro_empresas')->where('empresa_id', $request->empresa_id)->value('empresa_nombre');
+            }
+
+            // Determinar método de pago principal para el correo
+            $metodoPagoNombre = 'Desconocido';
+            $metodoPagoId = 1; // Default Efectivo
+
+            if (isset($metodoPagoPrincipal)) {
+                 $metodoPagoId = $metodoPagoPrincipal;
+                 // Mapeo rápido o consulta
+                 $metodoPagoNombre = match($metodoPagoId) {
+                     1 => 'Efectivo',
+                     2 => 'Tarjeta de Crédito',
+                     3 => 'Tarjeta de Débito',
+                     4 => 'Transferencia',
+                     5 => 'Cheque',
+                     6 => 'Cuotas',
+                     7 => 'Saldo a Favor',
+                     default => 'Otro'
+                 };
+            } elseif ($request->metodoPago == '6') {
+                 $metodoPagoId = 6;
+                 $metodoPagoNombre = 'Cuotas';
+            }
+
+            $payloadVenta = [
+                'venta_id' => $ventaId,
+                'vendedor' => auth()->user()->name,
+                'cliente' => [
+                    'nombre' => $request->cliente_nombre ?? 'Cliente',
+                    'email' => $request->cliente_email ?? 'No registrado'
+                ],
+                'empresa_nombre' => $empresaNombre,
+                'fecha' => now()->format('d/m/Y H:i'),
+                'total' => $totalVenta,
+                'metodo_pago_id' => $metodoPagoId,
+                'metodo_pago_nombre' => $metodoPagoNombre,
+            ];
+
+            foreach ($admins as $admin) {
+                if ($admin->email) {
+                    Mail::to($admin->email)->send(new \App\Mail\NotificarVentaMail($payloadVenta));
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error enviando notificación de nueva venta: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success'           => true,
             'message'           => 'Venta procesada exitosamente',
@@ -2962,6 +3405,7 @@ public function procesarVenta(Request $request): JsonResponse
             'fue_reserva'       => $esDesdeReserva === true,
             'accion_stock'      => $accionStock,
             'accion_disponible' => $isDisponible,
+            'saldo_favor_usado' => $saldoFavorUsado,
         ]);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
@@ -2984,9 +3428,91 @@ public function procesarVenta(Request $request): JsonResponse
 
 
 
-    public function show(Ventas $ventas)
+    public function show($id)
     {
-        //
+        try {
+            $venta = DB::table('pro_ventas as v')
+                ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->leftJoin('facturacion as f', function($join) {
+                    $join->on('v.ven_id', '=', 'f.fac_venta_id')
+                         ->where('f.fac_estado', '!=', 'ANULADO');
+                })
+                ->where('v.ven_id', $id)
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_total_vendido',
+                    'v.ven_situacion',
+                    'v.ven_observaciones',
+                    'c.cliente_nit',
+                    'c.cliente_nombre1',
+                    'c.cliente_apellido1',
+                    'c.cliente_direccion',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre',
+                    'u.user_primer_apellido',
+                    'f.fac_id',
+                    'f.fac_serie',
+                    'f.fac_numero'
+                )
+                ->first();
+
+            if (!$venta) {
+                return response()->json(['success' => false, 'message' => 'Venta no encontrada'], 404);
+            }
+
+            $detalles = DB::table('pro_detalle_ventas as d')
+                ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                ->where('d.det_ven_id', $venta->ven_id)
+                ->select('d.det_id', 'd.det_producto_id', 'p.producto_nombre', 'd.det_cantidad', 'd.det_precio', 'd.det_descuento')
+                ->get();
+
+            $detalles->transform(function ($det) use ($venta) {
+                $det->series = DB::table('pro_movimientos as m')
+                    ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                    ->where('m.mov_documento_referencia', 'VENTA-' . $venta->ven_id)
+                    ->where('m.mov_producto_id', $det->det_producto_id)
+                    ->pluck('s.serie_numero_serie')
+                    ->toArray();
+                
+                // Lotes logic if applicable
+                $det->lotes = []; 
+
+                return $det;
+            });
+
+            $clienteNombre = trim("{$venta->cliente_nombre1} {$venta->cliente_apellido1}");
+            $vendedorNombre = trim("{$venta->user_primer_nombre} {$venta->user_primer_apellido}");
+
+            $data = [
+                'ven_id' => $venta->ven_id,
+                'ven_fecha' => $venta->ven_fecha,
+                'cliente_nit' => $venta->cliente_nit,
+                'cliente_nombre1' => $venta->cliente_nombre1,
+                'cliente_apellido1' => $venta->cliente_apellido1,
+                'cliente_direccion' => $venta->cliente_direccion,
+                'cliente' => $clienteNombre,
+                'empresa' => $venta->cliente_nom_empresa,
+                'vendedor' => $vendedorNombre ?: 'Sin asignar',
+                'ven_total_vendido' => $venta->ven_total_vendido,
+                'ven_situacion' => $venta->ven_situacion,
+                'factura' => [
+                    'id' => $venta->fac_id,
+                    'serie' => $venta->fac_serie,
+                    'numero' => $venta->fac_numero
+                ],
+                'total_items' => $detalles->sum('det_cantidad'),
+                'productos_resumen' => $detalles->pluck('producto_nombre')->join(', '),
+                'detalles' => $detalles
+            ];
+
+            return response()->json(['success' => true, 'data' => $data]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching sale details: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -3179,6 +3705,269 @@ public function procesarVenta(Request $request): JsonResponse
         } catch (\Exception $e) {
             Log::error('Error al cancelar reserva: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    // --- EDIT SALE LOGIC ---
+
+    public function editar($id)
+    {
+        $venta = DB::table('pro_ventas as v')
+            ->join('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+            ->where('v.ven_id', $id)
+            ->select('v.*', 'c.cliente_nombre1', 'c.cliente_apellido1', 'c.cliente_nit')
+            ->first();
+
+        if (!$venta) abort(404);
+
+        // 1. Validar Factura
+        $factura = DB::table('facturacion')
+            ->where('fac_venta_id', $id)
+            ->where('fac_estado', '!=', 'ANULADO')
+            ->first();
+
+        if ($factura) {
+            return redirect()->route('ventas.index')
+                ->with('error', 'No se puede editar una venta facturada. Debe anular la factura primero.');
+        }
+
+        // 2. Validar Pagos
+        $pago = DB::table('pro_pagos')->where('pago_venta_id', $id)->first();
+        if ($pago) {
+            $pagosValidados = DB::table('pro_detalle_pagos')
+                ->where('det_pago_pago_id', $pago->pago_id)
+                ->where('det_pago_estado', 'VALIDO')
+                ->exists();
+            
+            if ($pagosValidados) {
+                return redirect()->route('ventas.index')
+                    ->with('error', 'No se puede editar porque hay pagos validados. Primero debe eliminar el método de pago en la sección de Subir Pagos.');
+            }
+        }
+
+        // Si pasa las validaciones, permitir editar (aunque no esté en estado EDITABLE explícito, 
+        // asumimos que si no hay factura ni pagos validados, se puede corregir).
+        // if ($venta->ven_situacion !== 'EDITABLE') { ... }
+
+        $detalles = DB::table('pro_detalle_ventas as d')
+            ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+            ->where('d.det_ven_id', $id)
+            ->select('d.*', 'p.producto_nombre', 'p.producto_requiere_serie')
+            ->get();
+
+        foreach ($detalles as $det) {
+            if ($det->producto_requiere_serie) {
+                $det->series = DB::table('pro_movimientos as m')
+                    ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                    ->where('m.mov_documento_referencia', 'VENTA-' . $id)
+                    ->where('m.mov_producto_id', $det->det_producto_id)
+                    ->where('m.mov_tipo', 'salida') // Asegurar que es la salida de venta
+                    ->select('s.serie_id', 's.serie_numero_serie as serie_numero')
+                    ->get();
+            }
+        }
+
+        return view('ventas.editar', compact('venta', 'detalles'));
+    }
+
+    public function getDetallesEditables($id)
+    {
+        $venta = DB::table('pro_ventas as v')
+            ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+            ->where('v.ven_id', $id)
+            ->select(
+                'v.ven_id', 'v.ven_fecha', 'v.ven_situacion',
+                'c.cliente_nombre1', 'c.cliente_apellido1', 'c.cliente_nit'
+            )
+            ->first();
+
+        if (!$venta) {
+            return response()->json(['success' => false, 'message' => 'Venta no encontrada'], 404);
+        }
+
+        $detalles = DB::table('pro_detalle_ventas as d')
+            ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+            ->where('d.det_ven_id', $id)
+            ->select('d.*', 'p.producto_nombre', 'p.producto_requiere_serie')
+            ->get();
+
+        foreach ($detalles as $det) {
+            if ($det->producto_requiere_serie) {
+                $det->series = DB::table('pro_movimientos as m')
+                    ->join('pro_series_productos as s', 'm.mov_serie_id', '=', 's.serie_id')
+                    ->where('m.mov_documento_referencia', 'VENTA-' . $id)
+                    ->where('m.mov_producto_id', $det->det_producto_id)
+                    ->where('m.mov_tipo', 'venta')
+                    ->select('s.serie_id', 's.serie_numero_serie as serie_numero')
+                    ->get();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'venta' => $venta,
+            'detalles' => $detalles
+        ]);
+    }
+
+    public function getSeriesDisponibles($productoId)
+    {
+        $series = DB::table('pro_series_productos')
+            ->where('serie_producto_id', $productoId)
+            ->where('serie_situacion', 1) // 1 = Activo
+            ->where('serie_estado', 'disponible')
+            ->select('serie_id', 'serie_numero_serie as serie_numero')
+            ->get();
+
+        return response()->json($series);
+    }
+
+    public function cambiarSerie(Request $request)
+    {
+        $request->validate([
+            'detalle_id' => 'required|integer',
+            'old_serie_id' => 'required|integer',
+            'new_serie_id' => 'required|integer'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Verify New Series is Available
+            $newSerie = DB::table('pro_series_productos')
+                ->where('serie_id', $request->new_serie_id)
+                ->where('serie_situacion', 1)
+                ->where('serie_estado', 'disponible')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$newSerie) {
+                throw new \Exception('La nueva serie no está disponible.');
+            }
+
+            // 2. Update Movement
+            // Primero obtener el ID de la venta desde el detalle
+            $detalle = DB::table('pro_detalle_ventas')->where('det_id', $request->detalle_id)->first();
+            if (!$detalle) throw new \Exception('Detalle de venta no encontrado.');
+
+            $ref = 'VENTA-' . $detalle->det_ven_id;
+
+            $updated = DB::table('pro_movimientos')
+                ->where('mov_documento_referencia', $ref)
+                ->where('mov_serie_id', $request->old_serie_id)
+                ->where('mov_tipo', 'salida')
+                ->update(['mov_serie_id' => $request->new_serie_id]);
+
+            if (!$updated) {
+                throw new \Exception('No se encontró el movimiento de la serie original para esta venta.');
+            }
+
+            // 3. Update Series Statuses
+            // Old -> Available
+            DB::table('pro_series_productos')
+                ->where('serie_id', $request->old_serie_id)
+                ->update(['serie_estado' => 'disponible']);
+
+            // New -> Sold (or Reserved?)
+            // If the sale is EDITABLE/FROZEN, the stock is technically still "Sold" or "Reserved" for this sale.
+            // We should match the status of the old serie before we changed it?
+            // Assuming 'vendido' for now as it was likely invoiced then cancelled.
+            DB::table('pro_series_productos')
+                ->where('serie_id', $request->new_serie_id)
+                ->update(['serie_estado' => 'vendido']); 
+
+            DB::commit();
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+    public function getDetalleVenta($id)
+    {
+        try {
+            $venta = DB::table('pro_ventas as v')
+                ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
+                ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
+                ->leftJoin('facturacion as f', function($join) {
+                    $join->on('v.ven_id', '=', 'f.fac_venta_id')
+                         ->where('f.fac_estado', '!=', 'ANULADO');
+                })
+                ->where('v.ven_id', $id)
+                ->select(
+                    'v.ven_id',
+                    'v.ven_fecha',
+                    'v.ven_situacion',
+                    'v.ven_total_vendido',
+                    'c.cliente_nombre1',
+                    'c.cliente_apellido1',
+                    'c.cliente_nit',
+                    'c.cliente_nom_empresa',
+                    'u.user_primer_nombre as vendedor_nombre',
+                    'f.fac_id',
+                    'f.fac_serie',
+                    'f.fac_numero'
+                )
+                ->first();
+
+            if (!$venta) {
+                return response()->json(['codigo' => 0, 'mensaje' => 'Venta no encontrada'], 404);
+            }
+
+            // Detalles
+            $detalles = DB::table('pro_detalle_ventas as d')
+                ->join('pro_productos as p', 'd.det_producto_id', '=', 'p.producto_id')
+                ->where('d.det_ven_id', $id)
+                ->select(
+                    'p.producto_nombre',
+                    'd.det_cantidad',
+                    'd.det_precio as det_precio_unitario',
+                    DB::raw('(d.det_cantidad * d.det_precio) - IFNULL(d.det_descuento, 0) as det_subtotal')
+                )
+                ->get();
+
+            // Pagos (Combinando Pagos Subidos para ver boletas)
+            $pagos = DB::table('pro_pagos_subidos')
+                ->where('ps_venta_id', $id)
+                // ->where('ps_estado', 'APROBADO') // O mostrar todos? El usuario quiere ver historial.
+                ->select(
+                    'ps_banco_nombre as metodo',
+                    'ps_fecha_comprobante as fecha',
+                    'ps_referencia as referencia',
+                    'ps_monto_comprobante as monto',
+                    'ps_imagen_path as comprobante'
+                )
+                ->orderBy('ps_fecha_comprobante', 'desc')
+                ->get();
+
+            // Formatear respuesta
+            $data = [
+                'ven_id' => $venta->ven_id,
+                'ven_fecha' => $venta->ven_fecha,
+                'ven_situacion' => $venta->ven_situacion,
+                'ven_total_vendido' => $venta->ven_total_vendido,
+                'cliente' => [
+                    'nombre' => trim($venta->cliente_nombre1 . ' ' . $venta->cliente_apellido1),
+                    'nit' => $venta->cliente_nit,
+                    'empresa' => $venta->cliente_nom_empresa
+                ],
+                'vendedor' => [
+                    'nombre' => $venta->vendedor_nombre
+                ],
+                'factura' => [
+                    'id' => $venta->fac_id,
+                    'serie' => $venta->fac_serie,
+                    'numero' => $venta->fac_numero
+                ],
+                'detalles' => $detalles,
+                'pagos' => $pagos
+            ];
+
+            return response()->json(['codigo' => 1, 'data' => $data]);
+
+        } catch (\Exception $e) {
+            return response()->json(['codigo' => 0, 'mensaje' => $e->getMessage()], 500);
         }
     }
 }

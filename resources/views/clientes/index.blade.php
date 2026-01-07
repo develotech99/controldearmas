@@ -20,8 +20,11 @@
     <!-- Header -->
     <div class="md:flex md:items-center md:justify-between mb-6">
         <div class="min-w-0 flex-1">
-            <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate flex items-center gap-2">
                 Gestión de Clientes
+                <button type="button" class="text-blue-600 hover:text-blue-800 transition-colors btn-abrir-manual" data-section="clientes" title="Ver ayuda de Clientes">
+                    <i class="fas fa-question-circle text-xl"></i>
+                </button>
             </h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Administra la información de tus clientes
@@ -141,10 +144,15 @@
                 <label for="search-clientes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Buscar
                 </label>
-                <input type="text" 
-                       id="search-clientes" 
-                       placeholder="Nombre, DPI, NIT, Empresa..."
-                       class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
+                <div class="relative">
+                    <input type="text" 
+                           id="search-clientes" 
+                           placeholder="Nombre, DPI, NIT, Empresa..."
+                           class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md pr-10">
+                    <div id="loader-clientes" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                    </div>
+                </div>
             </div>
             <div>
                 <label for="tipo-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -233,6 +241,21 @@
                                 Nuevo Cliente
                             </h3>
                             <div class="mt-4">
+                                <!-- Alerta de Validación de Duplicados -->
+                                <div class="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-info-circle text-blue-500"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-blue-700">
+                                                <strong>¡Importante!</strong> Antes de registrar un nuevo cliente, verifica si ya existe en el sistema.
+                                                <br>
+                                                Recuerda que el <strong>DPI</strong> y el <strong>NIT</strong> son datos únicos y no pueden duplicarse.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
 
                             
                                 <!-- Tipo y Asociación -->
@@ -351,52 +374,18 @@
 
                                 <!-- Campos Empresa (ocultos por defecto) -->
                                 <div id="campos-empresa" class="mb-6 hidden">
-                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 pb-2 border-b border-gray-200 dark:border-gray-600">
-                                        <i class="fas fa-building mr-2"></i>Información de Empresa
-                                    </h4>
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        <div class="sm:col-span-2">
-                                            <label for="cliente_nom_empresa" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Nombre de la Empresa
-                                            </label>
-                                            <input type="text" name="cliente_nom_empresa" id="cliente_nom_empresa"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div>
-                                            <label for="cliente_nom_vendedor" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Nombre del Vendedor
-                                            </label>
-                                            <input type="text" name="cliente_nom_vendedor" id="cliente_nom_vendedor"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div>
-                                            <label for="cliente_cel_vendedor" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Celular del Vendedor
-                                            </label>
-                                            <input type="text" name="cliente_cel_vendedor" id="cliente_cel_vendedor"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div class="sm:col-span-2">
-                                            <label for="cliente_ubicacion" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Referencia de la Empresa
-                                            </label>
-                                            <input type="text" name="cliente_ubicacion" id="cliente_ubicacion"
-                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md">
-                                        </div>
-                                        <div class="sm:col-span-2">
-                                            <label for="cliente_pdf_licencia" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                <i class="fas fa-file-pdf text-red-600 mr-1"></i>
-                                                PDF Licencia de Compraventa
-                                            </label>
-                                            <input id="cliente_pdf_licencia" 
-                                                name="cliente_pdf_licencia" 
-                                                type="file" 
-                                                accept=".pdf"
-                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                <i class="fas fa-info-circle"></i> Solo archivos PDF, máximo 10MB
-                                            </p>
-                                        </div>
+                                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            <i class="fas fa-building mr-2"></i>Información de Empresas
+                                        </h4>
+                                        <button type="button" onclick="window.clientesManager.addEmpresaField()" 
+                                                class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            <i class="fas fa-plus mr-1"></i> Agregar Empresa
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="empresas-container" class="space-y-4">
+                                        <!-- Las empresas se agregarán aquí dinámicamente -->
                                     </div>
                                 </div>
                             </div>
@@ -477,6 +466,109 @@
                 <button type="button" 
                         onclick="window.clientesManager.closePdfModal()"
                         class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:w-auto sm:text-sm">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Modal Gestión de Empresas -->
+<div id="empresa-modal" class="hidden fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="window.clientesManager.closeEmpresasModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
+            <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100" id="empresas-modal-title">
+                                Gestión de Empresas
+                            </h3>
+                            <button onclick="window.clientesManager.closeEmpresasModal()" class="text-gray-400 hover:text-gray-500">
+                                <span class="sr-only">Cerrar</span>
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Formulario Agregar/Editar Empresa -->
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-6">
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3" id="form-empresa-title">Nueva Empresa</h4>
+                            <form id="empresa-form" class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                                <input type="hidden" name="emp_id" id="emp_id">
+                                <input type="hidden" name="emp_cliente_id" id="emp_cliente_id">
+                                
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_nombre" id="emp_nombre" placeholder="Nombre Comercial *" required
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_nit" id="emp_nit" placeholder="NIT"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_direccion" id="emp_direccion" placeholder="Dirección"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_nom_vendedor" id="emp_nom_vendedor" placeholder="Nombre Vendedor"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <input type="text" name="emp_cel_vendedor" id="emp_cel_vendedor" placeholder="Celular Vendedor"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Licencia Compraventa (PDF)</label>
+                                    <input type="file" name="emp_licencia_compraventa" id="emp_licencia_compraventa" accept=".pdf"
+                                           class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Vencimiento Licencia</label>
+                                    <input type="date" name="emp_licencia_vencimiento" id="emp_licencia_vencimiento"
+                                           class="block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white rounded-md">
+                                </div>
+                                <div class="sm:col-span-4 flex space-x-2 justify-end mt-2">
+                                    <button type="submit" class="flex-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Guardar
+                                    </button>
+                                    <button type="button" onclick="window.clientesManager.resetEmpresaForm()" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Tabla de Empresas -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">NIT</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendedor</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Celular</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Licencia</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="empresas-tbody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- JS render -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" onclick="window.clientesManager.closeEmpresasModal()"
+                        class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                     Cerrar
                 </button>
             </div>

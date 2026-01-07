@@ -10,8 +10,11 @@
     <!-- Header -->
     <div class="md:flex md:items-center md:justify-between mb-6">
         <div class="min-w-0 flex-1">
-            <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate flex items-center gap-2">
                 Sistema de Inventario
+                <button type="button" class="text-blue-600 hover:text-blue-800 transition-colors btn-abrir-manual" data-section="inventario" title="Ver ayuda de Inventario">
+                    <i class="fas fa-question-circle text-xl"></i>
+                </button>
             </h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Gestión integral para armería - Productos, stock y movimientos
@@ -31,7 +34,7 @@
             </div>
 
             <button onclick="inventarioManager.openRegistroModal()"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                class="relative z-10 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <i class="fas fa-plus mr-2"></i>
                 Crear Producto
             </button>
@@ -111,14 +114,39 @@
         </div>
     </div>
 
+    <!-- Alerta Informativa: Servicios y Productos sin Stock -->
+    <div class="mb-6 bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-lightbulb text-indigo-500 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-bold text-indigo-800">¿Vas a vender Servicios o Trámites?</h3>
+                <div class="mt-2 text-sm text-indigo-700">
+                    <p>
+                        Los servicios como <strong>Trámites, Licencias de Importación, Papelería</strong>, etc., deben registrarse como productos normales.
+                        <br>
+                        <strong>IMPORTANTE:</strong> Al crearlos, asegúrate de marcar la opción <strong>"¿Este producto NO requiere STOCK?"</strong>.
+                        Esto permitirá venderlos sin necesidad de realizar ingresos de inventario previos.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtros y Búsqueda -->
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
         <div class="px-4 py-5 sm:p-6">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar producto</label>
-                    <input type="text" id="search-productos" placeholder="Nombre, SKU o código de barra..."
-                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <div class="relative">
+                        <input type="text" id="search-productos" placeholder="Nombre, SKU o código de barra..."
+                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm pr-10">
+                        <div id="loader-busqueda" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoría</label>
@@ -170,11 +198,11 @@
                             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No hay productos
                                 registrados</h3>
                             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Comienza registrando tu primer
-                                producto en el inventario</p>
+                                producto en el sistema.</p>
                             <button onclick="inventarioManager.openRegistroModal()"
-                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 <i class="fas fa-plus mr-2"></i>
-                                Registrar Primer Producto
+                                Registrar Producto
                             </button>
                         </div>
                         <!-- AGREGA ESTA LÍNEA -->
@@ -386,6 +414,22 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">Información básica del producto</p>
                     </div>
 
+                    <!-- Alerta de Configuración Faltante -->
+                    <div class="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-yellow-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    <strong>¿No encuentras una opción?</strong>
+                                    <br>
+                                    Si la <strong>Marca, Modelo, País, Categoría o Subcategoría</strong> que necesitas no aparece en los listados, debes ir a la sección de <strong>Configuración</strong> para registrarla primero.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Nombre del producto -->
                         <div class="md:col-span-2">
@@ -523,9 +567,15 @@
                                 <input type="checkbox" id="producto_requiere_stock" name="producto_requiere_stock"
                                     value="1" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="producto_requiere_stock"
-                                    class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                    ¿ Este producto NO requiere STOCK ? (Marcar si son productos como trámites, servicios, licencias, que no requiere una cantidad, pero si es para fines de ventas)
+                                    class="ml-2 block text-sm font-bold text-gray-800 dark:text-gray-200">
+                                    ¿Este producto NO requiere STOCK?
                                 </label>
+                            </div>
+                            <p class="mt-1 ml-6 text-xs text-gray-600 dark:text-gray-400 bg-yellow-50 dark:bg-gray-700 p-2 rounded border border-yellow-200 dark:border-gray-600">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>
+                                <strong>¡ATENCIÓN!</strong> Marca esta casilla <strong>ÚNICAMENTE</strong> si estás registrando un <strong>SERVICIO</strong> (ej: Trámites, Licencias, Papelería) que no necesita conteo físico.
+                                <br>Si es un producto físico real, <strong>NO</strong> marques esta opción.
+                            </p>
                             </div>
                         </div>
 
@@ -563,6 +613,7 @@
                                         <!-- Las previews se cargarán aquí dinámicamente -->
                                     </div>
                                 </div>
+                            </div>
                             </div>
                             <!-- AGREGAR ESTA SECCIÓN en el modal de registro, después de seccion_fotos -->
                             <div class="md:col-span-2 border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -682,8 +733,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
                     <div class="mt-6 flex justify-end space-x-3">
                         <button type="button" onclick="inventarioManager.closeModal('registro')"
@@ -1211,7 +1260,7 @@
     </div>
 </div>
     <!-- Modal Ingreso a Inventario -->
-    <div id="ingreso-modal" class="fixed inset-0 z-[60] overflow-y-auto hidden">
+    <div id="ingreso-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
                 onclick="inventarioManager.closeModal('ingreso')"></div>
@@ -1438,7 +1487,7 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar
                                             licencia</label>
                                         <input type="text" id="buscar_licencia_registro"
-                                            placeholder="Número de póliza o descripción..."
+                                            placeholder="Número de licencia, póliza o descripción..."
                                             class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                         <div id="licencias_encontradas_registro"
                                             class="mt-2 max-h-32 overflow-y-auto hidden border border-gray-300 dark:border-gray-600 rounded-md">
@@ -1837,7 +1886,7 @@
 
 
     <!-- Modal Egreso de Inventario -->
-    <div id="egreso-modal" class="fixed inset-0 z-[60] overflow-y-auto hidden">
+    <div id="egreso-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
                 onclick="inventarioManager.closeModal('egreso')"></div>

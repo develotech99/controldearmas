@@ -36,32 +36,65 @@ class MarcasController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'marca_descripcion' => 'required|string|max:255',
+            'marca_descripcion' => 'required|string|max:50',
             'marca_situacion'   => 'required|in:1,0',  
+        ], [
+            'marca_descripcion.required' => 'La descripción es obligatoria',
+            'marca_descripcion.max' => 'La descripción no puede exceder 50 caracteres',
+            'marca_situacion.required' => 'La situación es obligatoria',
         ]);
 
-        Marcas::create([
-            'marca_descripcion' => $request->marca_descripcion,
-            'marca_situacion'   => (int)$request->marca_situacion, 
-        ]);
+        try {
+            Marcas::create([
+                'marca_descripcion' => $request->marca_descripcion,
+                'marca_situacion'   => (int)$request->marca_situacion, 
+            ]);
 
-        return redirect()->route('marcas.index')->with('success', 'Marca creada exitosamente');
+            return redirect()->route('marcas.index')->with('success', 'Marca creada exitosamente');
+        } catch (\Exception $e) {
+            $msg = 'Error al crear la marca';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una marca con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+            return back()->with('error', $msg)->withInput();
+        }
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'marca_descripcion' => 'required|string|max:255',
-            'marca_situacion'   => 'required|in:1,0',   // <— números
-        ]);
-
         $marca = Marcas::findOrFail($id);
-        $marca->update([
-            'marca_descripcion' => $request->marca_descripcion,
-            'marca_situacion'   => (int)$request->marca_situacion, // <— a int
+        
+        $request->validate([
+            'marca_descripcion' => 'required|string|max:50',
+            'marca_situacion'   => 'required|in:1,0',
+        ], [
+            'marca_descripcion.required' => 'La descripción es obligatoria',
+            'marca_descripcion.max' => 'La descripción no puede exceder 50 caracteres',
+            'marca_situacion.required' => 'La situación es obligatoria',
         ]);
 
-        return redirect()->route('marcas.index')->with('success', 'Marca actualizada exitosamente');
+        try {
+            $marca->update([
+                'marca_descripcion' => $request->marca_descripcion,
+                'marca_situacion'   => (int)$request->marca_situacion,
+            ]);
+
+            return redirect()->route('marcas.index')->with('success', 'Marca actualizada exitosamente');
+        } catch (\Exception $e) {
+            $msg = 'Error al actualizar la marca';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una marca con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+            return back()->with('error', $msg)->withInput();
+        }
     }
 
 }

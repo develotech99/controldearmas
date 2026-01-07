@@ -1,4 +1,6 @@
 import './bootstrap';
+import '../css/app.css';
+import '../css/datatables-tailwind.css';
 
 import Alpine from 'alpinejs';
 import Swal from 'sweetalert2';
@@ -16,6 +18,8 @@ window.Swal = Swal;
 window.Alpine = Alpine;
 
 Alpine.start();
+
+import './manual';
 
 /**
  * Validación simple de formularios (modo exclusión por "excepciones")

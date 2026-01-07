@@ -80,7 +80,7 @@
         </div>
 
         <!-- Tarjetas de estado SIMPLIFICADAS -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <!-- Saldo total -->
             <div class="bg-white rounded-xl shadow-sm border p-6">
                 <div class="flex items-center">
@@ -93,6 +93,22 @@
                     <div class="ml-4">
                         <h3 class="text-lg font-semibold text-gray-900" id="saldoCajaTotalGTQ">Q 0.00</h3>
                         <p class="text-sm text-gray-500">Saldo total en caja</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dinero en Tienda -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-900" id="dineroEnTienda">Q 0.00</h3>
+                        <p class="text-sm text-gray-500">Dinero en Tienda</p>
                     </div>
                 </div>
             </div>
@@ -533,7 +549,7 @@
         </div>
     </div>
 
-    <!-- Modal Detalle Venta/Factura -->
+    <!-- Modal Detalle Venta/Factura (Simple) -->
     <div id="modalDetalleVenta" class="hidden fixed inset-0 z-50">
         <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
         <div class="relative max-w-4xl mx-auto mt-10 bg-white rounded-xl shadow-xl overflow-hidden">
@@ -544,8 +560,39 @@
                 </div>
                 <button class="text-gray-500 hover:text-gray-700" data-modal-close>&times;</button>
             </div>
-            <div class="p-4">
-                <!-- … contenido igual … -->
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Cliente</p>
+                        <p id="mdvCliente" class="font-medium text-gray-900">—</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Fecha</p>
+                        <p id="mdvFecha" class="font-medium text-gray-900">—</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-2">Productos</p>
+                    <div class="border rounded-lg overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-2">Descripción</th>
+                                    <th class="px-4 py-2 text-right">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mdvTablaProductos" class="divide-y divide-gray-100">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-2 border-t">
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">Total Venta</p>
+                        <p id="mdvTotalVenta" class="text-xl font-bold text-emerald-600">Q 0.00</p>
+                    </div>
+                </div>
             </div>
             <div class="p-4 border-t bg-gray-50 text-right">
                 <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg"

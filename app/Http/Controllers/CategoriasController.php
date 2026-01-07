@@ -59,11 +59,10 @@ class CategoriasController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'categoria_nombre' => 'required|string|max:100|unique:pro_categorias,categoria_nombre',
+            'categoria_nombre' => 'required|string|max:100',
           
         ], [
             'categoria_nombre.required' => 'El nombre de la categoría es obligatorio',
-            'categoria_nombre.unique' => 'Ya existe una categoría con ese nombre',
             'categoria_nombre.max' => 'El nombre no puede exceder 100 caracteres',
           
         ]);
@@ -85,9 +84,18 @@ class CategoriasController extends Controller
                 'data' => $categoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al crear la categoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una categoría con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear la categoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -98,11 +106,10 @@ class CategoriasController extends Controller
     public function update(Request $request, Categoria $categoria)
     {
         $validator = Validator::make($request->all(), [
-            'categoria_nombre' => 'required|string|max:100|unique:pro_categorias,categoria_nombre,' . $categoria->categoria_id . ',categoria_id',
+            'categoria_nombre' => 'required|string|max:100',
 
         ], [
             'categoria_nombre.required' => 'El nombre de la categoría es obligatorio',
-            'categoria_nombre.unique' => 'Ya existe una categoría con ese nombre',
             'categoria_nombre.max' => 'El nombre no puede exceder 100 caracteres',
           
         ]);
@@ -124,9 +131,18 @@ class CategoriasController extends Controller
                 'data' => $categoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar la categoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una categoría con ese nombre.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar la categoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -209,9 +225,18 @@ class CategoriasController extends Controller
                 'data' => $subcategoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al crear la subcategoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una subcategoría con ese nombre en esta categoría.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear la subcategoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -267,9 +292,18 @@ class CategoriasController extends Controller
                 'data' => $subcategoria
             ]);
         } catch (\Exception $e) {
+            $msg = 'Error al actualizar la subcategoría';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $msg = 'Ya existe una subcategoría con ese nombre en esta categoría.';
+            } elseif (config('app.debug')) {
+                $msg .= ': ' . $e->getMessage();
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar la subcategoría'
+                'message' => $msg
             ], 500);
         }
     }
@@ -280,6 +314,14 @@ class CategoriasController extends Controller
     public function destroySubcategoria(Subcategoria $subcategoria)
     {
         try {
+            // Verificar si hay productos asociados
+            if ($subcategoria->productos()->count() > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la subcategoría porque tiene productos asociados'
+                ], 400);
+            }
+
             $subcategoria->delete();
             
             return response()->json([
@@ -289,7 +331,7 @@ class CategoriasController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar la subcategoría'
+                'message' => 'Error al eliminar la subcategoría: ' . $e->getMessage()
             ], 500);
         }
     }

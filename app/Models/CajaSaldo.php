@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class CajaSaldo extends Model
+class CajaSaldo extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'caja_saldos';
     protected $primaryKey = 'caja_saldo_id';
 

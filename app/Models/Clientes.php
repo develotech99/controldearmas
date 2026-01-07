@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Clientes extends Model
+class Clientes extends Model implements Auditable
 {
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
     protected $table = 'pro_clientes';
     protected $primaryKey = 'cliente_id';
     public $timestamps = true;
@@ -39,5 +41,15 @@ class Clientes extends Model
     public function scopeActivos($query)
     {
         return $query->where('cliente_situacion', 1);
+    }
+
+    public function empresas()
+    {
+        return $this->hasMany(ClienteEmpresa::class, 'emp_cliente_id', 'cliente_id');
+    }
+
+    public function saldo()
+    {
+        return $this->hasOne(ClienteSaldo::class, 'saldo_cliente_id', 'cliente_id');
     }
 }

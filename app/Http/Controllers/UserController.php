@@ -219,11 +219,18 @@ class UserController extends Controller
                 ], 200);
             });
         } catch (\Throwable $e) {
+            $msg = 'Error generando solicitud de usuario.';
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+            } elseif (config('app.debug')) {
+                $msg .= ' ' . $e->getMessage();
+            }
+
             return response()->json([
                 'codigo'  => 0,
-                'mensaje' => 'Error generando solicitud de usuario',
-                'detalle' => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
+                'mensaje' => $msg,
+                'detalle' => config('app.debug') ? $e->getMessage() : null,
+                'trace'   => config('app.debug') ? $e->getTraceAsString() : null,
             ], 500);
         }
     }
@@ -495,10 +502,17 @@ class UserController extends Controller
         ], 200);
 
     } catch (\Exception $e) {
+        $msg = 'Error actualizando usuario.';
+        if (str_contains($e->getMessage(), 'Data too long')) {
+            $msg = 'Uno de los campos excede la longitud permitida. Verifique los datos.';
+        } elseif (config('app.debug')) {
+            $msg .= ' ' . $e->getMessage();
+        }
+
         return response()->json([
             'codigo' => 0,
-            'mensaje' => 'Error actualizando usuario',
-            'detalle' => $e->getMessage()
+            'mensaje' => $msg,
+            'detalle' => config('app.debug') ? $e->getMessage() : null
         ], 500);
     }
 }

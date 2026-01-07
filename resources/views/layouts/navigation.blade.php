@@ -53,7 +53,7 @@
                 x-transition:leave="transition ease-in duration-150"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
-                <a href="inventario"
+                <a href="{{ url('/inventario') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -61,6 +61,53 @@
                         </path>
                     </svg>
                     <span>Ingreso al Inventario</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Clientes Section -->
+        <div class="pt-4" x-data="{ clientes: false }">
+            <button @click="clientes = !clientes"
+                class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-300 focus:outline-none transition-colors">
+                <span>Clientes</span>
+                <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': clientes }"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div x-show="clientes" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 transform -translate-y-2"
+                x-transition:enter-end="opacity-100 transform translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 transform translate-y-0"
+                x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
+                <a href="{{ route('clientes.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
+                        </path>
+                    </svg>
+                    <span>Gestionar Clientes</span>
+                </a>
+
+                <a href="{{ route('clientes.deudas') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    <span>Clientes Morosos</span>
+                </a>
+                <a href="{{ route('clientes.estado_cuenta') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    <span>Estado de Cuenta</span>
                 </a>
             </div>
         </div>
@@ -81,15 +128,7 @@
                 x-transition:leave="transition ease-in duration-150"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
-                <a href="clientes"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
-                        </path>
-                    </svg>
-                    <span>Clientes</span>
-                </a>
+
 
                 <a href="{{ route('ventas.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
@@ -111,6 +150,26 @@
                     <span>Ventas Reservadas</span>
                 </a>
 
+                <a href="{{ route('preventas.listado') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                    <span>Listado de Preventas</span>
+                </a>
+
+                <a href="{{ route('preventas.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    <span>Preventas</span>
+                </a>
+
                 <a href="{{ route('reportes.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +180,7 @@
                     <span>Detalle de Ventas</span>
                 </a>
 
-                @if(Auth::user()->user_rol == 1)
+                @if(Auth::user()->user_rol == 1 || (Auth::user()->rol && strtolower(Auth::user()->rol->nombre) === 'vendedor'))
                 <a href="{{ route('comisiones.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +188,7 @@
                             d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
                         </path>
                     </svg>
-                    <span>Comision vendedor</span>
+                    <span>Mis Comisiones</span>
                 </a>
                 @endif
             </div>
@@ -158,10 +217,10 @@
                             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
                         </path>
                     </svg>
-                    <span>Mis Pagos</span>
+                    <span>Subir Pagos / Ver Ventas y Editar</span>
                 </a>
 
-                @if(Auth::user()->user_rol == 1)
+                @if(Auth::user()->user_rol == 1 || (Auth::user()->rol && strtolower(Auth::user()->rol->nombre) === 'contador'))
                 <a href="{{ route('admin.pagos') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,6 +229,15 @@
                         </path>
                     </svg>
                     <span>Administrar Pagos</span>
+                </a>
+                <a href="{{ route('admin.pagos.historial') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    <span>Historial de Pagos</span>
                 </a>
                 @endif
             </div>
@@ -192,6 +260,15 @@
                 x-transition:leave="transition ease-in duration-150"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
+                
+                <!-- Botón Manual Global -->
+                <button type="button" class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors btn-abrir-manual" data-section="1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    <span>Manual de Usuario</span>
+                </button>
+
                 <a href="{{ route('prolicencias.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,7 +299,7 @@
                 x-transition:leave="transition ease-in duration-150"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2 space-y-1 ml-2">
-                <a href="paises"
+                <a href="{{ url('/paises') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -232,7 +309,7 @@
                     <span>Países</span>
                 </a>
 
-                <a href="metodos-pago"
+                <a href="{{ url('/metodos-pago') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -242,7 +319,7 @@
                     <span>Métodos de Pago</span>
                 </a>
 
-                <a href="proempresas"
+                <a href="{{ url('/proempresas') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -252,7 +329,7 @@
                     <span>Empresas JM</span>
                 </a>
 
-                <a href="categorias"
+                <a href="{{ url('/categorias') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -262,7 +339,7 @@
                     <span>Categorías y subcategorías</span>
                 </a>
 
-                <a href="marcas"
+                <a href="{{ url('/marcas') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -282,7 +359,7 @@
                     <span>Modelos</span>
                 </a>
 
-                <a href="unidades-medida"
+                <a href="{{ url('/unidades-medida') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -292,7 +369,7 @@
                     <span>Unidades de Medida</span>
                 </a>
 
-                <a href="calibres"
+                <a href="{{ url('/calibres') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -340,6 +417,16 @@
                             d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span>Asignar Ubicación</span>
+                </a>
+
+                <a href="{{ route('audits.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                        </path>
+                    </svg>
+                    <span>Auditoría del Sistema</span>
                 </a>
             </div>
         </div>

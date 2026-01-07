@@ -4,6 +4,18 @@
 
 @section('content')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:text-3xl sm:truncate flex items-center gap-2">
+            Punto de Venta
+            <button type="button" class="text-blue-600 hover:text-blue-800 transition-colors btn-abrir-manual" data-section="ventas" title="Ver ayuda de Ventas">
+                <i class="fas fa-question-circle text-xl"></i>
+            </button>
+        </h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Realiza ventas, gestiona el carrito y procesa pagos de manera eficiente.
+        </p>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-1 lg:sticky lg:top-4 lg:self-start flex flex-col gap-6">
 
@@ -87,8 +99,10 @@
                     <div class="flex justify-center gap-4 mt-2">
 
                         <button id="btnBuscarCliente"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 hover:text-white transition-all duration-300">
-                            <i class="bi bi-search mr-2"></i>Buscar
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 hover:text-white transition-all duration-300 flex items-center">
+                            <i class="bi bi-search mr-2"></i>
+                            <span>Buscar</span>
+                            <div id="loaderCliente" class="hidden ml-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                         </button>
                         <button type="button" id="btnLimpiarBusqueda"
                             class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 hover:text-gray-900 transition-all duration-300">
@@ -101,6 +115,15 @@
                         <option value="">Seleccionar...</option>
                         {{-- Se llena dinámicamente con JS --}}
                     </select>
+
+                    {{-- Selector de Empresa (Oculto por defecto) --}}
+                    <div id="divEmpresaSelect" class="hidden mt-2">
+                        <label for="empresaSelect" class="block text-sm font-medium text-gray-700 mb-1">Empresa / Sucursal</label>
+                        <select id="empresaSelect" name="empresaSelect"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Seleccionar empresa...</option>
+                        </select>
+                    </div>
 
                     <div id="estadoBusquedaCliente" class="text-xs text-gray-500 mt-1"></div>
                 </div>
@@ -148,11 +171,47 @@
                         <div class="absolute left-4 top-1/2 transform -translate-y-1/2">
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
+                        
+                        <!-- Loader Buscador -->
+                        <div id="loaderBusqueda" class="absolute right-4 top-1/2 transform -translate-y-1/2 hidden">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        </div>
                     </div>
 
                     <div id="resultadosBusqueda"
                         class="absolute top-full left-0 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50 hidden">
                         <!-- resultados -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerta Informativa: Producto no encontrado -->
+            <div class="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+                <div class="flex flex-col gap-2">
+                    <!-- Producto no encontrado -->
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>¿No encuentras un producto?</strong>
+                                Si el producto no aparece en la búsqueda, por favor verifica que esté registrado y activo en el <a href="{{ route('inventario.index') }}" class="font-bold underline hover:text-blue-800" target="_blank">Inventario</a>.
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Precio no aparece -->
+                    <div class="flex mt-2 pt-2 border-t border-blue-200">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-tag text-blue-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>¿El precio aparece en 0.00?</strong>
+                                Si ves un producto pero su precio es 0, significa que no se le ha asignado un precio de venta.
+                                Ve al <a href="{{ route('inventario.index') }}" class="font-bold underline hover:text-blue-800" target="_blank">Inventario</a>, edita el producto y asegúrate de llenar los campos de "Precio Venta".
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -264,14 +323,41 @@
 
                             <!-- Contenido del método de pago (acordeón) -->
                             <div id="metodoPagoContenido" class="space-y-3">
-                                <div class="grid gap-2">
+                                <!-- Saldo a Favor Section -->
+                                <div id="saldoFavorContainer" class="hidden bg-blue-50 p-3 rounded-lg border border-blue-200 mb-3">
+                                    <label class="flex items-center justify-between cursor-pointer">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" id="checkSaldoFavor" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <span class="ml-2 text-sm font-semibold text-blue-800">Usar Saldo a Favor</span>
+                                        </div>
+                                        <span id="textoSaldoFavor" class="text-sm font-bold text-blue-700">Q0.00</span>
+                                    </label>
+                                    <div id="infoSaldoRestante" class="text-xs text-gray-600 mt-1 hidden">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <label class="font-semibold">Monto a usar:</label>
+                                            <input type="number" id="inputSaldoUsar" step="0.01" min="0" 
+                                                class="w-24 px-2 py-1 border rounded text-right text-sm focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        Restante a pagar con otro método: <span class="font-bold text-red-600" id="montoRestantePagar">Q0.00</span>
+                                    </div>
+                                </div>
+
+                                <div class="grid gap-2" id="listaMetodosPago">
                                     @foreach ($metodopago as $metodo)
+                                        @if(strtolower($metodo->metpago_descripcion) !== 'saldo a favor')
                                         <label class="flex items-center p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                                            <input type="radio" name="metodoPago" value="{{ $metodo->metpago_id }}" class="mr-3"
+                                            <input type="radio" name="metodoPago" value="{{ $metodo->metpago_id }}" class="mr-3">
                                                 <i class="fas fa-credit-card mr-2 text-blue-600"></i>
                                             <span class="text-sm">{{ $metodo->metpago_descripcion }}</span>
                                         </label>
+                                        @endif
                                     @endforeach
+                                    
+                                    <!-- Mensaje cuando se cubre todo con saldo a favor -->
+                                    <div id="mensajePagoCompletoSaldo" class="hidden p-3 bg-green-50 text-green-700 rounded-lg text-sm text-center border border-green-200">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        El saldo a favor cubre el total de la venta.
+                                    </div>
                                 </div>
 
                                 <!-- Autorización (para métodos 1–5) -->
@@ -279,7 +365,7 @@
                                 <div id="autorizacionContainer" class="hidden">
                                     <div class="grid grid-cols-2 gap-4">
                                         <!-- Selección del Banco -->
-                                        <div>
+                                        <div id="div-select-banco">
                                             <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccionar
                                                 Banco</label>
                                             <select id="selectBanco"
@@ -289,15 +375,30 @@
                                                 <option value="banco_industrial">Banco Industrial</option>
                                                 <option value="banco_bam">Banco BAM</option>
                                                 <option value="banco_gyt">Banco GYT</option>
+                                                <option value="interbanco">Interbanco</option>
                                             </select>
                                         </div>
 
+                                        <!-- Fecha de Transferencia/Pago -->
+                                        <div id="div-fecha-pago">
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Pago</label>
+                                            <input type="datetime-local" id="fechaPago"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
                                         <!-- Número de Autorización -->
-                                        <div>
+                                        <div id="div-numero-auth">
                                             <label class="block text-sm font-semibold text-gray-700 mb-2">Número de
                                                 Autorización / No. Cheque</label>
                                             <input type="text" id="numeroAutorizacion"
                                                 placeholder="Ingrese el número de autorización"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <!-- Comprobante de Pago -->
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Comprobante de Pago</label>
+                                            <input type="file" id="comprobante_pago" accept="image/*,application/pdf"
                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                         </div>
                                     </div>
@@ -388,38 +489,74 @@
 
                     <div id="modalDocumentacion"
                         class="absolute inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
-                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
                             <h3 class="text-lg font-semibold mb-4 text-gray-800 flex justify-between items-center">
-                                Agregar Documento
+                                Documentación del Cliente
                                 <button type="button" id="btnCerrarModalDocumentacion"
                                     class="p-2 rounded hover:bg-gray-100">
                                     <i class="fas fa-times text-xl"></i>
                                 </button>
                             </h3>
 
-                            <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Columna Izquierda: Lista de Documentos -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de
-                                        Documento</label>
-                                    <select id="tipoDocumentoSelect"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Seleccionar...</option>
-                                        <option value="licencia_portacion">Licencia de Portación</option>
-                                        <option value="licencia_tenencia">Tenencia</option>
-
-                                    </select>
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Documentos Disponibles</h4>
+                                    <div id="listaDocumentosCliente" class="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2 bg-gray-50">
+                                        <p class="text-sm text-gray-500 text-center py-4">Cargando documentos...</p>
+                                    </div>
+                                    <input type="hidden" id="documentoSeleccionadoId">
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Número de
-                                        Documento</label>
-                                    <input type="text" id="numeroDocumentoInput" placeholder="Ej: 123456789"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                </div>
+                                <!-- Columna Derecha: Formulario Nuevo Documento -->
+                                <div class="border-l pl-6">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Agregar Nuevo Documento</h4>
+                                    <form id="formNuevoDocumento" class="space-y-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+                                            <select id="docTipo" name="tipo" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                                <option value="TENENCIA">Tenencia</option>
+                                                <option value="PORTACION">Licencia de Portación</option>
+                                            </select>
+                                        </div>
 
-                                <button type="button" id="btnCerrarModalDocumentacion"
-                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
-                                    <i class="fas fa-plus"></i> Agregar Documento
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1" id="lblDocNum">Número de Tenencia</label>
+                                            <input type="text" id="docNumero" name="numero_documento" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1" id="lblDocSec">Número de Propietario</label>
+                                            <input type="text" id="docSecundario" name="numero_secundario"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Vencimiento (Opcional)</label>
+                                            <input type="date" id="docVencimiento" name="fecha_vencimiento"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Imagen (Opcional)</label>
+                                            <input type="file" id="docImagen" name="imagen" accept="image/*,.pdf"
+                                                class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                        </div>
+
+                                        <button type="submit"
+                                            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 mt-2">
+                                            <i class="fas fa-save"></i> Guardar Documento
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 flex justify-end gap-3 border-t pt-4">
+                                <button type="button" id="btnConfirmarDocumento" disabled
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Usar Seleccionado
                                 </button>
                             </div>
                         </div>
