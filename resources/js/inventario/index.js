@@ -1295,13 +1295,13 @@ class InventarioManager {
         }
 
         // Validar tipos de archivo
-        const tiposValidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const tiposValidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
         const archivosInvalidos = Array.from(archivos).filter(archivo =>
-            !tiposValidos.includes(archivo.type) || archivo.size > 2048000
+            !tiposValidos.includes(archivo.type) || archivo.size > 5120000 // Aumentado a 5MB para coincidir con backend
         );
 
         if (archivosInvalidos.length > 0) {
-            this.showAlert('error', 'Archivos inválidos', 'Solo se permiten JPG, PNG, WebP hasta 2MB');
+            this.showAlert('error', 'Archivos inválidos', 'Solo se permiten JPG, PNG, WebP, HEIC hasta 5MB');
             return;
         }
 

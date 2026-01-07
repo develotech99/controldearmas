@@ -618,7 +618,7 @@ public function getPaisesActivos(): JsonResponse
              'producto_es_importado' => 'boolean',
              'producto_stock_minimo' => 'nullable|integer|min:0',
              'producto_stock_maximo' => 'nullable|integer|min:0',
-             'fotos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+             'fotos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,heic,heif|max:2048',
      
              // VALIDACIONES DE PRECIOS (OPCIONALES EN REGISTRO)
              'agregar_precios' => 'nullable|boolean',
@@ -1460,7 +1460,7 @@ private function procesarPreciosIngreso(Request $request, $productoId, $movimien
 public function subirFotos(Request $request, $productoId): JsonResponse
 {
     $validator = Validator::make($request->all(), [
-        'fotos.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'fotos.*' => 'required|image|mimes:jpg,jpeg,png,webp,heic,heif|max:2048',
     ]);
 
     if ($validator->fails()) {
