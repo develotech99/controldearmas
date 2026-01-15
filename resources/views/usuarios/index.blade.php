@@ -70,7 +70,7 @@
     {{-- Modal Crear/Editar --}}
     <div id="modalUsuario" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
-        <div class="relative mx-auto mt-10 w-full max-w-lg">
+        <div class="relative mx-auto mt-10 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 id="modalUsuarioTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100">Crear usuario

@@ -274,7 +274,7 @@ class DashboardController extends Controller
             $anioActual = date('Y');
             
             $productos = DB::table('pro_detalle_ventas as dv')
-                ->join('pro_ventas as v', 'dv.det_venta_id', '=', 'v.ven_id')
+                ->join('pro_ventas as v', 'dv.det_ven_id', '=', 'v.ven_id')
                 ->join('pro_productos as p', 'dv.det_producto_id', '=', 'p.producto_id')
                 ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA'])
                 ->where('dv.det_situacion', 'ACTIVO')
