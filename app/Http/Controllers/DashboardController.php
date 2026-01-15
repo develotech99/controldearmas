@@ -31,7 +31,7 @@ class DashboardController extends Controller
 
             // Ventas del mes actual
             $ventasMes = DB::table('pro_ventas')
-                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('ven_situacion', ['AUTORIZADA', 'COMPLETADA', 'FACTURADA'])
                 ->whereRaw('MONTH(ven_fecha) = ?', [$mesActual])
                 ->whereRaw('YEAR(ven_fecha) = ?', [$anioActual])
                 ->count();
@@ -95,7 +95,7 @@ class DashboardController extends Controller
             $ventas = DB::table('pro_ventas as v')
                 ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
                 ->leftJoin('users as u', 'v.ven_user', '=', 'u.user_id')
-                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('v.ven_situacion', ['AUTORIZADA', 'COMPLETADA', 'FACTURADA'])
                 ->orderBy('v.ven_fecha', 'desc')
                 ->limit(5)
                 ->select([
@@ -238,7 +238,7 @@ class DashboardController extends Controller
 
             $ventas = DB::table('pro_ventas')
                 ->whereBetween('ven_fecha', [$fechaInicio, $fechaFin])
-                ->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('ven_situacion', ['AUTORIZADA', 'COMPLETADA', 'FACTURADA'])
                 ->selectRaw('DATE(ven_fecha) as fecha, COUNT(*) as total, SUM(ven_total_vendido) as monto')
                 ->groupBy(DB::raw('DATE(ven_fecha)'))
                 ->orderBy('fecha')
@@ -276,7 +276,7 @@ class DashboardController extends Controller
             $productos = DB::table('pro_detalle_ventas as dv')
                 ->join('pro_ventas as v', 'dv.det_ven_id', '=', 'v.ven_id')
                 ->join('pro_productos as p', 'dv.det_producto_id', '=', 'p.producto_id')
-                ->whereIn('v.ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA'])
+                ->whereIn('v.ven_situacion', ['AUTORIZADA', 'COMPLETADA', 'FACTURADA'])
                 ->where('dv.det_situacion', 'ACTIVO')
                 ->whereRaw('MONTH(v.ven_fecha) = ?', [$mesActual])
                 ->whereRaw('YEAR(v.ven_fecha) = ?', [$anioActual])
@@ -285,7 +285,7 @@ class DashboardController extends Controller
                     'p.producto_nombre',
                     'p.pro_codigo_sku as codigo',
                     DB::raw('SUM(dv.det_cantidad) as total_vendido'),
-                    DB::raw('SUM(dv.det_sub_total) as monto_total')
+                    DB::raw('SUM(dv.det_cantidad * dv.det_precio - dv.det_descuento) as monto_total')
                 ])
                 ->groupBy('p.producto_id', 'p.producto_nombre', 'p.pro_codigo_sku')
                 ->orderBy('total_vendido', 'desc')
