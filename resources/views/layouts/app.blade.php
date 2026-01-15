@@ -94,6 +94,10 @@
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6">
                 @yield('content')
+                
+                <footer class="mt-auto py-4 text-center text-xs text-slate-500 dark:text-gray-500">
+                    © {{ date('Y') }} Control de Armas <a href="https://www.develotechgt.com/" target="_blank" class="hover:text-slate-700 dark:hover:text-gray-300 transition-colors">by Develotech</a>
+                </footer>
             </main>
         </div>
     </div>

@@ -90,7 +90,7 @@
             <!-- Footer Simple -->
             <div class="text-center">
                 <p class="text-xs text-slate-500 dark:text-gray-500">
-                    © {{ date('Y') }} Control de Armas by Develotech - Sistema Interno
+                    © {{ date('Y') }} Control de Armas <a href="https://www.develotechgt.com/" target="_blank" class="hover:text-slate-700 dark:hover:text-gray-300 transition-colors">by Develotech</a> - Sistema Interno
                 </p>
             </div>
         </div>

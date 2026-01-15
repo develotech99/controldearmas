@@ -72,7 +72,7 @@
                         class="h-7 w-7 rounded bg-white/10 p-1 ring-1 ring-white/10">
                     <div class="flex flex-col">
                         <span class="text-sm font-semibold leading-none">CONTROL DE ARMAS</span>
-                        <span class="text-[0.6rem] text-slate-400 font-medium tracking-wider uppercase">by Develotech</span>
+                        <a href="https://www.develotechgt.com/" target="_blank" class="text-[0.6rem] text-slate-400 font-medium tracking-wider uppercase hover:text-white transition-colors">by Develotech</a>
                     </div>
                 </div>
                 <span class="text-xs text-slate-300/80">© {{ date('Y') }} • Acceso interno</span>
