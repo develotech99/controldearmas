@@ -11,7 +11,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Alerta de Stock - Pro Armas</title>
+    <title>Alerta de Stock - Control de Armas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         .preheader { display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0; }
@@ -42,13 +42,13 @@
                                     <td align="center" style="border:2px solid #ED6A00;border-radius:12px;padding:10px 16px;">
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                                             <tr>
-                                                <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:32px;font-weight:800;color:#111827;">
-                                                    PR<span style="color:#ED6A00;">O</span>
+                                                <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:32px;font-weight:800;color:#111827;">
+                                                    CONTROL DE <span style="color:#ED6A00;">ARMAS</span>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:16px;color:#6B7280;letter-spacing:.6px;">
-                                                    ARMAS Y MUNICIONES
+                                                <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:16px;color:#6B7280;letter-spacing:.6px;text-transform:uppercase;">
+                                                    by Develotech
                                                 </td>
                                             </tr>
                                         </table>
@@ -154,7 +154,7 @@
                                 <tr>
                                     <td align="left">
                                         <p style="margin:0; font-family: Arial, Helvetica, sans-serif; font-size:12px; color: {{ $brand['muted'] }};">
-                                            © {{ now()->year }} <strong>Pro Armas</strong>. Todos los derechos reservados.
+                                            © {{ now()->year }} <strong>Control de Armas</strong>. Todos los derechos reservados.
                                         </p>
                                         <p style="margin:4px 0 0; font-family: Arial, Helvetica, sans-serif; font-size:12px; color: {{ $brand['muted'] }};">
                                             <em>Desarrollado por <strong>Develotech</strong></em>

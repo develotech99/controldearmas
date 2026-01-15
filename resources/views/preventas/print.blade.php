@@ -17,7 +17,7 @@
         <!-- Header -->
         <div class="flex justify-between items-start mb-8 border-b pb-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-800">ProArmas y Municiones</h1>
+                <h1 class="text-3xl font-bold text-gray-800">Control de Armas</h1>
                 <p class="text-gray-600">Comprobante de Preventa</p>
             </div>
             <div class="text-right">

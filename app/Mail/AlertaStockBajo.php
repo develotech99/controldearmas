@@ -26,7 +26,7 @@ class AlertaStockBajo extends Mailable
             $this->alertasAgrupadas['alta']->count() +
             $this->alertasAgrupadas['media']->count();
 
-        return $this->subject("⚠️ Reporte Diario de Stock - {$totalAlertas} alertas pendientes")
+        return $this->subject("⚠️ Reporte Diario de Stock - Control de Armas - {$totalAlertas} alertas pendientes")
                     ->view('emails.alerta-stock-bajo');
     }
 }

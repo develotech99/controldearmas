@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'ProArmas y Municiones') }} - Sistema de Inventario</title>
+    <title>{{ config('app.name', 'CONTROL DE ARMAS') }} - Sistema de Inventario</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="icon" href="{{ asset('images/pro_armas.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('images/controlarmasdev.png') }}" type="image/png">
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -69,17 +69,13 @@
                         </button>
 
                         <!-- Mobile Logo -->
-                        <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-slate-800 dark:bg-gray-900 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h.01M9 12h.01M9 16h.01M13 12h.01M13 16h.01M13 8h.01M17 12h.01M17 16h.01">
-                                    </path>
-                                </svg>
+                                <img src="{{ asset('images/controlarmasdev.png') }}" alt="Logo" class="w-6 h-6">
                             </div>
-                            <span class="text-lg font-semibold text-slate-800 dark:text-white">ProArmas</span>
-                        </div>
+                            <div class="flex flex-col">
+                                <span class="text-lg font-semibold text-slate-800 dark:text-white leading-none">CONTROL DE ARMAS</span>
+                                <span class="text-[0.6rem] text-slate-500 dark:text-gray-400 font-medium tracking-wider uppercase">by Develotech</span>
+                            </div>
 
                         <div class="w-10"></div> <!-- Spacer for centering -->
                     </div>

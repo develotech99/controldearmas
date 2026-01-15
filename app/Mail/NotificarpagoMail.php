@@ -37,7 +37,7 @@ class NotificarpagoMail extends Mailable
         $mail = $this->subject($subject)
             ->view('emails.NotificarPago')
             ->with(array_merge($this->payload, [
-                'logoCid' => 'cid:logo-proarmas',
+                'logoCid' => 'cid:logo-controldearmas',
                 'tipo'    => $this->tipo,
             ]));
 
@@ -64,11 +64,11 @@ class NotificarpagoMail extends Mailable
              }
         }
 
-        $logoPath = public_path('images/pro_armas.png'); 
+        $logoPath = public_path('images/controlarmasdev.png'); 
 
         if (is_file($logoPath)) {
             $this->withSymfonyMessage(function (Email $message) use ($logoPath) {
-                $message->embedFromPath($logoPath, 'logo-proarmas');
+                $message->embedFromPath($logoPath, 'logo-controldearmas');
             });
         }
 

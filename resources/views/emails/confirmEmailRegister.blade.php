@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirmación Exitosa - ProArmas</title>
+    <title>Confirmación Exitosa - Control de Armas</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -58,7 +58,7 @@
             </div>
         </div>
         <div class="py-4 bg-gray-100 text-center text-gray-600 text-sm">
-            <p>© 2023 ProArmas. Todos los derechos reservados.</p>
+            <p>© 2023 Control de Armas. Todos los derechos reservados.</p>
         </div>
     </div>
 

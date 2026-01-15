@@ -26,8 +26,8 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td valign="top" style="width:88px;">
-                                        <img src="{{ $logoCid ?: asset('images/pro_armas.png') }}"
-                                            alt="PRO ARMAS Y MUNICIONES" width="72"
+                                        <img src="{{ $logoCid ?: asset('images/controlarmasdev.png') }}"
+                                            alt="CONTROL DE ARMAS" width="72"
                                             style="display:block;border:0;outline:none;border-radius:6px;height:auto;">
                                     </td>
 
@@ -165,7 +165,7 @@
                             style="background:#fafafa;padding:16px 22px;border-top:1px solid #edf0f2;text-align:center;">
                             <div
                                 style="font-family:Arial,Helvetica,sans-serif;color:#9aa1ad;font-size:12px;line-height:18px;">
-                                © {{ date('Y') }} PRO ARMAS Y MUNICIONES · Notificación automática.<br>
+                                © {{ date('Y') }} CONTROL DE ARMAS · Notificación automática.<br>
                                 Soporte: <a href="mailto:{{ config('mail.from.address') }}"
                                     style="color:#3b82f6;text-decoration:none;">{{ config('mail.from.address') }}</a>
                             </div>

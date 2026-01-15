@@ -225,7 +225,7 @@
         <td align="center">
             <!-- Debug temporal -->
             @php
-                $logoPath = public_path('storage/ProArmas.jpg');
+                $logoPath = public_path('storage/controlarmasdev.png');
                 echo 'Ruta: ' . $logoPath . '<br>';
                 echo 'Existe: ' . (file_exists($logoPath) ? 'Sí' : 'No') . '<br>';
                 if (file_exists($logoPath)) {

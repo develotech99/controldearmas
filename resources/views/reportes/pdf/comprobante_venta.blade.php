@@ -42,7 +42,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>PRO ARMAS</h1>
+        <h1>CONTROL DE ARMAS</h1>
         <p>Comprobante de Venta #{{ $venta->ven_id }}</p>
         <p>Fecha: {{ \Carbon\Carbon::parse($venta->ven_fecha)->format('d/m/Y H:i:s') }}</p>
     </div>
@@ -121,7 +121,7 @@
 
     <div class="footer">
         <p>Este documento es un comprobante interno y no sustituye a una factura contable.</p>
-        <p>Generado por Sistema ProArmas el {{ now()->format('d/m/Y H:i:s') }}</p>
+        <p>Generado por Sistema Control de Armas el {{ now()->format('d/m/Y H:i:s') }}</p>
     </div>
 </body>
 </html>

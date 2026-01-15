@@ -7,12 +7,13 @@
 
         {{-- LOGO PRINCIPAL --}}
         <div class="text-center mb-6">
-            <img src="{{ asset('images/pro_armas.png') }}" alt="ProArmas"
+            <img src="{{ asset('images/controlarmasdev.png') }}" alt="CONTROL DE ARMAS"
                 class="mx-auto mb-4 h-36 w-36 rounded-xl bg-black/40 p-2
                         ring-2 ring-orange-500/70
                         shadow-[0_0_55px_rgba(255,115,0,0.55)]">
-            <h1 class="text-2xl font-extrabold tracking-tight text-white">ProArmas &amp; Municiones</h1>
-            <p class="text-slate-300/85 text-sm">Ingreso al Sistema de Inventario</p>
+            <h1 class="text-2xl font-extrabold tracking-tight text-white leading-none">CONTROL DE ARMAS</h1>
+            <p class="text-slate-400 text-xs font-medium tracking-wider uppercase mt-1">by Develotech</p>
+            <p class="text-slate-300/85 text-sm mt-2">Ingreso al Sistema de Inventario</p>
         </div>
 
         {{-- Status --}}

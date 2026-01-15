@@ -23,14 +23,14 @@ class NotificarVentaMail extends Mailable
         $mail = $this->subject('Nueva Venta Realizada - Folio #' . $this->payload['venta_id'])
             ->view('emails.NotificarVenta')
             ->with(array_merge($this->payload, [
-                'logoCid' => 'cid:logo-proarmas',
+                'logoCid' => 'cid:logo-controldearmas',
             ]));
 
-        $logoPath = public_path('images/pro_armas.png');
+        $logoPath = public_path('images/controlarmasdev.png');
 
         if (is_file($logoPath)) {
             $this->withSymfonyMessage(function (Email $message) use ($logoPath) {
-                $message->embedFromPath($logoPath, 'logo-proarmas');
+                $message->embedFromPath($logoPath, 'logo-controldearmas');
             });
         }
 

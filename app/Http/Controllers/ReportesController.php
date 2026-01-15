@@ -1189,7 +1189,7 @@ public function getReporteVentas(Request $request): JsonResponse
                     'mes' => $data['mes_nombre'],
                     'anio' => $data['anio'],
                     'operador' => auth()->user()->user_primer_nombre . ' ' . auth()->user()->user_primer_apellido,
-                    'empresa' => 'PRO ARMAS',
+                    'empresa' => 'CONTROL DE ARMAS',
                     'fecha_generacion' => now()->format('d/m/Y H:i:s')
                 ]);
 
@@ -1217,7 +1217,7 @@ public function getReporteVentas(Request $request): JsonResponse
                     'data' => $dataParaPdf, // ✅ Usar data convertida
                     'fecha_inicio' => $data['fecha_inicio'],
                     'fecha_fin' => $data['fecha_fin'],
-                    'empresa' => 'PRO ARMAS',
+                    'empresa' => 'CONTROL DE ARMAS',
                     'fecha_generacion' => now()->format('d/m/Y H:i:s')
                 ]);
 

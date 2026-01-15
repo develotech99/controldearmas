@@ -15,7 +15,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="{{ $logoCid ?: asset('images/pro_armas.png') }}" alt="Armería Control Pro" style="max-height: 80px; width: auto;">
+            <img src="{{ $logoCid ?: asset('images/controlarmasdev.png') }}" alt="Control de Armas" style="max-height: 80px; width: auto;">
         </div>
         
         <h3>Comprobante de Pago Subido</h3>

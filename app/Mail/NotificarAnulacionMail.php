@@ -24,7 +24,7 @@ class NotificarAnulacionMail extends Mailable
         $this->payload = $payload;
         
         // Embed logo
-        $path = public_path('images/pro_armas.png');
+        $path = public_path('images/controlarmasdev.png');
         if (file_exists($path)) {
             $type = pathinfo($path, PATHINFO_EXTENSION);
             $data = file_get_contents($path);

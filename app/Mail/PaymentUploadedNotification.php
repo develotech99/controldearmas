@@ -42,7 +42,7 @@ class PaymentUploadedNotification extends Mailable
     {
         return new Content(
             view: 'emails.payment_uploaded',
-            with: ['logoCid' => 'cid:logo-proarmas'],
+            with: ['logoCid' => 'cid:logo-controldearmas'],
         );
     }
 
@@ -61,12 +61,12 @@ class PaymentUploadedNotification extends Mailable
                 ->withMime('image/jpeg');
         }
 
-        $logoPath = public_path('images/pro_armas.png');
+        $logoPath = public_path('images/controlarmasdev.png');
         if (file_exists($logoPath)) {
             $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($logoPath)
                 ->as('logo.png')
                 ->withMime('image/png')
-                ->withContentId('logo-proarmas');
+                ->withContentId('logo-controldearmas');
         }
 
         return $attachments;

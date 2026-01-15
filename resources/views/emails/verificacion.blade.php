@@ -13,7 +13,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Verifica tu correo - Pro Armas</title>
+    <title>Verifica tu correo - Control de Armas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Preheader (texto corto que verán antes de abrir el email) -->
@@ -49,7 +49,7 @@
 <body style="margin:0; padding:0; background: {{ $brand['bg'] }};">
 
     <div class="preheader">
-        Confirma tu dirección de correo para activar tu cuenta en Pro Armas.
+        Confirma tu dirección de correo para activar tu cuenta en Control de Armas.
     </div>
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
@@ -63,12 +63,12 @@
                     <tr>
                         <td align="center" style="background: {{ $brand['white'] }}; padding:24px;">
                             @php
-                                $logoUrl = secure_asset('images/pro_armas.png'); 
+                                $logoUrl = secure_asset('images/controlarmasdev.png'); 
                                 $useImage = str_starts_with($logoUrl, 'https://');
                             @endphp
 
                             @if ($useImage)
-                                <img src="{{ $logoUrl }}" alt="Pro Armas" width="160" height="60"
+                                <img src="{{ $logoUrl }}" alt="Control de Armas" width="160" height="60"
                                     style="display:block;border:0;outline:none;text-decoration:none;">
                             @else
      
@@ -80,14 +80,14 @@
                                             <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                                                 <tr>
                                                     <td align="center"
-                                                        style="font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:32px;font-weight:800;color:#111827;">
-                                                        PR<span style="color:#ED6A00;">O</span>
+                                                        style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:32px;font-weight:800;color:#111827;">
+                                                        CONTROL DE <span style="color:#ED6A00;">ARMAS</span>
                                                     </td>
                                                 </tr>
                                                 <tr>
                                                     <td align="center"
-                                                        style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:16px;color:#6B7280;letter-spacing:.6px;">
-                                                        ARMAS Y MUNICIONES
+                                                        style="font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:16px;color:#6B7280;letter-spacing:.6px;text-transform:uppercase;">
+                                                        by Develotech
                                                     </td>
                                                 </tr>
                                             </table>
@@ -116,7 +116,7 @@
                                             style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size:15px; line-height:1.6; color: {{ $brand['muted'] }};">
                                             Hola
                                             {{ trim(($user->user_primer_nombre ?? '') . ' ' . ($user->user_primer_apellido ?? '')) }},<br>
-                                            Gracias por registrarte en <strong>Pro Armas</strong>. Para activar tu
+                                            Gracias por registrarte en <strong>Control de Armas</strong>. Para activar tu
                                             cuenta, por favor haz clic en el botón:
                                         </p>
                                     </td>
@@ -182,7 +182,7 @@
                                     <td align="left">
                                         <p
                                             style="margin:0; font-family: Arial, Helvetica, sans-serif; font-size:12px; color: {{ $brand['muted'] }};">
-                                            © {{ now()->year }} <strong>Pro Armas</strong>. Todos los derechos
+                                            © {{ now()->year }} <strong>Control de Armas</strong>. Todos los derechos
                                             reservados.
                                         </p>
                                         <p

@@ -413,7 +413,7 @@
         <div class="header">
             <div class="logo-datos">
                 <div class="logo">
-                    <img src="{{ asset('images/pro_armas.png') }}" alt="Logo ProArmas & Municiones">
+                    <img src="{{ asset('images/controlarmasdev.png') }}" alt="Logo Control de Armas">
                 </div>
                 <div class="datos-empresa">
                     <h1>{{ $emisor['comercial'] ?? $emisor['nombre'] }}</h1>

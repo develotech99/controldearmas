@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sistema de Inventario - ProArmas y Municiones</title>
+    <title>Sistema de Inventario - Control de Armas by Develotech</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -33,7 +33,7 @@
                 </div>
                 
                 <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                    ProArmas y Municiones
+                    CONTROL DE ARMAS
                 </h1>
                 <p class="text-lg text-slate-600 dark:text-gray-400 mb-8">
                     Sistema de Control de Inventario
@@ -90,7 +90,7 @@
             <!-- Footer Simple -->
             <div class="text-center">
                 <p class="text-xs text-slate-500 dark:text-gray-500">
-                    © {{ date('Y') }} ProArmas y Municiones - Sistema Interno
+                    © {{ date('Y') }} Control de Armas by Develotech - Sistema Interno
                 </p>
             </div>
         </div>

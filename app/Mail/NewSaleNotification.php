@@ -40,7 +40,7 @@ class NewSaleNotification extends Mailable
     {
         return new Content(
             view: 'emails.new_sale',
-            with: ['logoCid' => 'cid:logo-proarmas'],
+            with: ['logoCid' => 'cid:logo-controldearmas'],
         );
     }
 
@@ -53,12 +53,12 @@ class NewSaleNotification extends Mailable
     {
         $attachments = [];
         
-        $logoPath = public_path('images/pro_armas.png');
+        $logoPath = public_path('images/controlarmasdev.png');
         if (file_exists($logoPath)) {
             $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($logoPath)
                 ->as('logo.png')
                 ->withMime('image/png')
-                ->withContentId('logo-proarmas');
+                ->withContentId('logo-controldearmas');
         }
 
         return $attachments;

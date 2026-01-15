@@ -5,9 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'ProArmas') }}</title>
+    <title>{{ config('app.name', 'CONTROL DE ARMAS') }}</title>
 
-    <link rel="icon" type="image/png" href="{{ asset('images/pro_armas.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/controlarmasdev.png') }}">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
@@ -51,7 +51,7 @@
         </div>
 
         <div class="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
-            <img src="{{ asset('images/pro_armas.png') }}" alt="ProArmas"
+            <img src="{{ asset('images/controlarmasdev.png') }}" alt="CONTROL DE ARMAS"
                 class="w-[90vw] max-w-[1200px] min-w-[400px]
                 object-contain mx-auto
                 opacity-[0.18] md:opacity-[0.22]
@@ -68,9 +68,12 @@
         <footer class="absolute bottom-0 left-0 right-0 z-10 border-t border-white/10 bg-black/30 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('images/pro_armas.png') }}" alt="ProArmas"
+                    <img src="{{ asset('images/controlarmasdev.png') }}" alt="CONTROL DE ARMAS"
                         class="h-7 w-7 rounded bg-white/10 p-1 ring-1 ring-white/10">
-                    <span class="text-sm font-semibold">ProArmas &amp; Municiones</span>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold leading-none">CONTROL DE ARMAS</span>
+                        <span class="text-[0.6rem] text-slate-400 font-medium tracking-wider uppercase">by Develotech</span>
+                    </div>
                 </div>
                 <span class="text-xs text-slate-300/80">© {{ date('Y') }} • Acceso interno</span>
             </div>

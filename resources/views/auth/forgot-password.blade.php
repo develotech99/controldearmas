@@ -7,7 +7,7 @@
 
         {{-- HEADER --}}
         <div class="text-center mb-6">
-            <img src="{{ asset('images/pro_armas.png') }}" alt="ProArmas"
+            <img src="{{ asset('images/controlarmasdev.png') }}" alt="CONTROL DE ARMAS"
                 class="mx-auto mb-4 h-20 w-20 rounded-xl bg-black/40 p-2
                         ring-2 ring-orange-500/70
                         shadow-[0_0_55px_rgba(255,115,0,0.55)]">
@@ -44,7 +44,7 @@
                     Correo Electrónico
                 </label>
                 <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
-                    placeholder="empleado@proarmas.com"
+                    placeholder="empleado@controldearmas.com"
                     class="w-full rounded-lg border border-white/25 bg-black/30 px-4 py-3 text-white
                               placeholder-white/60 outline-none transition
                               focus:border-orange-500 focus:ring-2 focus:ring-orange-500/60">

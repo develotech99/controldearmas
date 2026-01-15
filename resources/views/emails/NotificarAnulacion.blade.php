@@ -16,7 +16,7 @@
                             @if(!empty($logoBase64))
                                 <img src="{{ $logoBase64 }}" alt="Logo" style="max-width:150px;height:auto;display:block;margin:0 auto;">
                             @else
-                                <h1 style="margin:0;color:#ffffff;font-size:24px;">Pro Armas</h1>
+                                <h1 style="margin:0;color:#ffffff;font-size:24px;">Control de Armas</h1>
                             @endif
                         </td>
                     </tr>
@@ -81,7 +81,7 @@
                     <tr>
                         <td style="background-color:#f9fafb;padding:24px;text-align:center;border-top:1px solid #e5e7eb;">
                             <p style="margin:0;color:#9ca3af;font-size:12px;">
-                                &copy; {{ date('Y') }} Armería Control Pro. Todos los derechos reservados.
+                                &copy; {{ date('Y') }} Control de Armas by Develotech. Todos los derechos reservados.
                             </p>
                         </td>
                     </tr>
