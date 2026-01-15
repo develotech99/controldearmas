@@ -71,8 +71,7 @@ class DashboardController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error en getEstadisticas: ' . $e->getMessage());
-            Log::error('Trace: ' . $e->getTraceAsString());
+
             
             return response()->json([
                 'success' => false,
@@ -90,7 +89,7 @@ class DashboardController extends Controller
         try {
             // DEBUG: Contar ventas totales
             $totalVentas = DB::table('pro_ventas')->whereIn('ven_situacion', ['ACTIVA', 'COMPLETADA', 'FACTURADA'])->count();
-            Log::info("Dashboard - Total ventas activas: {$totalVentas}");
+
 
             $ventas = DB::table('pro_ventas as v')
                 ->leftJoin('pro_clientes as c', 'v.ven_cliente', '=', 'c.cliente_id')
@@ -112,20 +111,9 @@ class DashboardController extends Controller
                 ->get();
 
             // DEBUG: Log de ventas encontradas
-            Log::info("Dashboard - Ventas encontradas: " . $ventas->count());
-            if ($ventas->count() > 0) {
-                Log::info("Dashboard - Primera venta: ", [
-                    'id' => $ventas->first()->ven_id,
-                    'fecha' => $ventas->first()->ven_fecha,
-                    'cliente_id' => $ventas->first()->ven_cliente,
-                    'user_id' => $ventas->first()->ven_user
-                ]);
-            }
 
-            if ($ventas->isEmpty()) {
-                Log::warning("Dashboard - No se encontraron ventas recientes");
-                return [];
-            }
+
+
 
             $resultado = [];
             foreach ($ventas as $venta) {
@@ -149,7 +137,7 @@ class DashboardController extends Controller
             return $resultado;
 
         } catch (\Exception $e) {
-            Log::error('Error en obtenerVentasRecientes: ' . $e->getMessage());
+
             return [];
         }
     }
@@ -206,8 +194,7 @@ class DashboardController extends Controller
             return $resultado;
 
         } catch (\Exception $e) {
-            Log::error('Error en obtenerProductosStockBajo: ' . $e->getMessage());
-            Log::error('Stack: ' . $e->getTraceAsString());
+
             return [];
         }
     }
@@ -254,7 +241,7 @@ class DashboardController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error en getResumenVentas: ' . $e->getMessage());
+
             
             return response()->json([
                 'success' => false,
@@ -298,7 +285,7 @@ class DashboardController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error en getProductosMasVendidos: ' . $e->getMessage());
+
             
             return response()->json([
                 'success' => false,
