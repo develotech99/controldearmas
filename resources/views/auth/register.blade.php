@@ -47,7 +47,7 @@
                                value="{{ old('email') }}" 
                                required 
                                autocomplete="username"
-                               placeholder="empleado@proarmas.com"
+                               placeholder="empleado@controldearmas.com"
                                class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors bg-white text-slate-900 placeholder-slate-400">
                         @error('email')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>

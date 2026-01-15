@@ -51,7 +51,7 @@
                 value="{{ old('email', $user->email) }}"
                 required
                 autocomplete="username"
-                placeholder="empleado@proarmas.com"
+                placeholder="empleado@controldearmas.com"
             />
             @error('email')
                 <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -97,7 +97,7 @@
                 <div>
                     <p class="text-sm font-medium text-slate-800 dark:text-white">Empleado del Sistema</p>
                     <p class="text-xs text-slate-600 dark:text-gray-400 mt-1">
-                        Tienes acceso al sistema de inventario de ProArmas y Municiones
+                        Tienes acceso al sistema de inventario de Control de Armas by Develotech
                     </p>
                 </div>
             </div>
