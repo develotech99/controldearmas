@@ -25,6 +25,12 @@ class DatabaseSeeder extends Seeder
     $this->call([
         ProUnidadesMedidaSeeder::class,
         ProCalibresSeeder::class,
+        ProPaisesSeeder::class,
+        ProCategoriasSeeder::class,
+        ProSubcategoriasSeeder::class,
+        ProMarcasSeeder::class,
+        ProModelosSeeder::class,
+        ProMetodosPagoSeeder::class,
         UsuarioAdmin1Seeder::class
     ]);
     
