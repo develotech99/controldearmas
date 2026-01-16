@@ -355,11 +355,19 @@ public function guardarCliente(Request $request)
         ], 201);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
+        $errors = $e->errors();
+        $firstError = reset($errors)[0]; // Obtener el primer mensaje de error
+        $count = count($errors);
         
+        $msg = "Faltan datos obligatorios: $firstError";
+        if ($count > 1) {
+            $msg .= " (y " . ($count - 1) . " errores más)";
+        }
+
         return response()->json([
             'codigo' => 0,
-            'mensaje' => 'Faltan campos obligatorios o hay datos inválidos.',
-            'errores' => $e->errors()
+            'mensaje' => $msg,
+            'errores' => $errors
         ], 422);
 
     } catch (\Exception $e) {
