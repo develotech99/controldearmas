@@ -355,20 +355,15 @@ public function guardarCliente(Request $request)
         ], 201);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
-        \Log::error('Error de validación:', ['errors' => $e->errors()]);
+        
         return response()->json([
             'codigo' => 0,
-            'mensaje' => 'Error de validación',
+            'mensaje' => 'Faltan campos obligatorios o hay datos inválidos.',
             'errores' => $e->errors()
         ], 422);
 
     } catch (\Exception $e) {
-        \Log::error('Error al guardar cliente:', [
-            'message' => $e->getMessage(),
-            'line' => $e->getLine(),
-            'file' => $e->getFile(),
-            'data' => $request->except('cliente_pdf_licencia')
-        ]);
+
 
         $msg = 'Error al guardar el cliente';
         if (str_contains($e->getMessage(), 'Data too long')) {
