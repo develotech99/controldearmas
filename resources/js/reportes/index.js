@@ -1075,7 +1075,7 @@ class ReportesManager {
             const { isConfirmed, isDenied } = await Swal.fire({
                 title: 'Autorizar Venta',
                 html: `
-                < div class="text-left" >
+                <div class="text-left">
                         <p class="mb-4 text-gray-700">¿Cómo deseas procesar esta venta?</p>
                         
                         <div class="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
@@ -1107,7 +1107,7 @@ class ReportesManager {
                                 </div>
                             </div>
                         </div>
-                    </div >
+                    </div>
                 `,
                 icon: 'question',
                 showCancelButton: true,
