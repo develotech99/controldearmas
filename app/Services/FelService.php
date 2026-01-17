@@ -193,10 +193,7 @@ class FelService
         'Referencia' => $referencia,
     ];
 
-    Log::info('FEL REQUEST CertificarDte', [
-        'url'        => $url,
-        'referencia' => $referencia,
-    ]);
+
 
     // 3) Enviar petición
     $resp = $this->baseRequest()
@@ -217,10 +214,7 @@ class FelService
             ->post($url, $payload);
     }
 
-    Log::info('FEL RAW RESPONSE', [
-        'status' => $resp->status(),
-        'body'   => $resp->body(),
-    ]);
+
 
     // 5) Errores HTTP
     if ($resp->failed()) {

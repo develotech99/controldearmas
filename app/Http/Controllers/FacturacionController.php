@@ -147,7 +147,7 @@ public function buscarCUI(Request $request)
     try {
         $json = $this->felService->consultarCui($cui);
 
-        \Log::info("FEL consultar CUI", $json);
+
 
         if (!isset($json['Resultado']) || $json['Resultado'] != true) {
             return response()->json([
@@ -331,7 +331,7 @@ public function verFacturaCambiaria($id)
             $xml = $this->xmlBuilder->generarXmlFactura($datosXml);
             $xmlBase64 = base64_encode($xml);
 
-            Log::info('FEL: XML generado', ['referencia' => $referencia, 'total' => $totalFactura]);
+
 
             // Certificar con FEL
             $respuesta = $this->felService->certificarDte($xmlBase64, $referencia);
@@ -615,10 +615,7 @@ public function verFacturaCambiaria($id)
             ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Error certificando factura', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+
 
             return response()->json([
                 'codigo' => 0,
@@ -761,10 +758,7 @@ public function certificarCambiaria(Request $request)
         
         // 🔍 Debug: guardar XML para revisar
         Storage::disk('local')->put('debug_xml_cambiaria.xml', $xml);
-        Log::info('XML Factura Cambiaria generado', [
-            'referencia' => $referencia,
-            'total' => $totalFactura
-        ]);
+
 
         $xmlBase64 = base64_encode($xml);
 
@@ -1013,12 +1007,7 @@ public function certificarCambiaria(Request $request)
     } catch (Exception $e) {
         DB::rollBack();
         
-        Log::error('Error certificando factura cambiaria', [
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
-        ]);
+
 
         return response()->json([
             'codigo'  => 0,
@@ -1058,7 +1047,7 @@ public function certificarCambiaria(Request $request)
                 }
             } catch (\Exception $e) {
                 // Ignorar error al leer XML
-                \Log::warning("Error leyendo XML para factura {$id}: " . $e->getMessage());
+
             }
         }
 
@@ -1067,7 +1056,7 @@ public function certificarCambiaria(Request $request)
     public function consultarDte($uuid)
     {
         try {
-            Log::info('Consultando DTE', ['uuid' => $uuid]);
+
 
             $facturaLocal = Facturacion::where('fac_uuid', $uuid)->first();
 
@@ -1100,11 +1089,7 @@ public function certificarCambiaria(Request $request)
                 ], 404);
             }
         } catch (Exception $e) {
-            Log::error('Error consultando DTE', [
-                'uuid' => $uuid,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+
 
             return response()->json([
                 'codigo' => 0,
@@ -1144,11 +1129,7 @@ public function certificarCambiaria(Request $request)
             $xmlAnulacion = $this->xmlBuilder->generarXmlAnulacion($factura);
             $xmlAnulacionBase64 = base64_encode($xmlAnulacion);
 
-            Log::info('FEL: Anulando factura', [
-                'uuid' => $factura->fac_uuid,
-                'factura_id' => $factura->fac_id,
-                'tipo' => $tipoAnulacion
-            ]);
+
 
             // Anular en FEL
             $respuesta = $this->felService->anularDte($xmlAnulacionBase64);
@@ -1352,13 +1333,10 @@ public function certificarCambiaria(Request $request)
                     }
                 }
             } catch (\Exception $e) {
-                Log::error('Error al enviar correo de anulación: ' . $e->getMessage());
+
             }
 
-            Log::info('FEL: Factura anulada exitosamente', [
-                'uuid' => $factura->fac_uuid,
-                'factura_id' => $factura->fac_id
-            ]);
+
 
             return response()->json([
                 'codigo' => 1,
@@ -1403,11 +1381,7 @@ public function certificarCambiaria(Request $request)
                 }
             }
 
-            Log::error('Error anulando factura', [
-                'id' => $id,
-                'error' => $errorMessage,
-                'trace' => $e->getTraceAsString()
-            ]);
+
 
             return response()->json([
                 'codigo' => 0,
@@ -1572,7 +1546,7 @@ public function certificarCambiaria(Request $request)
             ]);
 
         } catch (Exception $e) {
-            Log::error('Error anulando factura: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al anular factura: ' . $e->getMessage()
