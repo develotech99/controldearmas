@@ -1460,7 +1460,7 @@ class ReportesManager {
             if (filtros.cliente_id) params.append('cliente_id', filtros.cliente_id);
             if (filtros.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
 
-            const url = `/ ventas / pendientes${params.toString() ? '?' + params.toString() : ''} `;
+            const url = `/ventas/pendientes${params.toString() ? '?' + params.toString() : ''}`;
             ('📡 URL:', url);
 
             const response = await fetch(url, {

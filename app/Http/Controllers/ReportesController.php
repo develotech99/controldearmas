@@ -48,10 +48,7 @@ class ReportesController extends Controller
                 ? Carbon::parse($request->fecha_fin)->endOfDay()
                 : Carbon::now()->endOfDay();
 
-            \Log::info('Dashboard fechas:', [
-                'inicio' => $fechaInicio->toDateTimeString(),
-                'fin' => $fechaFin->toDateTimeString()
-            ]);
+
 
             // KPIs principales
             $kpis = $this->getKPIs($fechaInicio, $fechaFin);
@@ -62,13 +59,7 @@ class ReportesController extends Controller
             $ventasPorVendedor = $this->getVentasPorVendedor($fechaInicio, $fechaFin);
             $metodospagoStats = $this->getEstadisticasMetodosPago($fechaInicio, $fechaFin);
 
-            \Log::info('Dashboard datos:', [
-                'kpis' => $kpis,
-                'ventas_por_dia_count' => count($ventasPorDia),
-                'productos_count' => count($productosMasVendidos),
-                'vendedores_count' => count($ventasPorVendedor),
-                'metodos_pago_count' => count($metodospagoStats)
-            ]);
+
 
             return response()->json([
                 'success' => true,
@@ -87,10 +78,7 @@ class ReportesController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error en getDashboard:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+
 
             return response()->json([
                 'success' => false,
@@ -287,7 +275,7 @@ public function getReporteVentas(Request $request): JsonResponse
             ]);
             
         } catch (\Exception $e) {
-            \Log::error('Error en buscarClientes: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'results' => [],
@@ -348,21 +336,14 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->limit($limit)
                 ->get();
 
-            \Log::info('Productos filtrados:', [
-                'categoria' => $request->categoria_id,
-                'marca' => $request->marca_id,
-                'total' => $productos->count()
-            ]);
+
 
             return response()->json([
                 'success' => true,
                 'data' => $productos
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error en getReporteProductos:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+
 
             return response()->json([
                 'success' => false,
@@ -484,20 +465,14 @@ public function getReporteVentas(Request $request): JsonResponse
                 return $pago;
             });
 
-            \Log::info('Pagos filtrados:', [
-                'estado' => $request->estado,
-                'tipo' => $request->tipo_pago,
-                'total' => $pagos->total()
-            ]);
+
 
             return response()->json([
                 'success' => true,
                 'data' => $pagos
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error en getReportePagos:', [
-                'message' => $e->getMessage()
-            ]);
+
 
             return response()->json([
                 'success' => false,
@@ -547,10 +522,7 @@ public function getReporteVentas(Request $request): JsonResponse
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
-            \Log::error('Error generando PDF: ' . $e->getMessage(), [
-                'request' => $request->all(),
-                'trace' => $e->getTraceAsString()
-            ]);
+
 
             return response()->json([
                 'success' => false,
@@ -658,7 +630,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 'comisiones_pendientes' => (float) $comisionesPendientes
             ];
         } catch (\Exception $e) {
-            \Log::error('Error en getKPIs: ' . $e->getMessage());
+
             return [
                 'total_ventas' => 0,
                 'monto_total' => 0,
@@ -680,10 +652,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->orderBy('fecha')
                 ->get();
 
-            \Log::info('Ventas por día query:', [
-                'count' => $ventas->count(),
-                'first' => $ventas->first()
-            ]);
+
 
             return $ventas->map(function ($item) {
                 return [
@@ -693,7 +662,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ];
             });
         } catch (\Exception $e) {
-            \Log::error('Error en getVentasPorDia: ' . $e->getMessage());
+
             return collect([]);
         }
     }
@@ -718,10 +687,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->limit($limit)
                 ->get();
 
-            \Log::info('Productos más vendidos:', [
-                'count' => $productos->count(),
-                'first' => $productos->first()
-            ]);
+
 
             return $productos->map(function ($item) {
                 return [
@@ -732,7 +698,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ];
             });
         } catch (\Exception $e) {
-            \Log::error('Error en getProductosMasVendidos: ' . $e->getMessage());
+
             return collect([]);
         }
     }
@@ -754,10 +720,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->orderBy('monto_total', 'desc')
                 ->get();
 
-            \Log::info('Ventas por vendedor:', [
-                'count' => $ventas->count(),
-                'first' => $ventas->first()
-            ]);
+
 
             return $ventas->map(function ($item) {
                 return [
@@ -768,7 +731,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ];
             });
         } catch (\Exception $e) {
-            \Log::error('Error en getVentasPorVendedor: ' . $e->getMessage());
+
             return collect([]);
         }
     }
@@ -793,10 +756,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ->orderBy('monto_total', 'desc')
                 ->get();
 
-            \Log::info('Métodos de pago stats:', [
-                'count' => $stats->count(),
-                'first' => $stats->first()
-            ]);
+
 
             return $stats->map(function ($item) {
                 return [
@@ -807,7 +767,7 @@ public function getReporteVentas(Request $request): JsonResponse
                 ];
             });
         } catch (\Exception $e) {
-            \Log::error('Error en getEstadisticasMetodosPago: ' . $e->getMessage());
+
             return collect([]);
         }
     }
@@ -920,7 +880,7 @@ public function getReporteVentas(Request $request): JsonResponse
                     throw new \Exception('Tipo de reporte no válido: ' . $tipo);
             }
         } catch (\Exception $e) {
-            \Log::error('Error en getDataForExport: ' . $e->getMessage());
+
             return [
                 'data' => [],
                 'error' => $e->getMessage(),
@@ -964,10 +924,7 @@ public function getReporteVentas(Request $request): JsonResponse
             $mes = $request->get('mes', now()->month);
             $anio = $request->get('anio', now()->year);
 
-            \Log::info('📊 Generando reporte DIGECAM Armas:', [
-                'mes' => $mes,
-                'anio' => $anio
-            ]);
+
 
             // ✅ FIX FINAL: Consulta directa Venta -> Movimientos -> Series
             // Elimina dependencia de pro_detalle_ventas para evitar producto cartesiano
